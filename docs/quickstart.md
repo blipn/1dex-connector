@@ -70,4 +70,17 @@ req, err := http.NewRequest(
   --viewport-render-mode features
 ```
 
+Options utiles:
+
+```bash
+1dex map parcelles --address "50 rue des tanneurs aix" --url
+1dex map parcelles "50 rue des tanneurs aix" --format summary
+1dex map parcelles "50 rue des tanneurs aix" \
+  --lon 5.446245 \
+  --lat 43.52782 \
+  --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
+  --viewport-zoom 19 \
+  --format csv
+```
+
 Set `ONEDEX_BASE_URL` only if you need to target another environment. The public default is `https://1dex.fr`.

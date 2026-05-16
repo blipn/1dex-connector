@@ -104,6 +104,19 @@ CLI:
   --viewport-render-mode features
 ```
 
+CLI options:
+
+```bash
+1dex map parcelles --address "50 rue des tanneurs aix" --url
+1dex map parcelles "50 rue des tanneurs aix" --format summary
+1dex map parcelles "50 rue des tanneurs aix" \
+  --lon 5.446245 \
+  --lat 43.52782 \
+  --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
+  --viewport-zoom 19 \
+  --format csv
+```
+
 ## npm Packages
 
 - `@1dex-fr/1dex`: standalone command-line package. Install with `npm i @1dex-fr/1dex` and run with `npx 1dex`, or install globally with `npm i -g @1dex-fr/1dex`.

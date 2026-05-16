@@ -54,6 +54,28 @@ try {
   if (!help.stdout.includes('1dex map parcelles <address>')) {
     throw new Error(`Installed 1dex binary returned unexpected help:\n${help.stdout}`);
   }
+  const shortHelp = run(join(installDir, 'node_modules/.bin/1dex'), ['-h'], { cwd: installDir });
+  if (!shortHelp.stdout.includes('--format <json|csv|summary>')) {
+    throw new Error(`Installed 1dex binary returned unexpected short help:\n${shortHelp.stdout}`);
+  }
+  const version = run(join(installDir, 'node_modules/.bin/1dex'), ['--version'], { cwd: installDir });
+  if (!/^\d+\.\d+\.\d+/u.test(version.stdout.trim())) {
+    throw new Error(`Installed 1dex binary returned unexpected version:\n${version.stdout}`);
+  }
+  const url = run(join(installDir, 'node_modules/.bin/1dex'), [
+    'map',
+    'parcelles',
+    '--address',
+    '50 rue des tanneurs aix',
+    '--lon',
+    '-0.542902',
+    '--lat',
+    '47.468617',
+    '--url',
+  ], { cwd: installDir });
+  if (!url.stdout.includes('/explore/map-layer/parcelles?address=50+rue+des+tanneurs+aix')) {
+    throw new Error(`Installed 1dex binary returned unexpected URL:\n${url.stdout}`);
+  }
 
   console.log('npm console package check passed.');
 } finally {
