@@ -31,17 +31,13 @@ try {
   await mkdir(installDir, { recursive: true });
 
   run('npm', ['--cache', join(tempRoot, 'npm-cache'), 'pack', '--pack-destination', packDir], {
-    cwd: join(root, 'packages/js'),
-  });
-  run('npm', ['--cache', join(tempRoot, 'npm-cache'), 'pack', '--pack-destination', packDir], {
     cwd: join(root, 'cli'),
   });
 
   const packedFiles = await readdir(packDir);
-  const connectorTarball = packedFiles.find((file) => file.startsWith('1dex-connector-') && file.endsWith('.tgz'));
-  const cliTarball = packedFiles.find((file) => file.startsWith('1dex-') && !file.startsWith('1dex-connector-') && file.endsWith('.tgz'));
+  const cliTarball = packedFiles.find((file) => file.startsWith('1dex-') && file.endsWith('.tgz'));
 
-  if (!connectorTarball || !cliTarball) {
+  if (!cliTarball) {
     throw new Error(`Missing packed npm tarballs: ${packedFiles.join(', ')}`);
   }
 
@@ -51,7 +47,6 @@ try {
     join(tempRoot, 'npm-cache'),
     'install',
     '--ignore-scripts',
-    join(packDir, connectorTarball),
     join(packDir, cliTarball),
   ], { cwd: installDir });
 

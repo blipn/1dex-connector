@@ -29,12 +29,6 @@ jobs:
       - name: Run CI checks
         run: npm run ci
 
-      - name: Publish JavaScript connector
-        run: npm publish --access public --provenance
-        working-directory: packages/js
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Publish console package
         run: npm publish --provenance
         working-directory: cli

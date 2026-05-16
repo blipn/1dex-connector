@@ -106,10 +106,8 @@ CLI:
 
 ## npm Packages
 
-- `1dex`: command-line package. Install with `npm i 1dex` and run with `npx 1dex`, or install globally with `npm i -g 1dex`.
-- `@1dex/connector`: JavaScript/TypeScript client used by the CLI.
-
-Publish `@1dex/connector` before `1dex`, because the console package depends on it.
+- `1dex`: standalone command-line package. Install with `npm i 1dex` and run with `npx 1dex`, or install globally with `npm i -g 1dex`.
+- `@1dex/connector`: JavaScript/TypeScript client source package. Publish it later when the npm scope is available.
 
 ## Implemented API Surface
 

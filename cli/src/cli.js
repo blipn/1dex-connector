@@ -1,12 +1,114 @@
 #!/usr/bin/env node
-let connectorModule;
-try {
-  connectorModule = await import('@1dex/connector');
-} catch {
-  connectorModule = await import('../../packages/js/src/index.js');
+const DEFAULT_BASE_URL = 'https://1dex.fr';
+
+class OneDexApiError extends Error {
+  constructor(message, options = {}) {
+    super(message);
+    this.name = 'OneDexApiError';
+    this.status = options.status ?? 0;
+    this.body = options.body;
+    this.requestId = options.requestId ?? null;
+  }
 }
 
-const { OneDexApiError, OneDexClient } = connectorModule;
+function normalizeBaseUrl(baseUrl) {
+  const value = (baseUrl ?? DEFAULT_BASE_URL).trim();
+  if (!value) {
+    throw new TypeError('baseUrl must not be empty.');
+  }
+  return value.replace(/\/+$/, '');
+}
+
+function appendQuery(path, query) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+    params.set(key, String(value));
+  }
+  const serialized = params.toString();
+  return serialized ? `${path}?${serialized}` : path;
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new OneDexApiError('1dex API returned invalid JSON.', {
+      status: response.status,
+      body: text,
+      requestId: response.headers.get('x-request-id'),
+    });
+  }
+}
+
+class OneDexClient {
+  constructor(options = {}) {
+    this.baseUrl = normalizeBaseUrl(options.baseUrl);
+    this.fetch = options.fetch ?? globalThis.fetch;
+    this.timeoutMs = options.timeoutMs ?? 30_000;
+
+    if (typeof this.fetch !== 'function') {
+      throw new TypeError('A fetch implementation is required.');
+    }
+
+    this.map = Object.freeze({
+      parcelles: (input) => this.mapParcelles(input),
+    });
+  }
+
+  async request(method, path, options = {}) {
+    const controller = new AbortController();
+    const timer = this.timeoutMs > 0
+      ? setTimeout(() => controller.abort(), this.timeoutMs)
+      : undefined;
+
+    let response;
+    try {
+      response = await this.fetch(`${this.baseUrl}${path}`, {
+        method,
+        headers: { accept: 'application/json' },
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw new OneDexApiError('1dex API request timed out.', { status: 0 });
+      }
+      throw error;
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
+
+    const body = await readJsonResponse(response);
+    if (!response.ok) {
+      const warningMessage = body?.warnings?.find((warning) => warning?.message)?.message;
+      throw new OneDexApiError(warningMessage ?? `1dex API returned ${response.status}.`, {
+        status: response.status,
+        body,
+        requestId: body?.request_id ?? response.headers.get('x-request-id'),
+      });
+    }
+    return body;
+  }
+
+  mapParcelles(input) {
+    const { address, ...query } = input;
+    if (typeof address !== 'string' || !address.trim()) {
+      throw new TypeError('parcelles input requires address.');
+    }
+    return this.request('GET', appendQuery('/explore/map-layer/parcelles', {
+      address: address.trim(),
+      ...query,
+    }));
+  }
+}
 
 function usage() {
   return `1dex CLI

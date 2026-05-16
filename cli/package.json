@@ -26,9 +26,6 @@
   "bugs": {
     "url": "https://github.com/blipn/1dex-connector/issues"
   },
-  "dependencies": {
-    "@1dex/connector": "^0.1.0"
-  },
   "engines": {
     "node": ">=22"
   },
