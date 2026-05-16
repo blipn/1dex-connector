@@ -42,7 +42,7 @@ for (const button of document.querySelectorAll('[data-copy]')) {
     }
     await navigator.clipboard.writeText(text);
     const previous = button.textContent;
-    button.textContent = 'Copie';
+    button.textContent = 'Copié';
     setTimeout(() => {
       button.textContent = previous;
     }, 1200);

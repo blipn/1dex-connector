@@ -47,7 +47,7 @@
         <a href="#quickstart">Quickstart</a>
         <a href="#sdk">SDK</a>
         <a href="#api">API</a>
-        <a href="#security">Acces</a>
+        <a href="#security">Accès</a>
       </nav>
       <a class="external-link" href="https://1dex.fr/" rel="noopener">1dex.fr</a>
     </header>
@@ -56,14 +56,14 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy" data-reveal>
           <p class="eyebrow">Open source · API publique · JSON propre</p>
-          <h1 id="hero-title">Requeter les donnees publiques 1dex sans friction.</h1>
-          <p class="hero-text">Un kit public pour resoudre une adresse, interroger les sources autorisees et automatiser vos tests en JavaScript, Python ou CLI.</p>
+          <h1 id="hero-title">Requêter les données publiques 1dex sans friction.</h1>
+          <p class="hero-text">Un kit public pour résoudre une adresse, interroger les sources autorisées et automatiser vos tests en JavaScript, Python ou CLI.</p>
           <div class="hero-actions">
-            <a class="primary-action" href="#quickstart">Demarrer</a>
+            <a class="primary-action" href="#quickstart">Démarrer</a>
             <a class="secondary-action" href="https://github.com/blipn/1dex-connector" rel="noopener">Voir sur GitHub</a>
           </div>
         </div>
-        <div class="hero-visual" data-reveal aria-label="Exemple de requete API 1dex">
+        <div class="hero-visual" data-reveal aria-label="Exemple de requête API 1dex">
           <div class="request-map" aria-hidden="true">
             <span class="pin"></span>
             <span class="route route-a"></span>
@@ -84,15 +84,15 @@
       </section>
 
       <section class="trust-band" aria-label="Garanties publiques">
-        <p><strong>Pas de runtime interne.</strong> Ce depot ne contient que la documentation, les connecteurs, l'OpenAPI, la CLI et les exemples.</p>
-        <p><strong>Acces progressif.</strong> Gratuit quand le quota public le permet, avec cle API pour les usages compte.</p>
+        <p><strong>Pas de runtime interne.</strong> Ce dépôt ne contient que la documentation, les connecteurs, l'OpenAPI, la CLI et les exemples.</p>
+        <p><strong>Accès progressif.</strong> Gratuit quand le quota public le permet, avec clé API pour les usages compte.</p>
       </section>
 
       <section id="quickstart" class="section section-light" aria-labelledby="quickstart-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Quickstart</p>
-          <h2 id="quickstart-title">Une adresse, une reponse exploitable.</h2>
-          <p>Le connecteur garde la meme enveloppe de reponse sur les routes principales: `request_id`, `query`, `status`, `source`, `data`, `warnings`, `meta`.</p>
+          <h2 id="quickstart-title">Une adresse, une réponse exploitable.</h2>
+          <p>Le connecteur garde la même enveloppe de réponse sur les routes principales: `request_id`, `query`, `status`, `source`, `data`, `warnings`, `meta`.</p>
         </div>
         <div class="code-columns">
           <article class="code-sample" data-reveal>
@@ -134,8 +134,8 @@ answer = client.address.resolve(
       <section id="sdk" class="section" aria-labelledby="sdk-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">SDK + CLI</p>
-          <h2 id="sdk-title">Des outils courts, auditables, sans logique cachee.</h2>
-          <p>Chaque package reste un client HTTP: aucune base locale, aucun worker, aucun fichier de donnees embarque.</p>
+          <h2 id="sdk-title">Des outils courts, auditables, sans logique cachée.</h2>
+          <p>Chaque package reste un client HTTP: aucune base locale, aucun worker, aucun fichier de données embarqué.</p>
         </div>
         <div class="feature-list">
           <div data-reveal>
@@ -148,7 +148,7 @@ answer = client.address.resolve(
           </div>
           <div data-reveal>
             <h3>CLI</h3>
-            <p>Commandes pour resoudre, autocompleter, interroger une source et exporter en JSON ou CSV.</p>
+            <p>Commandes pour résoudre, autocompléter, interroger une source et exporter en JSON ou CSV.</p>
           </div>
         </div>
       </section>
@@ -157,7 +157,7 @@ answer = client.address.resolve(
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Contrat API</p>
           <h2 id="api-title">Quatre routes pour commencer proprement.</h2>
-          <p>Le contrat OpenAPI public est versionne dans le depot et publie avec le site.</p>
+          <p>Le contrat OpenAPI public est versionné dans le dépôt et publié avec le site.</p>
         </div>
         <div class="endpoint-list" data-reveal>
           <a href="./openapi/1dex-public-api.yaml"><span>GET</span> /v1/address/autocomplete</a>
@@ -170,21 +170,21 @@ answer = client.address.resolve(
       <section id="security" class="section" aria-labelledby="security-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Public-safe</p>
-          <h2 id="security-title">Fait pour aider a requeter, pas pour exposer l'interne.</h2>
-          <p>La documentation publique ne publie pas de secrets, de schemas internes, de raw data ni de procedures operateur.</p>
+          <h2 id="security-title">Fait pour aider à requêter, pas pour exposer l'interne.</h2>
+          <p>La documentation publique ne publie pas de secrets, de schémas internes, de raw data ni de procédures opérateur.</p>
         </div>
         <div class="policy-lines" data-reveal>
-          <p><strong>Authentification.</strong> Les demos publiques peuvent etre gratuites; les quotas compte passent par `Authorization: Bearer`.</p>
-          <p><strong>Erreurs.</strong> Les warnings restent lisibles par machine pour deboguer sans scraper les messages.</p>
-          <p><strong>SEO.</strong> Le site pointe vers <a href="https://1dex.fr/" rel="noopener">1dex.fr</a>, l'OpenAPI et le depot GitHub.</p>
+          <p><strong>Authentification.</strong> Les démos publiques peuvent être gratuites; les quotas compte passent par `Authorization: Bearer`.</p>
+          <p><strong>Erreurs.</strong> Les warnings restent lisibles par machine pour déboguer sans scraper les messages.</p>
+          <p><strong>SEO.</strong> Le site pointe vers <a href="https://1dex.fr/" rel="noopener">1dex.fr</a>, l'OpenAPI et le dépôt GitHub.</p>
         </div>
       </section>
 
       <section class="final-cta" aria-labelledby="cta-title" data-reveal>
-        <p class="eyebrow">Pret a tester</p>
-        <h2 id="cta-title">Demarrez avec une adresse publique.</h2>
+        <p class="eyebrow">Prêt à tester</p>
+        <h2 id="cta-title">Démarrez avec une adresse publique.</h2>
         <div class="hero-actions">
-          <a class="primary-action" href="https://1dex.fr/" rel="noopener">Decouvrir 1dex</a>
+          <a class="primary-action" href="https://1dex.fr/" rel="noopener">Découvrir 1dex</a>
           <a class="secondary-action" href="https://github.com/blipn/1dex-connector/tree/main/examples" rel="noopener">Exemples</a>
         </div>
       </section>
