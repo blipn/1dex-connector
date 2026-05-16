@@ -5,7 +5,7 @@ Les exemples utilisent uniquement l'endpoint public vérifié sur `https://1dex.
 ## Console npm
 
 ```bash
-npm i 1dex
+npm i @1dex-fr/1dex
 npx 1dex map parcelles "50 rue des tanneurs aix" \
   --viewport-render-mode features
 ```
@@ -13,7 +13,7 @@ npx 1dex map parcelles "50 rue des tanneurs aix" \
 Pour avoir la commande `1dex` disponible directement dans le terminal:
 
 ```bash
-npm i -g 1dex
+npm i -g @1dex-fr/1dex
 1dex map parcelles "50 rue des tanneurs aix" \
   --viewport-render-mode features
 ```

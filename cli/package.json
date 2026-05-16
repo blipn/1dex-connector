@@ -1,5 +1,5 @@
 {
-  "name": "1dex",
+  "name": "@1dex-fr/1dex",
   "version": "0.1.0",
   "description": "CLI for the public 1dex parcel map-layer endpoint.",
   "type": "module",

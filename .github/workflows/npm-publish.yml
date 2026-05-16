@@ -30,7 +30,7 @@ jobs:
         run: npm run ci
 
       - name: Publish console package
-        run: npm publish --provenance
+        run: npm publish --access public --provenance
         working-directory: cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

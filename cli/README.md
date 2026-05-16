@@ -5,13 +5,13 @@ Command-line client for the public 1dex parcel map-layer endpoint.
 ## Install
 
 ```bash
-npm i -g 1dex
+npm i -g @1dex-fr/1dex
 ```
 
 Or install it in a project and run it with `npx`:
 
 ```bash
-npm i 1dex
+npm i @1dex-fr/1dex
 npx 1dex map parcelles "50 rue des tanneurs aix" --viewport-render-mode features
 ```
 
