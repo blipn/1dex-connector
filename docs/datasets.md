@@ -10,10 +10,10 @@ GET https://1dex.fr/explore/map-layer/parcelles?address=...
 
 Add new dataset pages only when the corresponding public endpoint is reachable and has been verified from this repository.
 
-## Public vs private surfaces
+## Public Data Scope
 
-- Free/public in this connector: parcel features around an address, through `GET /explore/map-layer/parcelles`.
-- Free/public tooling: npm CLI, curl, OpenAPI, examples, and interactive docs.
+- Public in this connector: cadastral parcel features around an address, through `GET /explore/map-layer/parcelles`.
+- Developer tooling: npm CLI, curl, OpenAPI, examples, and interactive docs.
 - Not published here: private 1dex datasets, paid workflows, exports, internal pipelines, and future authenticated APIs.
 
-The public connector should help people solve one real data question first, then discover the broader 1dex platform.
+The public connector focuses on one real search intent: find parcel data from an address and retrieve a machine-readable response.

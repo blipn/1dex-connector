@@ -7,14 +7,14 @@ const siteIndex = await readFile(join(root, 'dist/site/index.html'), 'utf8');
 const apiPage = await readFile(join(root, 'dist/site/api.html'), 'utf8');
 
 const requiredFragments = [
-  '<title>1dex Connector',
+  '<title>API parcelles cadastrales par adresse',
   'name="description"',
   'rel="canonical"',
   'application/ld+json',
   'https://1dex.fr/',
   'https://github.com/blipn/1dex-connector',
   './openapi/1dex-public-api.yaml',
-  'Tester le endpoint',
+  'Tester l\'API parcelles',
   '/explore/map-layer/parcelles',
 ];
 
@@ -25,13 +25,13 @@ for (const fragment of requiredFragments) {
 }
 
 const requiredApiFragments = [
-  '<title>Documentation API 1dex Connector</title>',
+  '<title>Documentation API parcelles cadastrales - 1dex Connector</title>',
   'rel="canonical"',
   './openapi/1dex-public-api.yaml',
   'api-explorer',
-  'API 1dex Connector',
+  'API parcelles cadastrales par adresse',
   'Schéma',
-  'Tester une requête API',
+  'Tester une adresse',
   '/explore/map-layer/parcelles',
   'FeatureCollection',
 ];

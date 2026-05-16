@@ -5,9 +5,9 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0b7a53)](https://blipn.github.io/1dex-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
 
-Open source connector to test the public 1dex parcel map-layer endpoint before discovering the full 1dex platform.
+Open source CLI, API documentation, and examples to query public 1dex parcel data from an address.
 
-Use it for free to request the parcel layer that is publicly available on `1dex.fr` today. The repository only documents endpoints that are actually reachable from the public web.
+Use it to search cadastral parcels around an address, generate a shareable URL, inspect the GeoJSON response, or integrate the public endpoint with curl, JavaScript, Python, or Go. The repository only documents endpoints that are actually reachable from the public web.
 
 This repository contains client connectors, a small CLI, interactive API documentation, OpenAPI documentation, and examples. It is a consumption layer only: it does not include source import workers, database schema, raw data files, or private runtime code.
 
@@ -15,7 +15,7 @@ Public docs: <https://blipn.github.io/1dex-connector/>
 
 Interactive API reference: <https://blipn.github.io/1dex-connector/api.html>
 
-Discover 1dex after testing the connector: <https://1dex.fr/>
+1dex platform: <https://1dex.fr/>
 
 ## What works today
 
@@ -24,12 +24,12 @@ Discover 1dex after testing the connector: <https://1dex.fr/>
 - Public response: JSON map-layer payload with a GeoJSON `FeatureCollection`.
 - No API key, account mode, or non-public endpoint is documented in this repository.
 
-## Data Positioning
+## Public Data Scope
 
-- Free and public today: resolve parcels around an address with the public map-layer endpoint on `1dex.fr`.
-- Free developer tooling: CLI, curl examples, OpenAPI contract, JavaScript/Python client source, and the interactive docs.
-- Not exposed in this public connector: private datasets, paid workflows, exports, internal import jobs, and future private APIs.
-- Add new paid or private surfaces only when a public contract exists and the corresponding endpoint is reachable.
+- Public today: cadastral parcel features around an address through the public map-layer endpoint on `1dex.fr`.
+- Developer tooling: npm CLI, curl examples, OpenAPI contract, JavaScript/Python client source, and interactive docs.
+- Not exposed here: private datasets, paid workflows, exports, internal import jobs, and future private APIs.
+- New surfaces should be documented only when the public contract exists and the endpoint is reachable.
 
 ## Packages
 

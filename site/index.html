@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>1dex Connector - Endpoint parcelles public</title>
-    <meta name="description" content="Testez le connecteur 1dex avec l'endpoint parcelles public réellement disponible sur 1dex.fr.">
+    <title>API parcelles cadastrales par adresse - 1dex Connector</title>
+    <meta name="description" content="Recherchez des parcelles cadastrales depuis une adresse avec l'API publique 1dex. Test en ligne, CLI npm, curl, GeoJSON et OpenAPI.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="1dex Connector - Endpoint parcelles public">
-    <meta property="og:description" content="Testez le connecteur 1dex avec une route publique fonctionnelle sur 1dex.fr.">
+    <meta property="og:title" content="API parcelles cadastrales par adresse - 1dex Connector">
+    <meta property="og:description" content="Requête adresse vers parcelles cadastrales, réponse GeoJSON, CLI npm, curl et documentation OpenAPI.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="1dex Connector">
-    <meta name="twitter:description" content="Console, SDK et exemples pour l'endpoint parcelles public 1dex.">
+    <meta name="twitter:description" content="API publique pour rechercher des parcelles cadastrales depuis une adresse.">
     <meta name="twitter:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <link rel="stylesheet" href="./assets/styles.css">
     <script type="application/ld+json">
@@ -24,7 +24,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "1dex Connector",
-        "description": "Connecteurs JavaScript, Python et CLI pour tester l'endpoint parcelles public de 1dex.fr.",
+        "description": "API publique, CLI npm et exemples pour rechercher des parcelles cadastrales depuis une adresse avec 1dex.fr.",
         "codeRepository": "https://github.com/blipn/1dex-connector",
         "programmingLanguage": ["JavaScript", "TypeScript", "Python", "Go", "Shell"],
         "license": "https://github.com/blipn/1dex-connector/blob/main/LICENSE",
@@ -55,12 +55,12 @@
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy" data-reveal>
-          <p class="eyebrow">Connecteur open source · Données publiques · JSON propre</p>
-          <h1 id="hero-title">Testez le endpoint parcelles public 1dex.</h1>
-          <p class="hero-text">Les curieux commencent par le connecteur: <code>npm i @1dex-fr/1dex</code>, une route publique vérifiée, une console de test, des exemples curl, Go, JavaScript et Python. Gratuit aujourd'hui: résoudre les parcelles autour d'une adresse. Le reste de la plateforme 1dex vient ensuite.</p>
+          <p class="eyebrow">API cadastre · Parcelles par adresse · GeoJSON</p>
+          <h1 id="hero-title">Trouvez les parcelles cadastrales autour d'une adresse.</h1>
+          <p class="hero-text">Interrogez l'endpoint public 1dex pour convertir une adresse en couche parcelles exploitable: GeoJSON, résumé CLI, URL partageable, exemples curl, Go, JavaScript et Python.</p>
           <div class="hero-actions">
-            <a class="primary-action" href="./api.html#try">Tester le endpoint</a>
-            <a class="secondary-action" href="#quickstart">Voir les SDK</a>
+            <a class="primary-action" href="./api.html#try">Tester l'API parcelles</a>
+            <a class="secondary-action" href="#quickstart">Installer le CLI</a>
           </div>
         </div>
         <div class="hero-visual" data-reveal aria-label="Exemple de requête API 1dex">
@@ -82,15 +82,15 @@ features=500</code></pre>
       </section>
 
       <section class="trust-band" aria-label="Garanties publiques">
-        <p><strong>Public et vérifié.</strong> La doc expose uniquement ce qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
-        <p><strong>Découverte d'abord.</strong> Les visiteurs testent le connecteur, puis découvrent la plateforme 1dex.</p>
+        <p><strong>Requête simple.</strong> Une adresse suffit pour obtenir les parcelles proches.</p>
+        <p><strong>API vérifiée.</strong> La doc expose uniquement ce qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
       </section>
 
       <section id="quickstart" class="section section-light" aria-labelledby="quickstart-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Quickstart</p>
-          <h2 id="quickstart-title">Une adresse 1dex, une couche parcelles.</h2>
-          <p>Le connecteur pointe par défaut sur <code>https://1dex.fr</code> et renvoie le JSON map-layer public: <code>layerKey</code>, <code>status</code>, <code>warnings</code> et <code>data</code>.</p>
+          <h2 id="quickstart-title">Une adresse en entrée, des parcelles en sortie.</h2>
+          <p>Le CLI pointe par défaut sur <code>https://1dex.fr</code> et renvoie une couche parcelles en JSON: <code>layerKey</code>, <code>status</code>, <code>warnings</code> et <code>data.features</code>.</p>
         </div>
         <div class="code-columns">
           <article class="code-sample" data-reveal>
@@ -166,8 +166,8 @@ func main() {
       <section id="sdk" class="section" aria-labelledby="sdk-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">SDK + CLI</p>
-          <h2 id="sdk-title">Des outils courts, auditables, sans logique cachée.</h2>
-          <p>Chaque package reste un client HTTP: aucune base locale, aucun worker, aucun fichier de données embarqué.</p>
+          <h2 id="sdk-title">CLI npm, SDK et exemples HTTP.</h2>
+          <p>Chaque package reste un client HTTP lisible: aucune base locale, aucun worker, aucun fichier de données embarqué.</p>
         </div>
         <div class="feature-list">
           <div data-reveal>
@@ -188,8 +188,8 @@ func main() {
       <section id="api" class="section section-light" aria-labelledby="api-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Contrat API</p>
-          <h2 id="api-title">Une route publique, vérifiée et testable.</h2>
-          <p>Le contrat OpenAPI public ne décrit que l'endpoint fonctionnel exposé aujourd'hui sur 1dex.fr. Les surfaces privées, payantes ou futures ne sont pas inventées dans ce repo.</p>
+          <h2 id="api-title">Une API publique pour les parcelles cadastrales.</h2>
+          <p>Le contrat OpenAPI décrit la route fonctionnelle exposée aujourd'hui sur 1dex.fr: recherche par adresse, paramètres de carte optionnels et réponse GeoJSON.</p>
         </div>
         <div class="endpoint-list" data-reveal>
           <a href="./api.html#operation-parcelles"><span>GET</span> /explore/map-layer/parcelles?address=...</a>
@@ -208,15 +208,15 @@ func main() {
         <div class="policy-lines" data-reveal>
           <p><strong>Authentification.</strong> L'endpoint public documenté aujourd'hui est anonyme et fonctionne directement sur <code>1dex.fr</code>.</p>
           <p><strong>Erreurs.</strong> Les warnings restent lisibles par machine pour déboguer sans scraper les messages.</p>
-          <p><strong>SEO.</strong> Le site pointe vers <a href="https://1dex.fr/" rel="noopener">1dex.fr</a>, l'OpenAPI et le dépôt GitHub.</p>
+          <p><strong>Open source.</strong> Le site pointe vers <a href="https://1dex.fr/" rel="noopener">1dex.fr</a>, l'OpenAPI et le dépôt GitHub.</p>
         </div>
       </section>
 
       <section class="final-cta" aria-labelledby="cta-title" data-reveal>
         <p class="eyebrow">Prêt à tester</p>
-        <h2 id="cta-title">Démarrez avec une adresse publique.</h2>
+        <h2 id="cta-title">Testez une adresse et récupérez les parcelles.</h2>
         <div class="hero-actions">
-          <a class="primary-action" href="./api.html#try">Tester le connecteur</a>
+          <a class="primary-action" href="./api.html#try">Tester l'API</a>
           <a class="secondary-action" href="https://1dex.fr/" rel="noopener">Découvrir 1dex</a>
         </div>
       </section>

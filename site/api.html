@@ -3,28 +3,28 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Documentation API 1dex Connector</title>
-    <meta name="description" content="Documentation type Redoc du connecteur 1dex: testez l'endpoint parcelles public avec une adresse simple.">
+    <title>Documentation API parcelles cadastrales - 1dex Connector</title>
+    <meta name="description" content="Documentation API pour rechercher les parcelles cadastrales proches d'une adresse avec 1dex: console de test, curl, CLI npm, GeoJSON et OpenAPI.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Documentation API 1dex Connector">
-    <meta property="og:description" content="Endpoint parcelles public, console adresse-first, OpenAPI et exemples.">
+    <meta property="og:title" content="Documentation API parcelles cadastrales - 1dex Connector">
+    <meta property="og:description" content="Recherche de parcelles cadastrales par adresse, console de test, curl, CLI npm et OpenAPI.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Documentation API 1dex Connector">
-    <meta name="twitter:description" content="Testez l'endpoint parcelles public avec une adresse.">
+    <meta name="twitter:title" content="Documentation API parcelles cadastrales">
+    <meta name="twitter:description" content="Testez une adresse et récupérez les parcelles en GeoJSON.">
     <meta name="twitter:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <link rel="stylesheet" href="./assets/styles.css">
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "TechArticle",
-        "headline": "Documentation API 1dex Connector",
-        "description": "Documentation et console de test pour l'endpoint parcelles public de 1dex.fr.",
+        "headline": "Documentation API parcelles cadastrales 1dex",
+        "description": "Documentation et console de test pour rechercher des parcelles cadastrales par adresse sur 1dex.fr.",
         "url": "https://blipn.github.io/1dex-connector/api.html",
         "isPartOf": {
           "@type": "WebSite",
@@ -61,9 +61,9 @@
 
       <section class="api-main">
         <section id="introduction" class="api-section api-intro" data-reveal>
-          <p class="api-kicker">Connecteur public</p>
-          <h1>API 1dex Connector</h1>
-          <p class="api-lead">Une adresse en entrée, une couche parcelles en JSON. La page documente uniquement la route publique qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
+          <p class="api-kicker">API publique cadastre</p>
+          <h1>API parcelles cadastrales par adresse</h1>
+          <p class="api-lead">Envoyez une adresse, récupérez une couche parcelles en JSON/GeoJSON. Cette page documente uniquement la route publique qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
 
           <div class="api-status-grid">
             <article>
@@ -82,15 +82,15 @@
 
           <div class="api-note">
             <strong>Limite volontaire.</strong>
-            Pas de host API séparé, pas de clé privée, pas de route future inventée. Gratuit ici: résoudre les parcelles autour d'une adresse. Les surfaces privées, payantes ou futures restent hors de cette doc tant qu'elles n'ont pas de contrat public vérifié.
+            Pas de host API séparé, pas de clé privée, pas de route future inventée. La surface publique actuelle couvre la recherche de parcelles autour d'une adresse. Les surfaces privées, payantes ou futures restent hors de cette doc tant qu'elles n'ont pas de contrat public vérifié.
           </div>
         </section>
 
         <section id="try" class="api-section" data-reveal>
           <div class="api-section-head">
             <p class="api-kicker">Console</p>
-            <h2>Tester une requête API</h2>
-            <p>Le champ utile est l'adresse. Le reste est optionnel et reste masqué par défaut.</p>
+            <h2>Tester une adresse</h2>
+            <p>Saisissez une adresse pour générer l'URL, copier la requête curl ou récupérer directement la réponse GeoJSON.</p>
           </div>
 
           <div id="api-explorer" class="api-console">
