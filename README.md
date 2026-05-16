@@ -30,7 +30,7 @@ Discover 1dex after testing the connector: <https://1dex.fr/>
 - `packages/python`: Python client based on the standard library.
 - `cli`: Node CLI for smoke tests and JSON/CSV output.
 - `openapi/1dex-public-api.yaml`: public API contract for the verified route.
-- `docs/`: quickstart, API, authentication, error, rate-limit, dataset, and example notes.
+- `docs/`: quickstart, API, authentication, npm publishing, error, rate-limit, dataset, and example notes.
 
 ## Quickstart
 
@@ -108,6 +108,20 @@ CLI:
 
 - `@1dex-fr/1dex`: standalone command-line package. Install with `npm i @1dex-fr/1dex` and run with `npx 1dex`, or install globally with `npm i -g @1dex-fr/1dex`.
 - `@1dex/connector`: JavaScript/TypeScript client source package. Publish it later when the npm scope is available.
+
+## npm Publishing
+
+The console package is published through npm Trusted Publishing, not a long-lived npm token.
+
+Configure the npm package `@1dex-fr/1dex` with:
+
+- Publisher: `GitHub Actions`
+- Organization or user: `blipn`
+- Repository: `1dex-connector`
+- Workflow filename: `npm-publish.yml`
+- Environment name: empty
+
+Then run the GitHub Actions workflow `npm publish` manually. The workflow uses OIDC plus `npm publish --access public --provenance` from `cli/`.
 
 ## Implemented API Surface
 
