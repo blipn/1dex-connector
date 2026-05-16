@@ -6,6 +6,26 @@
   "bin": {
     "1dex": "./src/cli.js"
   },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "keywords": [
+    "1dex",
+    "cadastre",
+    "parcelles",
+    "geojson",
+    "cli"
+  ],
+  "homepage": "https://blipn.github.io/1dex-connector/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blipn/1dex-connector.git",
+    "directory": "cli"
+  },
+  "bugs": {
+    "url": "https://github.com/blipn/1dex-connector/issues"
+  },
   "dependencies": {
     "@1dex/connector": "^0.1.0"
   },

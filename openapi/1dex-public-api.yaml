@@ -2,65 +2,52 @@ openapi: 3.1.0
 info:
   title: 1dex Public Map Layer API
   version: 0.1.0
-  description: Public contract for the currently functional 1dex map-layer endpoint exposed on 1dex.fr.
+  description: Public contract for the currently functional 1dex parcel map-layer endpoint exposed on 1dex.fr.
 servers:
   - url: https://1dex.fr
     description: Public 1dex website host.
 paths:
-  /adresse/{address_slug}/explore/map-layer/parcelles:
+  /explore/map-layer/parcelles:
     get:
-      summary: Fetch parcel features around an address viewport
-      operationId: getAddressParcelMapLayer
+      summary: Fetch parcel features around an address
+      operationId: getParcelMapLayer
       parameters:
-        - name: address_slug
-          in: path
+        - name: address
+          in: query
           required: true
           schema:
             type: string
-          example: 10-rue-des-cordeliers-aix-en-provence-13100
+          example: 50 rue des tanneurs aix
         - name: city_code
           in: query
-          required: true
+          required: false
           schema:
             type: string
           example: "13001"
         - name: lon
           in: query
-          required: true
+          required: false
           schema:
             type: number
-          example: 5.446765371857839
+          example: 5.446245
         - name: lat
           in: query
-          required: true
+          required: false
           schema:
             type: number
-          example: 43.52966775616209
-        - name: parcel_record_key
-          in: query
-          required: false
-          schema:
-            type: string
-          example: 13001000AS0323
-        - name: parcel_phase
-          in: query
-          required: false
-          schema:
-            type: string
-            default: initial
-          example: initial
+          example: 43.52782
         - name: viewport_bbox
           in: query
           required: false
           schema:
             type: string
-          example: 5.44628,43.52926,5.44725,43.53008
+          example: 5.4457,43.5274,5.4468,43.5282
         - name: viewport_zoom
           in: query
           required: false
           schema:
             type: number
-          example: 19.25
+          example: 19
         - name: viewport_render_mode
           in: query
           required: false

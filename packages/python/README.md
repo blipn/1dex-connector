@@ -7,10 +7,7 @@ from onedex import OneDexClient
 
 client = OneDexClient()
 response = client.map.parcelles({
-    "address_slug": "10-rue-des-cordeliers-aix-en-provence-13100",
-    "city_code": "13001",
-    "lon": 5.446765371857839,
-    "lat": 43.52966775616209,
+    "address": "50 rue des tanneurs aix",
     "viewport_render_mode": "features",
 })
 ```

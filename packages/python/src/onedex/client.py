@@ -62,9 +62,14 @@ class _MapNamespace:
 
     def parcelles(self, payload: Mapping[str, Any]) -> Any:
         data = dict(_ensure_mapping(payload, "parcelles input"))
+        address = data.pop("address", None)
+        if isinstance(address, str) and address.strip():
+            query = {"address": address.strip(), **data}
+            return self._client.request("GET", "/explore/map-layer/parcelles", query=query)
+
         address_slug = data.pop("addressSlug", data.pop("address_slug", None))
         if not isinstance(address_slug, str) or not address_slug.strip():
-            raise ValueError("parcelles input requires address_slug.")
+            raise ValueError("parcelles input requires address or address_slug.")
         path = f"/adresse/{urllib.parse.quote(address_slug.strip())}/explore/map-layer/parcelles"
         return self._client.request("GET", path, query=data)
 

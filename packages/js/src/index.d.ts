@@ -6,13 +6,12 @@ export interface OneDexRequestOptions {
 }
 
 export interface MapParcellesInput {
+  address?: string;
   addressSlug?: string;
   address_slug?: string;
-  city_code: string;
-  lon: number;
-  lat: number;
-  parcel_record_key?: string;
-  parcel_phase?: 'initial' | 'complete' | string;
+  city_code?: string;
+  lon?: number;
+  lat?: number;
   viewport_bbox?: string;
   viewport_zoom?: number;
   viewport_render_mode?: 'features' | string;

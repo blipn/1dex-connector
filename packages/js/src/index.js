@@ -51,13 +51,25 @@ function appendQuery(path, query) {
 function toParcellesQuery(input) {
   assertObject(input, 'parcelles input');
   const {
+    address,
     addressSlug,
     address_slug: addressSlugSnake,
     ...query
   } = input;
+
+  if (typeof address === 'string' && address.trim() !== '') {
+    return {
+      path: '/explore/map-layer/parcelles',
+      query: {
+        address: address.trim(),
+        ...query,
+      },
+    };
+  }
+
   const slug = addressSlug ?? addressSlugSnake;
   if (typeof slug !== 'string' || slug.trim() === '') {
-    throw new TypeError('parcelles input requires addressSlug.');
+    throw new TypeError('parcelles input requires address or addressSlug.');
   }
   return {
     path: `/adresse/${encodeURIComponent(slug.trim())}/explore/map-layer/parcelles`,

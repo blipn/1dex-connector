@@ -10,8 +10,25 @@
     }
   },
   "files": [
-    "src"
+    "src",
+    "README.md"
   ],
+  "keywords": [
+    "1dex",
+    "cadastre",
+    "parcelles",
+    "geojson",
+    "sdk"
+  ],
+  "homepage": "https://blipn.github.io/1dex-connector/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/blipn/1dex-connector.git",
+    "directory": "packages/js"
+  },
+  "bugs": {
+    "url": "https://github.com/blipn/1dex-connector/issues"
+  },
   "engines": {
     "node": ">=22"
   },

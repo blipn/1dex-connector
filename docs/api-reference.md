@@ -2,7 +2,7 @@
 
 Cette page ne documente que l'endpoint public effectivement fonctionnel aujourd'hui sur `1dex.fr`.
 
-La route vérifiée renvoie les parcelles visibles autour d'une adresse et d'une vue carte.
+La route vérifiée renvoie les parcelles visibles autour d'une adresse.
 
 ## Base URL
 
@@ -12,12 +12,12 @@ https://1dex.fr
 
 ## Endpoint
 
-### `GET /adresse/{address_slug}/explore/map-layer/parcelles`
+### `GET /explore/map-layer/parcelles`
 
 Exemple vérifié:
 
 ```bash
-curl "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features" \
+curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
   -H "Accept: application/json"
 ```
 
@@ -25,12 +25,10 @@ Paramètres:
 
 | Paramètre | Position | Obligatoire | Description |
 | --- | --- | --- | --- |
-| `address_slug` | path | oui | Slug d'adresse utilisé dans l'URL 1dex. |
-| `city_code` | query | oui | Code commune INSEE. |
-| `lon` | query | oui | Longitude du point d'exploration. |
-| `lat` | query | oui | Latitude du point d'exploration. |
-| `parcel_record_key` | query | non | Parcelle d'ancrage quand elle est connue. |
-| `parcel_phase` | query | non | Phase de chargement, par exemple `initial`. |
+| `address` | query | oui | Adresse saisie par l'utilisateur. |
+| `city_code` | query | non | Code commune INSEE, utile si déjà connu. |
+| `lon` | query | non | Longitude, utile pour éviter une résolution d'adresse. |
+| `lat` | query | non | Latitude, utile pour éviter une résolution d'adresse. |
 | `viewport_bbox` | query | non | Bounding box de la carte: minLon,minLat,maxLon,maxLat. |
 | `viewport_zoom` | query | non | Niveau de zoom de la carte. |
 | `viewport_render_mode` | query | non | Mode de rendu. La valeur vérifiée est `features`. |
@@ -43,15 +41,15 @@ La réponse est un payload de couche cartographique:
 {
   "layerKey": "parcelles",
   "label": "Parcelles",
-  "summary": "54 premières parcelles affichées...",
+  "summary": "500 parcelles les plus proches affichées · rayon 1 km",
   "status": "success",
   "warnings": [],
   "data": {
     "type": "FeatureCollection",
     "features": [],
-    "selected_radius_meters": 300,
-    "total_parcel_count": 54,
-    "visible_parcel_count": 54,
+    "selected_radius_meters": 1000,
+    "total_parcel_count": 620,
+    "visible_parcel_count": 500,
     "render_mode": "features"
   }
 }

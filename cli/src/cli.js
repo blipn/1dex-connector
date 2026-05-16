@@ -12,7 +12,7 @@ function usage() {
   return `1dex CLI
 
 Usage:
-  1dex map parcelles <address-slug> --city-code <code> --lon <n> --lat <n> [--parcel-record-key <key>] [--viewport-bbox <bbox>] [--viewport-zoom <n>]
+  1dex map parcelles <address> [--viewport-bbox <bbox>] [--viewport-zoom <n>] [--viewport-render-mode features]
 
 Environment:
   ONEDEX_BASE_URL (defaults to https://1dex.fr)
@@ -78,7 +78,7 @@ function printResult(response, flags) {
 
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
-  const [resource, action, subject] = positional;
+  const [resource, action, ...subjectParts] = positional;
 
   if (!resource || flags.help) {
     console.log(usage());
@@ -89,17 +89,15 @@ async function main() {
   let response;
 
   if (resource === 'map' && action === 'parcelles') {
-    const addressSlug = subject;
-    if (!addressSlug) {
-      throw new Error('Missing address slug.');
+    const address = subjectParts.join(' ').trim();
+    if (!address) {
+      throw new Error('Missing address.');
     }
     response = await client.map.parcelles({
-      addressSlug,
+      address,
       city_code: flags['city-code'],
       lon: flags.lon ? Number(flags.lon) : undefined,
       lat: flags.lat ? Number(flags.lat) : undefined,
-      parcel_record_key: flags['parcel-record-key'],
-      parcel_phase: flags['parcel-phase'] ?? 'initial',
       viewport_bbox: flags['viewport-bbox'],
       viewport_zoom: flags['viewport-zoom'] ? Number(flags['viewport-zoom']) : undefined,
       viewport_render_mode: flags['viewport-render-mode'] ?? 'features',

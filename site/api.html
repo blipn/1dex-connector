@@ -4,19 +4,19 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Documentation API 1dex Connector</title>
-    <meta name="description" content="Documentation interactive du connecteur 1dex pour l'endpoint parcelles public vérifié sur 1dex.fr.">
+    <meta name="description" content="Documentation type Redoc du connecteur 1dex: testez l'endpoint parcelles public avec une adresse simple.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Documentation API 1dex Connector">
-    <meta property="og:description" content="Console de test, OpenAPI et exemples pour la route parcelles publique de 1dex.fr.">
+    <meta property="og:description" content="Endpoint parcelles public, console adresse-first, OpenAPI et exemples.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Documentation API 1dex Connector">
-    <meta name="twitter:description" content="Testez directement l'endpoint parcelles public de 1dex.fr.">
+    <meta name="twitter:description" content="Testez l'endpoint parcelles public avec une adresse.">
     <meta name="twitter:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <link rel="stylesheet" href="./assets/styles.css">
     <script type="application/ld+json">
@@ -24,7 +24,7 @@
         "@context": "https://schema.org",
         "@type": "TechArticle",
         "headline": "Documentation API 1dex Connector",
-        "description": "Console de test et contrat HTTP pour l'endpoint parcelles public de 1dex.fr.",
+        "description": "Documentation et console de test pour l'endpoint parcelles public de 1dex.fr.",
         "url": "https://blipn.github.io/1dex-connector/api.html",
         "isPartOf": {
           "@type": "WebSite",
@@ -41,119 +41,117 @@
         <span>1dex Connector</span>
       </a>
       <nav class="nav" aria-label="Navigation API">
-        <a href="#overview">Vue d'ensemble</a>
+        <a href="#introduction">Introduction</a>
         <a href="#try">Tester</a>
-        <a href="#endpoints">Endpoints</a>
-        <a href="#responses">Réponses</a>
-        <a href="#errors">Erreurs</a>
+        <a href="#operation-parcelles">Endpoint</a>
+        <a href="#schema">Schéma</a>
       </nav>
       <a class="external-link" href="https://1dex.fr/" rel="noopener">1dex.fr</a>
     </header>
 
-    <main id="top">
-      <section class="doc-hero" aria-labelledby="api-title">
-        <div class="doc-hero-copy" data-reveal>
+    <main id="top" class="redoc-page">
+      <aside class="redoc-sidebar" aria-label="Sommaire API">
+        <a href="#introduction">Introduction</a>
+        <a href="#try">Tester une adresse</a>
+        <a href="#operation-parcelles"><span>GET</span> Parcelles</a>
+        <a href="#schema">Schéma de réponse</a>
+        <a href="#errors">Erreurs</a>
+        <a href="./openapi/1dex-public-api.yaml">OpenAPI YAML</a>
+      </aside>
+
+      <section class="redoc-content">
+        <section id="introduction" class="redoc-section" data-reveal>
           <p class="eyebrow">Connecteur public</p>
-          <h1 id="api-title">Documentation API 1dex</h1>
-          <p>Commencez par le connecteur: testez directement la route parcelles publique qui répond aujourd'hui sur 1dex.fr, puis découvrez la plateforme 1dex.</p>
-          <div class="hero-actions">
-            <a class="primary-action" href="#try">Tester une requête</a>
-            <a class="secondary-action" href="./openapi/1dex-public-api.yaml">OpenAPI</a>
-          </div>
-        </div>
-      </section>
+          <h1>API 1dex Connector</h1>
+          <p class="redoc-lead">L'intégration publique commence par une adresse humaine. L'endpoint documenté ici résout cette adresse côté 1dex et renvoie la couche parcelles en JSON.</p>
 
-      <section id="overview" class="section section-light doc-section" aria-labelledby="overview-title">
-        <div class="section-heading" data-reveal>
-          <p class="eyebrow">Vue d'ensemble</p>
-          <h2 id="overview-title">Base URL, authentification et formats.</h2>
-          <p>Le connecteur renvoie du JSON UTF-8 depuis <code>https://1dex.fr</code>. Aucun endpoint privé, clé API ou host API séparé n'est documenté ici.</p>
-        </div>
-        <div class="doc-grid doc-intent-grid">
-          <article class="doc-panel" data-reveal>
-            <h3>Quoi</h3>
-            <p>Un connecteur pour requêter la couche parcelles publique visible autour d'une adresse 1dex.</p>
-          </article>
-          <article class="doc-panel" data-reveal>
-            <h3>Comment</h3>
-            <p>Une console de test, un contrat HTTP JSON, des SDK JavaScript/Python, une CLI, curl et Go via HTTP standard.</p>
-          </article>
-          <article class="doc-panel" data-reveal>
-            <h3>Pourquoi</h3>
-            <p>Permettre aux curieux de tester un appel réel avant de visiter 1dex et d'explorer le produit.</p>
-          </article>
-        </div>
-        <div class="doc-grid doc-intent-grid">
-          <article class="doc-panel" data-reveal>
-            <h3>Gratuit</h3>
-            <p>La route parcelles documentée est publique et anonyme au moment de cette publication.</p>
-          </article>
-          <article class="doc-panel" data-reveal>
-            <h3>Fonctionnel</h3>
-            <p>La doc se limite au endpoint testé sur <code>1dex.fr</code>, sans inventer de host API ni de route future.</p>
-          </article>
-          <article class="doc-panel" data-reveal>
-            <h3>Progressif</h3>
-            <p>Les autres routes seront ajoutées publiquement seulement quand elles existent et répondent.</p>
-          </article>
-        </div>
-        <div class="doc-grid">
-          <article class="doc-panel" data-reveal>
-            <h3>Base URL</h3>
-            <pre><code>https://1dex.fr</code></pre>
-            <p>Base publique utilisée par les SDK, la CLI et la console.</p>
-          </article>
-          <article class="doc-panel" data-reveal>
-            <h3>Headers</h3>
-            <pre><code>Accept: application/json</code></pre>
-          </article>
-          <article class="doc-panel" data-reveal>
-            <h3>Timeouts</h3>
-            <p>Les connecteurs utilisent un timeout client de 30 secondes par défaut. Les erreurs HTTP sont renvoyées telles que publiées par 1dex.fr.</p>
-          </article>
-        </div>
-      </section>
-
-      <section id="try" class="section doc-section api-playground-section" aria-labelledby="try-title">
-        <div class="section-heading" data-reveal>
-          <p class="eyebrow">Console</p>
-          <h2 id="try-title">Tester une requête API.</h2>
-          <p>Ajustez les paramètres de l'endpoint parcelles, envoyez l'appel depuis le navigateur et inspectez la réponse brute.</p>
-        </div>
-        <div id="api-explorer" class="api-playground" data-reveal>
-          <div class="endpoint-tabs" role="tablist" aria-label="Routes API à tester">
-            <button type="button" class="is-active" data-endpoint="parcelles">Parcelles</button>
+          <div class="redoc-callout">
+            <p><strong>Ce qui est testable maintenant.</strong> Une requête anonyme vers <code>https://1dex.fr/explore/map-layer/parcelles</code> avec un paramètre <code>address</code>.</p>
+            <p><strong>Ce qui n'est pas exposé.</strong> Pas de host API séparé, pas de clé API, pas de route privée, pas de promesse sur des endpoints futurs.</p>
           </div>
 
-          <div class="api-console-grid">
-            <form id="api-request-form" class="api-request-form">
-              <div class="form-grid">
-                <label class="field-label" for="api-base-url">
-                  Base URL
-                  <input id="api-base-url" name="baseUrl" type="url" value="https://1dex.fr" autocomplete="off" required>
-                </label>
-              </div>
+          <div class="redoc-meta-grid">
+            <article>
+              <span>Base URL</span>
+              <code>https://1dex.fr</code>
+            </article>
+            <article>
+              <span>Auth</span>
+              <code>Aucune</code>
+            </article>
+            <article>
+              <span>Format</span>
+              <code>application/json</code>
+            </article>
+          </div>
+        </section>
 
-              <div id="api-fields" class="form-grid"></div>
+        <section id="try" class="redoc-section" data-reveal>
+          <div class="redoc-section-head">
+            <div>
+              <p class="eyebrow">Console</p>
+              <h2>Tester une requête API</h2>
+              <p>Entrez une adresse, éventuellement un filtre de rendu. La requête générée reste visible pour comprendre exactement ce qui part vers 1dex.</p>
+            </div>
+          </div>
 
-              <label class="field-label api-body-field is-disabled" for="api-body">
-                Body JSON (non utilisé)
-                <textarea id="api-body" name="body" rows="12" spellcheck="false"></textarea>
+          <div id="api-explorer" class="redoc-console">
+            <form id="api-request-form" class="redoc-try-form">
+              <label class="field-label" for="api-address">
+                Adresse
+                <input id="api-address" name="address" type="text" value="50 rue des tanneurs aix" autocomplete="street-address" required>
               </label>
+
+              <label class="field-label" for="api-render-mode">
+                Filtre
+                <select id="api-render-mode" name="viewport_render_mode">
+                  <option value="features">Contours parcelles</option>
+                  <option value="">Réponse par défaut</option>
+                </select>
+              </label>
+
+              <details class="advanced-fields">
+                <summary>Paramètres avancés générés par une carte</summary>
+                <div class="form-grid">
+                  <label class="field-label" for="api-base-url">
+                    Base URL
+                    <input id="api-base-url" name="baseUrl" type="url" value="https://1dex.fr" autocomplete="off" required>
+                  </label>
+                  <label class="field-label" for="api-city-code">
+                    Code commune
+                    <input id="api-city-code" name="city_code" type="text" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-lon">
+                    Longitude
+                    <input id="api-lon" name="lon" type="number" step="any" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-lat">
+                    Latitude
+                    <input id="api-lat" name="lat" type="number" step="any" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-viewport-bbox">
+                    Viewport bbox
+                    <input id="api-viewport-bbox" name="viewport_bbox" type="text" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-viewport-zoom">
+                    Zoom
+                    <input id="api-viewport-zoom" name="viewport_zoom" type="number" step="any" autocomplete="off">
+                  </label>
+                </div>
+              </details>
 
               <div class="console-actions">
                 <button id="api-send" class="primary-action" type="submit">Envoyer</button>
                 <a id="api-open-url" class="secondary-action" href="https://1dex.fr/" target="_blank" rel="noopener">Ouvrir l'URL</a>
                 <button class="secondary-action" type="button" data-copy="api-curl">Copier curl</button>
               </div>
-              <p class="console-note">L'appel part directement vers <code>1dex.fr</code>. Si le navigateur bloque l'affichage CORS, ouvrez l'URL exacte ou copiez le curl.</p>
             </form>
 
-            <div class="api-preview">
+            <div class="redoc-code-stack">
               <div class="preview-block">
                 <div class="preview-head">
                   <h3>Requête</h3>
-                  <span id="api-route-label">GET /adresse/{slug}/explore/map-layer/parcelles</span>
+                  <span id="api-route-label">GET /explore/map-layer/parcelles</span>
                 </div>
                 <pre id="api-curl"><code></code></pre>
               </div>
@@ -169,96 +167,82 @@
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="endpoints" class="section doc-section" aria-labelledby="endpoints-title">
-        <div class="section-heading" data-reveal>
-          <p class="eyebrow">Endpoints</p>
-          <h2 id="endpoints-title">Route publique fonctionnelle.</h2>
-          <p>Cette documentation ne publie que l'endpoint vérifié sur <code>1dex.fr</code>. Les autres routes seront ajoutées seulement quand elles seront exposées publiquement.</p>
-        </div>
-
-        <article id="map-parcelles" class="endpoint-doc" data-reveal>
-          <div class="endpoint-doc-head">
+        <section id="operation-parcelles" class="redoc-section operation-doc" data-reveal>
+          <div class="operation-title">
             <span class="method method-get">GET</span>
-            <h3>/adresse/{address_slug}/explore/map-layer/parcelles</h3>
+            <h2>/explore/map-layer/parcelles</h2>
           </div>
-          <p>Retourne les parcelles visibles autour d'une adresse et d'une vue carte, sous forme de <code>FeatureCollection</code> GeoJSON enrichie.</p>
-          <table>
-            <thead>
-              <tr><th>Paramètre</th><th>Position</th><th>Obligatoire</th><th>Description</th></tr>
-            </thead>
-            <tbody>
-              <tr><td><code>address_slug</code></td><td>path</td><td>oui</td><td>Slug d'adresse utilisé par 1dex.</td></tr>
-              <tr><td><code>city_code</code></td><td>query</td><td>oui</td><td>Code commune INSEE.</td></tr>
-              <tr><td><code>lon</code></td><td>query</td><td>oui</td><td>Longitude du point d'exploration.</td></tr>
-              <tr><td><code>lat</code></td><td>query</td><td>oui</td><td>Latitude du point d'exploration.</td></tr>
-              <tr><td><code>parcel_record_key</code></td><td>query</td><td>non</td><td>Parcelle d'ancrage quand elle est connue.</td></tr>
-              <tr><td><code>parcel_phase</code></td><td>query</td><td>non</td><td>Phase de chargement, par exemple <code>initial</code>.</td></tr>
-              <tr><td><code>viewport_bbox</code></td><td>query</td><td>non</td><td>Bounding box de la carte: minLon,minLat,maxLon,maxLat.</td></tr>
-              <tr><td><code>viewport_zoom</code></td><td>query</td><td>non</td><td>Niveau de zoom de la carte.</td></tr>
-              <tr><td><code>viewport_render_mode</code></td><td>query</td><td>non</td><td>Mode de rendu. La valeur vérifiée est <code>features</code>.</td></tr>
-            </tbody>
-          </table>
-          <pre><code>curl "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&amp;lon=5.446765371857839&amp;lat=43.52966775616209&amp;parcel_record_key=13001000AS0323&amp;parcel_phase=initial&amp;viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&amp;viewport_zoom=19.25&amp;viewport_render_mode=features" \
-  -H "Accept: application/json"</code></pre>
-          <p>Réponse: <code>200</code>.</p>
-        </article>
-      </section>
+          <p>Retourne les parcelles proches d'une adresse sous forme de <code>FeatureCollection</code>. L'adresse est le seul paramètre métier attendu; les autres paramètres servent à optimiser ou cadrer une vue carte.</p>
 
-      <section id="responses" class="section section-light doc-section" aria-labelledby="responses-title">
-        <div class="section-heading" data-reveal>
-          <p class="eyebrow">Réponses</p>
-          <h2 id="responses-title">Une réponse map-layer vérifiée.</h2>
-          <p>Le endpoint parcelles renvoie un objet de couche avec statut, résumé, warnings et données GeoJSON.</p>
-        </div>
-        <div class="response-layout">
-          <pre data-reveal><code>{
+          <div class="param-list">
+            <h3>Paramètres</h3>
+            <article>
+              <div><code>address</code><span>query · requis</span></div>
+              <p>Adresse libre saisie par l'utilisateur, par exemple <code>50 rue des tanneurs aix</code>.</p>
+            </article>
+            <article>
+              <div><code>viewport_render_mode</code><span>query · optionnel</span></div>
+              <p><code>features</code> demande les contours GeoJSON. Sans valeur, 1dex choisit le rendu adapté.</p>
+            </article>
+            <article>
+              <div><code>lon</code>, <code>lat</code>, <code>city_code</code></div>
+              <p>Coordonnées et code commune optionnels si votre application les connaît déjà.</p>
+            </article>
+            <article>
+              <div><code>viewport_bbox</code>, <code>viewport_zoom</code></div>
+              <p>Paramètres de carte optionnels pour limiter la réponse à une fenêtre visible.</p>
+            </article>
+          </div>
+
+          <pre><code>curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&amp;viewport_render_mode=features" \
+  -H "Accept: application/json"</code></pre>
+        </section>
+
+        <section id="schema" class="redoc-section" data-reveal>
+          <p class="eyebrow">Schéma</p>
+          <h2>Réponse</h2>
+          <div class="response-layout">
+            <pre><code>{
   "layerKey": "parcelles",
   "label": "Parcelles",
-  "summary": "54 premières parcelles affichées...",
+  "summary": "500 parcelles les plus proches affichées · rayon 1 km",
   "status": "success",
   "warnings": [],
   "data": {
     "type": "FeatureCollection",
     "features": [],
-    "selected_radius_meters": 300,
-    "total_parcel_count": 54,
-    "visible_parcel_count": 54,
+    "selected_radius_meters": 1000,
+    "total_parcel_count": 620,
+    "visible_parcel_count": 500,
     "render_mode": "features"
   }
 }</code></pre>
-          <div class="field-list" data-reveal>
-            <p><strong><code>layerKey</code></strong> identifie la couche demandée, ici <code>parcelles</code>.</p>
-            <p><strong><code>status</code></strong> vaut <code>success</code> sur la réponse vérifiée.</p>
-            <p><strong><code>data.features</code></strong> contient les parcelles GeoJSON visibles dans la vue.</p>
-            <p><strong><code>data.progressive_load</code></strong> peut indiquer qu'un complément est disponible.</p>
+            <div class="field-list">
+              <p><strong><code>layerKey</code></strong> identifie la couche demandée, ici <code>parcelles</code>.</p>
+              <p><strong><code>status</code></strong> vaut <code>success</code> sur la réponse vérifiée.</p>
+              <p><strong><code>data.features</code></strong> contient les parcelles GeoJSON visibles.</p>
+              <p><strong><code>warnings</code></strong> reste disponible pour les messages machine-readable.</p>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="errors" class="section doc-section" aria-labelledby="errors-title">
-        <div class="section-heading" data-reveal>
+        <section id="errors" class="redoc-section" data-reveal>
           <p class="eyebrow">Erreurs</p>
-          <h2 id="errors-title">Codes HTTP et warnings machine-readable.</h2>
-          <p>Les connecteurs lèvent <code>OneDexApiError</code> sur les réponses non-<code>2xx</code> et conservent le statut HTTP, le corps décodé, les headers et le <code>request_id</code> disponible.</p>
-        </div>
-        <table data-reveal>
-          <thead>
-            <tr><th>Code</th><th>Usage</th></tr>
-          </thead>
-          <tbody>
-            <tr><td><code>400</code></td><td>Paramètre manquant ou invalide.</td></tr>
-            <tr><td><code>404</code></td><td>Adresse, route ou ressource introuvable.</td></tr>
-            <tr><td><code>429</code></td><td>Trop de requêtes si une limite publique est appliquée.</td></tr>
-            <tr><td><code>5xx</code></td><td>Erreur temporaire côté service.</td></tr>
-          </tbody>
-        </table>
-        <div class="doc-panel" data-reveal>
-          <h3>Warnings fréquents</h3>
-          <p>La route vérifiée peut renvoyer un tableau <code>warnings</code>. Les connecteurs conservent ce champ sans réinterpréter les messages.</p>
-        </div>
+          <h2>Codes HTTP</h2>
+          <table>
+            <thead>
+              <tr><th>Code</th><th>Usage</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>400</code></td><td>Paramètre manquant ou invalide.</td></tr>
+              <tr><td><code>404</code></td><td>Adresse, route ou ressource introuvable.</td></tr>
+              <tr><td><code>429</code></td><td>Trop de requêtes si une limite publique est appliquée.</td></tr>
+              <tr><td><code>5xx</code></td><td>Erreur temporaire côté service.</td></tr>
+            </tbody>
+          </table>
+        </section>
       </section>
     </main>
 

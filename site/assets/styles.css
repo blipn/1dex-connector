@@ -662,6 +662,7 @@ td code {
 }
 
 .field-label input,
+.field-label select,
 .field-label textarea {
   width: 100%;
   min-height: 44px;
@@ -673,7 +674,8 @@ td code {
   text-transform: none;
 }
 
-.field-label input {
+.field-label input,
+.field-label select {
   padding: 0 12px;
 }
 
@@ -687,6 +689,7 @@ td code {
 }
 
 .field-label input:focus,
+.field-label select:focus,
 .field-label textarea:focus {
   outline: 2px solid rgba(11, 122, 83, 0.22);
   border-color: var(--accent);
@@ -758,6 +761,221 @@ td code {
   padding: 22px;
 }
 
+.redoc-page {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  max-width: 1480px;
+  margin: 0 auto;
+  background: var(--paper);
+}
+
+.redoc-sidebar {
+  position: sticky;
+  top: 68px;
+  align-self: start;
+  display: grid;
+  gap: 4px;
+  height: calc(100svh - 68px);
+  padding: 32px 22px;
+  border-right: 1px solid var(--line);
+  background: #fbfcfa;
+  overflow-y: auto;
+}
+
+.redoc-sidebar a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.redoc-sidebar a:hover {
+  color: var(--accent-dark);
+  background: rgba(11, 122, 83, 0.08);
+}
+
+.redoc-sidebar span {
+  color: var(--accent);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+}
+
+.redoc-content {
+  min-width: 0;
+}
+
+.redoc-section {
+  padding: 72px max(28px, 6vw);
+  border-bottom: 1px solid var(--line);
+}
+
+.redoc-section h1 {
+  max-width: 880px;
+  font-size: clamp(46px, 6vw, 76px);
+}
+
+.redoc-section h2 {
+  max-width: 820px;
+  font-size: clamp(30px, 4vw, 44px);
+}
+
+.redoc-lead {
+  max-width: 780px;
+  color: var(--muted);
+  font-size: 20px;
+}
+
+.redoc-callout {
+  display: grid;
+  gap: 12px;
+  max-width: 860px;
+  margin-top: 28px;
+  padding: 22px;
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+}
+
+.redoc-callout p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.redoc-callout strong {
+  color: var(--ink);
+}
+
+.redoc-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  margin-top: 32px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+
+.redoc-meta-grid article {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 20px;
+  background: var(--paper);
+}
+
+.redoc-meta-grid span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 760;
+  text-transform: uppercase;
+}
+
+.redoc-section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.redoc-section-head p {
+  max-width: 680px;
+  color: var(--muted);
+}
+
+.redoc-console {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.22fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.redoc-try-form {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  padding: 22px;
+  border: 1px solid var(--line);
+  background: #fbfcfa;
+}
+
+.advanced-fields {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+
+.advanced-fields summary {
+  cursor: pointer;
+  color: var(--accent-dark);
+  font-weight: 760;
+}
+
+.advanced-fields .form-grid {
+  margin-top: 16px;
+}
+
+.redoc-code-stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.operation-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.operation-doc > p {
+  max-width: 820px;
+  color: var(--muted);
+}
+
+.operation-doc pre {
+  margin: 28px 0 0;
+  overflow-x: auto;
+  background: var(--code);
+  color: var(--code-text);
+  padding: 22px;
+}
+
+.param-list {
+  display: grid;
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.param-list h3 {
+  padding: 18px 0;
+}
+
+.param-list article {
+  display: grid;
+  grid-template-columns: minmax(210px, 0.38fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+}
+
+.param-list article div {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.param-list article span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.param-list article p {
+  margin: 0;
+  color: var(--muted);
+}
+
 .footer {
   justify-content: space-between;
   gap: 18px;
@@ -812,8 +1030,23 @@ td code {
   .doc-grid,
   .response-layout,
   .api-console-grid,
+  .redoc-page,
+  .redoc-console,
+  .redoc-meta-grid,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .redoc-sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .param-list article {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 

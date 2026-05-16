@@ -20,7 +20,7 @@ Discover 1dex after testing the connector: <https://1dex.fr/>
 ## What works today
 
 - Public host: `https://1dex.fr`.
-- Public endpoint: `GET /adresse/{address_slug}/explore/map-layer/parcelles`.
+- Public endpoint: `GET /explore/map-layer/parcelles?address=...`.
 - Public response: JSON map-layer payload with a GeoJSON `FeatureCollection`.
 - No API key, account mode, or non-public endpoint is documented in this repository.
 
@@ -34,6 +34,22 @@ Discover 1dex after testing the connector: <https://1dex.fr/>
 
 ## Quickstart
 
+Console:
+
+```bash
+npm i 1dex
+npx 1dex map parcelles "50 rue des tanneurs aix" \
+  --viewport-render-mode features
+```
+
+Pour installer la commande globalement:
+
+```bash
+npm i -g 1dex
+1dex map parcelles "50 rue des tanneurs aix" \
+  --viewport-render-mode features
+```
+
 JavaScript:
 
 ```js
@@ -42,14 +58,7 @@ import { OneDexClient } from "@1dex/connector";
 const client = new OneDexClient();
 
 const response = await client.map.parcelles({
-  addressSlug: "10-rue-des-cordeliers-aix-en-provence-13100",
-  city_code: "13001",
-  lon: 5.446765371857839,
-  lat: 43.52966775616209,
-  parcel_record_key: "13001000AS0323",
-  parcel_phase: "initial",
-  viewport_bbox: "5.44628,43.52926,5.44725,43.53008",
-  viewport_zoom: 19.25,
+  address: "50 rue des tanneurs aix",
   viewport_render_mode: "features",
 });
 console.log(response.data.features.length);
@@ -58,7 +67,7 @@ console.log(response.data.features.length);
 curl:
 
 ```bash
-curl "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features" \
+curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
   -H "Accept: application/json"
 ```
 
@@ -70,14 +79,7 @@ from onedex import OneDexClient
 client = OneDexClient()
 
 response = client.map.parcelles({
-    "address_slug": "10-rue-des-cordeliers-aix-en-provence-13100",
-    "city_code": "13001",
-    "lon": 5.446765371857839,
-    "lat": 43.52966775616209,
-    "parcel_record_key": "13001000AS0323",
-    "parcel_phase": "initial",
-    "viewport_bbox": "5.44628,43.52926,5.44725,43.53008",
-    "viewport_zoom": 19.25,
+    "address": "50 rue des tanneurs aix",
     "viewport_render_mode": "features",
 })
 print(len(response["data"]["features"]))
@@ -90,7 +92,7 @@ package main
 
 req, err := http.NewRequest(
 	"GET",
-	"https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features",
+	"https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features",
 	nil,
 )
 ```
@@ -98,22 +100,22 @@ req, err := http.NewRequest(
 CLI:
 
 ```bash
-1dex map parcelles 10-rue-des-cordeliers-aix-en-provence-13100 \
-  --city-code 13001 \
-  --lon 5.446765371857839 \
-  --lat 43.52966775616209 \
-  --parcel-record-key 13001000AS0323 \
-  --parcel-phase initial \
-  --viewport-bbox 5.44628,43.52926,5.44725,43.53008 \
-  --viewport-zoom 19.25 \
+1dex map parcelles "50 rue des tanneurs aix" \
   --viewport-render-mode features
 ```
+
+## npm Packages
+
+- `1dex`: command-line package. Install with `npm i 1dex` and run with `npx 1dex`, or install globally with `npm i -g 1dex`.
+- `@1dex/connector`: JavaScript/TypeScript client used by the CLI.
+
+Publish `@1dex/connector` before `1dex`, because the console package depends on it.
 
 ## Implemented API Surface
 
 The connector documents and tests the public route that works today:
 
-- `GET /adresse/{address_slug}/explore/map-layer/parcelles`
+- `GET /explore/map-layer/parcelles?address=...`
 
 ## Development
 

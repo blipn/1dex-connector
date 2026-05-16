@@ -57,7 +57,7 @@
         <div class="hero-copy" data-reveal>
           <p class="eyebrow">Connecteur open source · Données publiques · JSON propre</p>
           <h1 id="hero-title">Testez le endpoint parcelles public 1dex.</h1>
-          <p class="hero-text">Les curieux commencent par le connecteur: une route publique vérifiée, une console de test, des exemples curl, Go, JavaScript et Python. Ensuite seulement, ils découvrent 1dex.</p>
+          <p class="hero-text">Les curieux commencent par le connecteur: <code>npm i 1dex</code>, une route publique vérifiée, une console de test, des exemples curl, Go, JavaScript et Python. Ensuite seulement, ils découvrent 1dex.</p>
           <div class="hero-actions">
             <a class="primary-action" href="./api.html#try">Tester le endpoint</a>
             <a class="secondary-action" href="#quickstart">Voir les SDK</a>
@@ -72,8 +72,8 @@
             <span class="parcel parcel-b"></span>
             <span class="parcel parcel-c"></span>
           </div>
-          <pre><code><span class="muted">$</span> 1dex map parcelles 10-rue-des-cordeliers-aix-en-provence-13100 \
-  --city-code 13001 --lon 5.446765371857839 --lat 43.52966775616209
+          <pre><code><span class="muted">$</span> 1dex map parcelles "50 rue des tanneurs aix" \
+  --viewport-render-mode features
 
 {
   "layerKey": "parcelles",
@@ -97,6 +97,15 @@
         <div class="code-columns">
           <article class="code-sample" data-reveal>
             <div class="sample-head">
+              <h3>npm</h3>
+              <button type="button" data-copy="npm-sample">Copier</button>
+            </div>
+            <pre id="npm-sample"><code>npm i 1dex
+npx 1dex map parcelles "50 rue des tanneurs aix" \
+  --viewport-render-mode features</code></pre>
+          </article>
+          <article class="code-sample" data-reveal>
+            <div class="sample-head">
               <h3>JavaScript</h3>
               <button type="button" data-copy="js-sample">Copier</button>
             </div>
@@ -105,10 +114,7 @@
 const client = new OneDexClient();
 
 const answer = await client.map.parcelles({
-  addressSlug: "10-rue-des-cordeliers-aix-en-provence-13100",
-  city_code: "13001",
-  lon: 5.446765371857839,
-  lat: 43.52966775616209,
+  address: "50 rue des tanneurs aix",
   viewport_render_mode: "features",
 });</code></pre>
           </article>
@@ -122,10 +128,7 @@ const answer = await client.map.parcelles({
 client = OneDexClient()
 
 answer = client.map.parcelles({
-    "address_slug": "10-rue-des-cordeliers-aix-en-provence-13100",
-    "city_code": "13001",
-    "lon": 5.446765371857839,
-    "lat": 43.52966775616209,
+    "address": "50 rue des tanneurs aix",
     "viewport_render_mode": "features",
 })</code></pre>
           </article>
@@ -141,7 +144,7 @@ import "net/http"
 func main() {
   req, _ := http.NewRequest(
     "GET",
-    "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&viewport_render_mode=features",
+    "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features",
     nil,
   )
   req.Header.Set("Accept", "application/json")
@@ -153,7 +156,7 @@ func main() {
               <h3>curl</h3>
               <button type="button" data-copy="curl-sample">Copier</button>
             </div>
-<pre id="curl-sample"><code>curl "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features" \
+<pre id="curl-sample"><code>curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
   -H "Accept: application/json"</code></pre>
           </article>
         </div>
@@ -188,7 +191,7 @@ func main() {
           <p>Le contrat OpenAPI public ne décrit que l'endpoint fonctionnel exposé aujourd'hui sur 1dex.fr.</p>
         </div>
         <div class="endpoint-list" data-reveal>
-          <a href="./api.html#map-parcelles"><span>GET</span> /adresse/{address_slug}/explore/map-layer/parcelles</a>
+          <a href="./api.html#operation-parcelles"><span>GET</span> /explore/map-layer/parcelles?address=...</a>
         </div>
         <div class="section-actions" data-reveal>
           <a class="secondary-action" href="./api.html">Lire la documentation API</a>
