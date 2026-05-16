@@ -150,7 +150,7 @@ Configure the npm package `@1dex-fr/1dex` with:
 - Workflow filename: `npm-publish.yml`
 - Environment name: empty
 
-Then run the GitHub Actions workflow `npm publish` manually. The workflow uses OIDC plus `npm publish --access public --provenance` from `cli/`.
+After `cli/package.json` is bumped and pushed, the GitHub Actions workflow `npm publish` runs automatically for `cli/**` changes. It can also be started manually. The workflow uses OIDC plus `npm publish --access public --provenance` from `cli/`, and skips versions that already exist on npm.
 
 ## Implemented API Surface
 

@@ -4,7 +4,7 @@
   "description": "CLI for the public 1dex map-layer endpoints.",
   "type": "module",
   "bin": {
-    "1dex": "./src/cli.js"
+    "1dex": "src/cli.js"
   },
   "files": [
     "src",

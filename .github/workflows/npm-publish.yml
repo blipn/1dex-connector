@@ -2,6 +2,12 @@ name: npm publish
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/npm-publish.yml"
+      - "cli/**"
 
 permissions:
   contents: read
@@ -19,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -29,6 +34,27 @@ jobs:
       - name: Run CI checks
         run: npm run ci
 
+      - name: Read console package version
+        id: package
+        run: |
+          NAME="$(node -p "require('./cli/package.json').name")"
+          VERSION="$(node -p "require('./cli/package.json').version")"
+          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+            echo "::notice::${NAME}@${VERSION} is already published on npm; skipping publish."
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::${NAME}@${VERSION} is not published yet; publishing from cli/."
+          fi
+
+      - name: Validate publish package
+        if: steps.package.outputs.exists == 'false'
+        run: npm publish --dry-run --access public
+        working-directory: cli
+
       - name: Publish console package
+        if: steps.package.outputs.exists == 'false'
         run: npm publish --access public --provenance
         working-directory: cli
