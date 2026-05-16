@@ -3,19 +3,19 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Documentation API parcelles cadastrales - 1dex Connector</title>
-    <meta name="description" content="Documentation API pour rechercher les parcelles cadastrales, ventes DVF, travaux et IRIS proches d'une adresse avec 1dex: console de test, CLI npm, GeoJSON et OpenAPI.">
+    <title>Documentation connecteur parcelles par adresse - 1dex</title>
+    <meta name="description" content="Documentation du connecteur gratuit 1dex: récupérez les parcelles proches d'une adresse française en JSON/GeoJSON, sans clé API, avec console de test, CLI npm, curl et OpenAPI.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="Documentation API parcelles cadastrales - 1dex Connector">
-    <meta property="og:description" content="Recherche de parcelles cadastrales, DVF, travaux et IRIS par adresse, console de test, curl, CLI npm et OpenAPI.">
+    <meta property="og:title" content="Documentation connecteur parcelles par adresse - 1dex">
+    <meta property="og:description" content="Testez une adresse française et récupérez les parcelles proches en JSON/GeoJSON, sans clé API.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Documentation API parcelles cadastrales">
+    <meta name="twitter:title" content="Documentation connecteur parcelles 1dex">
     <meta name="twitter:description" content="Testez une adresse et récupérez les parcelles en GeoJSON.">
     <meta name="twitter:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <link rel="stylesheet" href="./assets/styles.css">
@@ -23,8 +23,8 @@
       {
         "@context": "https://schema.org",
         "@type": "TechArticle",
-        "headline": "Documentation API parcelles cadastrales 1dex",
-        "description": "Documentation et console de test pour rechercher des parcelles cadastrales, ventes DVF, travaux et IRIS par adresse sur 1dex.fr.",
+        "headline": "Documentation du connecteur parcelles 1dex",
+        "description": "Documentation et console de test pour récupérer les parcelles proches d'une adresse française sur 1dex.fr.",
         "url": "https://blipn.github.io/1dex-connector/api.html",
         "isPartOf": {
           "@type": "WebSite",
@@ -61,9 +61,9 @@
 
       <section class="api-main">
         <section id="introduction" class="api-section api-intro" data-reveal>
-          <p class="api-kicker">API publique cadastre</p>
-          <h1>API parcelles cadastrales, DVF et travaux par adresse</h1>
-          <p class="api-lead">Envoyez une adresse, récupérez une couche publique en JSON/GeoJSON: parcelles cadastrales, ventes DVF, travaux, IRIS ou point de contexte. Cette page documente uniquement les routes qui répondent aujourd'hui sur <code>1dex.fr</code>.</p>
+          <p class="api-kicker">Connecteur gratuit</p>
+          <h1>Documentation parcelles par adresse</h1>
+          <p class="api-lead">Envoyez une adresse française et récupérez les parcelles proches en JSON/GeoJSON, sans clé API. Cette page documente uniquement les routes qui répondent aujourd'hui sur <code>1dex.fr</code>, avec une console de test, curl, CLI npm et OpenAPI.</p>
 
           <div class="api-status-grid">
             <article>
@@ -82,7 +82,7 @@
 
           <div class="api-note">
             <strong>Limite volontaire.</strong>
-            Pas de host API séparé, pas de clé privée, pas de route future inventée. La surface publique actuelle couvre les couches <code>parcelles</code>, <code>parcelles_dvf</code>, <code>parcelles_travaux</code>, <code>iris</code>, <code>context</code> et <code>parcelles_labels</code>. Les autres couches Explorer restent hors contrat public lorsqu'elles demandent une session ou un accès produit.
+            Pas de host API séparé, pas de clé privée, pas de route future inventée. Le contrat d'entrée reste volontairement simple: <code>address</code> vers <code>parcelles</code>. Des couches publiques complémentaires et vérifiées existent pour explorer les signaux <code>parcelles_dvf</code>, <code>parcelles_travaux</code>, <code>iris</code>, <code>context</code> et <code>parcelles_labels</code>. Les autres couches Explorer restent hors contrat public lorsqu'elles demandent une session ou un accès produit.
           </div>
         </section>
 
@@ -90,7 +90,7 @@
           <div class="api-section-head">
             <p class="api-kicker">Console</p>
             <h2>Tester une adresse</h2>
-            <p>Saisissez une adresse pour générer l'URL, copier la requête curl ou récupérer directement la réponse GeoJSON.</p>
+            <p>Saisissez une adresse. Les paramètres de carte restent optionnels et servent surtout aux intégrations qui ont déjà une vue, un zoom ou un contexte géographique.</p>
           </div>
 
           <div id="api-explorer" class="api-console">
@@ -184,7 +184,7 @@
             <span class="method method-get">GET</span>
             <h2>/explore/map-layer/parcelles</h2>
           </div>
-          <p class="api-section-copy">Retourne une couche publique proche d'une adresse sous forme de <code>FeatureCollection</code>. L'adresse est le seul paramètre métier requis.</p>
+          <p class="api-section-copy">Retourne les parcelles proches d'une adresse sous forme de <code>FeatureCollection</code>. L'adresse est le seul paramètre métier requis; les autres champs affinent une requête déjà contextualisée par une carte.</p>
 
           <table class="param-table">
             <thead>

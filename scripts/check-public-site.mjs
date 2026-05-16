@@ -7,14 +7,15 @@ const siteIndex = await readFile(join(root, 'dist/site/index.html'), 'utf8');
 const apiPage = await readFile(join(root, 'dist/site/api.html'), 'utf8');
 
 const requiredFragments = [
-  '<title>API parcelles cadastrales, DVF et travaux par adresse',
+  '<title>Connecteur gratuit parcelles par adresse',
   'name="description"',
   'rel="canonical"',
   'application/ld+json',
   'https://1dex.fr/',
   'https://github.com/blipn/1dex-connector',
   './openapi/1dex-public-api.yaml',
-  'Tester l\'API parcelles',
+  'Tester le connecteur',
+  'Une décision immobilière ne dépend pas d\'une seule donnée.',
   '/explore/map-layer/{layer}',
   'parcelles_dvf',
   'parcelles_travaux',
@@ -27,11 +28,11 @@ for (const fragment of requiredFragments) {
 }
 
 const requiredApiFragments = [
-  '<title>Documentation API parcelles cadastrales - 1dex Connector</title>',
+  '<title>Documentation connecteur parcelles par adresse - 1dex</title>',
   'rel="canonical"',
   './openapi/1dex-public-api.yaml',
   'api-explorer',
-  'API parcelles cadastrales, DVF et travaux par adresse',
+  'Documentation parcelles par adresse',
   'parcelles_dvf',
   'parcelles_travaux',
   'Schéma',

@@ -2,7 +2,7 @@
 
 Cette page ne documente que les couches publiques effectivement fonctionnelles aujourd'hui sur `1dex.fr`.
 
-Les routes vérifiées renvoient des couches GeoJSON visibles autour d'une adresse: parcelles, DVF, travaux, IRIS, contexte adresse et étiquettes.
+Le contrat principal est volontairement simple: envoyer une adresse française et récupérer les parcelles proches en JSON/GeoJSON, sans clé API. Des couches publiques complémentaires permettent aussi d'inspecter les signaux DVF, travaux, IRIS, contexte adresse et étiquettes lorsqu'ils sont exposés par l'Explorer.
 
 ## Base URL
 

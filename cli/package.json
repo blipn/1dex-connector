@@ -1,7 +1,7 @@
 {
   "name": "@1dex-fr/1dex",
   "version": "0.1.2",
-  "description": "CLI for the public 1dex map-layer endpoints.",
+  "description": "Free 1dex CLI to retrieve nearby French cadastral parcels by address.",
   "type": "module",
   "bin": {
     "1dex": "src/cli.js"

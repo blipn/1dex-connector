@@ -1,6 +1,8 @@
 # 1dex
 
-Command-line client for the public 1dex map-layer endpoints.
+Command-line client for the free 1dex connector.
+
+The main use case is simple: start from a French address and retrieve nearby cadastral parcels in JSON, CSV, or summary format, without an API key. Verified complementary layers are available for DVF, works, IRIS, context, and parcel labels when you need to inspect the public map-layer signals exposed today on `1dex.fr`.
 
 ## Install
 
@@ -25,7 +27,7 @@ npx 1dex travaux "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" --format summary
 ```
 
-The command calls `https://1dex.fr/explore/map-layer/{layer}` and prints JSON, CSV, or a short summary.
+The command calls `https://1dex.fr/explore/map-layer/{layer}` and prints JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format csv

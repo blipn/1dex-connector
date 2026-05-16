@@ -5,9 +5,13 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0b7a53)](https://blipn.github.io/1dex-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
 
-Open source CLI, API documentation, and examples to query public 1dex map-layer data from an address.
+Premier connecteur gratuit 1dex pour tester une couche de données autour d'une adresse française.
 
-Use it to search cadastral parcels, DVF sales, active works, IRIS, and address context around an address, generate a shareable URL, inspect the GeoJSON response, or integrate the public endpoint with curl, JavaScript, Python, or Go. The repository only documents endpoints that are actually reachable from the public web.
+Objectif: permettre aux développeurs, agences, proptechs et curieux de récupérer les parcelles proches d'une adresse en JSON/GeoJSON, sans clé API. Le connecteur part d'un cas simple et vérifiable: une adresse en entrée, une couche parcellaire exploitable en sortie.
+
+Pourquoi ce repo existe: une décision immobilière ne dépend pas d'une seule donnée. Prix, cadastre, risques, urbanisme, environnement, services, sources et limites restent encore trop dispersés. 1dex vise à rassembler les données utiles d'une adresse dans un outil clair, sourcé et exploitable.
+
+Le connecteur gratuit est la première porte d'entrée. L'API avancée sera ouverte progressivement sur des cas d'usage cadrés: agences, CGP, proptechs, outils patrimoniaux, cartographie et agents IA immobiliers.
 
 This repository contains client connectors, a small CLI, interactive API documentation, OpenAPI documentation, and examples. It is a consumption layer only: it does not include source import workers, database schema, raw data files, or private runtime code.
 
@@ -17,17 +21,18 @@ Interactive API reference: <https://blipn.github.io/1dex-connector/api.html>
 
 1dex platform: <https://1dex.fr/>
 
-## What works today
+## What Works Today
 
 - Public host: `https://1dex.fr`.
 - Public endpoint: `GET /explore/map-layer/{layer}?address=...`.
-- Verified public layers: `parcelles`, `parcelles_dvf`, `parcelles_travaux`, `iris`, `context`, `parcelles_labels`.
+- Main free connector layer: `parcelles`, to retrieve nearby cadastral parcels from a French address.
+- Verified complementary public layers: `parcelles_dvf`, `parcelles_travaux`, `iris`, `context`, `parcelles_labels`.
 - Public response: JSON map-layer payload with a GeoJSON `FeatureCollection`.
 - No API key, account mode, or non-public endpoint is documented in this repository.
 
 ## Public Data Scope
 
-- Public today: cadastral parcel features, DVF parcel signals, active works parcel signals, IRIS, address context, and parcel labels around an address through public map-layer endpoints on `1dex.fr`.
+- Public today: cadastral parcel features around an address, with verified complementary public layers for DVF parcel signals, active works parcel signals, IRIS, address context, and parcel labels through public map-layer endpoints on `1dex.fr`.
 - Developer tooling: npm CLI, curl examples, OpenAPI contract, JavaScript/Python client source, and interactive docs.
 - Not exposed here: private datasets, paid workflows, exports, internal import jobs, and future private APIs.
 - New surfaces should be documented only when the public contract exists and the endpoint is reachable.
@@ -148,7 +153,7 @@ Configure the npm package `@1dex-fr/1dex` with:
 - Organization or user: `blipn`
 - Repository: `1dex-connector`
 - Workflow filename: `npm-publish.yml`
-- Environment name: empty
+- Environment name: `npm`
 
 After `cli/package.json` is bumped and pushed, the GitHub Actions workflow `npm publish` runs automatically for `cli/**` changes. It can also be started manually. The workflow uses OIDC plus `npm publish --access public --provenance` from `cli/`, and skips versions that already exist on npm.
 

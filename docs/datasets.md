@@ -2,6 +2,8 @@
 
 This public repository documents the verified public map-layer surfaces currently reachable on `1dex.fr`.
 
+The free connector focuses on one entry point: a French address, nearby cadastral parcels, and a machine-readable JSON/GeoJSON response. Other verified layers are complementary public signals, not a promise of private API coverage.
+
 ```http
 GET https://1dex.fr/explore/map-layer/{layer}?address=...
 ```
@@ -19,7 +21,7 @@ Add new dataset pages only when the corresponding public endpoint is reachable a
 
 ## Public Data Scope
 
-- Public in this connector: cadastral parcel features, DVF parcel signals, active works parcel signals, IRIS, address context, and parcel labels around an address.
+- Public in this connector: cadastral parcel features around an address, plus verified complementary DVF parcel signals, active works parcel signals, IRIS, address context, and parcel labels.
 - Developer tooling: npm CLI, curl, OpenAPI, examples, and interactive docs.
 - Not published here: private 1dex datasets, paid workflows, exports, internal pipelines, and future authenticated APIs.
 

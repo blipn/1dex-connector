@@ -2,6 +2,8 @@
 
 Les exemples utilisent uniquement les couches publiques vérifiées sur `https://1dex.fr`.
 
+Le connecteur gratuit 1dex part d'un cas d'usage volontairement simple: une adresse française en entrée, les parcelles proches en JSON/GeoJSON en sortie, sans clé API. Les commandes DVF, travaux, IRIS, contexte et labels sont des raccourcis vers des couches publiques complémentaires déjà vérifiées.
+
 ## Console npm
 
 ```bash
