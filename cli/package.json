@@ -1,7 +1,7 @@
 {
   "name": "@1dex-fr/1dex",
   "version": "0.1.2",
-  "description": "Free 1dex CLI to retrieve nearby French cadastral parcels by address.",
+  "description": "Free CLI to test 1dex public address data: retrieve parcel GeoJSON around a French address and discover the advanced real-estate address API.",
   "type": "module",
   "bin": {
     "1dex": "src/cli.js"
@@ -12,11 +12,23 @@
   ],
   "keywords": [
     "1dex",
+    "1dex-fr",
+    "immobilier",
+    "real-estate",
+    "proptech",
+    "adresse",
+    "address",
     "cadastre",
-    "dvf",
-    "travaux",
     "parcelles",
+    "parcel",
     "geojson",
+    "geocoding",
+    "open-data",
+    "france",
+    "dvf",
+    "urbanisme",
+    "risques",
+    "api",
     "cli"
   ],
   "homepage": "https://blipn.github.io/1dex-connector/",
