@@ -14,7 +14,7 @@ In the npm package settings for `@1dex-fr/1dex`, configure:
 | Organization or user | `blipn` |
 | Repository | `1dex-connector` |
 | Workflow filename | `npm-publish.yml` |
-| Environment name | leave empty |
+| Environment name | `npm` |
 
 ## Release
 
@@ -46,6 +46,6 @@ If GitHub Actions signs provenance but npm returns `E404 Not Found - PUT https:/
 - Organization or user: `blipn`
 - Repository: `1dex-connector`
 - Workflow filename: `npm-publish.yml`
-- Environment name: empty
+- Environment name: `npm`
 
-If an environment name is configured in npm, the workflow must also declare the same GitHub Actions environment on the publish job. Prefer leaving it empty until release approvals are needed.
+The workflow declares `environment: npm` on the publish job so the OIDC subject matches the Trusted Publisher configured in npm.
