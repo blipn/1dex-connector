@@ -1,0 +1,19 @@
+{
+  "name": "@1dex/connector",
+  "version": "0.1.0",
+  "description": "Public JavaScript connector for the 1dex API.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

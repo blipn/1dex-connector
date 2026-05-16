@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">1dex Connector</title>
+  <desc id="desc">Documentation open source pour l'API publique 1dex.</desc>
+  <rect width="1200" height="630" fill="#f7f8f5"/>
+  <path d="M0 120h1200M0 240h1200M0 360h1200M0 480h1200M180 0v630M360 0v630M540 0v630M720 0v630M900 0v630M1080 0v630" stroke="#d8ded8" stroke-width="2"/>
+  <rect x="82" y="86" width="112" height="112" fill="#0b7a53"/>
+  <text x="138" y="161" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="800" fill="#ffffff">1</text>
+  <text x="82" y="300" font-family="Inter, Arial, sans-serif" font-size="74" font-weight="800" fill="#111827">1dex Connector</text>
+  <text x="86" y="365" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="500" fill="#5f6b7a">SDK, CLI et OpenAPI pour requeter l'API publique 1dex</text>
+  <rect x="716" y="116" width="368" height="334" fill="#101614"/>
+  <text x="748" y="174" font-family="SFMono-Regular, Consolas, monospace" font-size="24" fill="#8bb6a1">$ 1dex address sources</text>
+  <text x="748" y="228" font-family="SFMono-Regular, Consolas, monospace" font-size="24" fill="#d8f5e7">"10 rue de la Paix"</text>
+  <text x="748" y="304" font-family="SFMono-Regular, Consolas, monospace" font-size="24" fill="#d8f5e7">{ "status": "ok",</text>
+  <text x="748" y="352" font-family="SFMono-Regular, Consolas, monospace" font-size="24" fill="#d8f5e7">  "source": "dvf" }</text>
+  <path d="M706 500h388" stroke="#0b7a53" stroke-width="10"/>
+  <circle cx="820" cy="500" r="18" fill="#0b7a53"/>
+  <circle cx="988" cy="500" r="18" fill="#0b7a53"/>
+</svg>

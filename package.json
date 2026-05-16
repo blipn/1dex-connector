@@ -1,0 +1,20 @@
+{
+  "name": "1dex-connector-workspace",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/js",
+    "cli"
+  ],
+  "scripts": {
+    "build:docs": "node ./scripts/build-docs-site.mjs",
+    "check:site": "node ./scripts/check-public-site.mjs",
+    "test": "node --test packages/js/test/*.test.mjs",
+    "test:python": "python3 -m unittest discover -s packages/python/tests",
+    "test:all": "npm test && npm run test:python",
+    "ci": "npm run build:docs && npm run check:site && npm run test:all"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

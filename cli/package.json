@@ -1,0 +1,16 @@
+{
+  "name": "1dex",
+  "version": "0.1.0",
+  "description": "CLI for the 1dex public API.",
+  "type": "module",
+  "bin": {
+    "1dex": "./src/cli.js"
+  },
+  "dependencies": {
+    "@1dex/connector": "^0.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}

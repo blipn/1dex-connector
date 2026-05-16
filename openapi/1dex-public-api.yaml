@@ -1,0 +1,355 @@
+openapi: 3.1.0
+info:
+  title: 1dex Public API
+  version: 0.1.0
+  description: Public contract draft for consuming 1dex public-data answers.
+servers:
+  - url: https://api.1dex.fr
+    description: Production public API
+security:
+  - bearerAuth: []
+paths:
+  /v1/address/autocomplete:
+    get:
+      summary: Autocomplete addresses
+      operationId: autocompleteAddress
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 3
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 8
+            default: 5
+      responses:
+        "200":
+          description: Address suggestions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          $ref: "#/components/responses/QueryError"
+        "501":
+          $ref: "#/components/responses/QueryError"
+  /v1/address/resolve:
+    post:
+      summary: Resolve one address or coordinate pair
+      operationId: resolveAddress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressResolveRequest"
+      responses:
+        "200":
+          description: Resolved address or empty result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          $ref: "#/components/responses/QueryError"
+        "504":
+          $ref: "#/components/responses/QueryError"
+  /v1/address/sources:
+    post:
+      summary: Query aggregate public-data sources for one address or point
+      operationId: queryAddressSources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddressSourcesRequest"
+      responses:
+        "200":
+          description: Aggregate source response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          $ref: "#/components/responses/QueryError"
+        "501":
+          $ref: "#/components/responses/QueryError"
+        "504":
+          $ref: "#/components/responses/QueryError"
+  /v1/address/sources/{source_key}:
+    post:
+      summary: Query one public source
+      operationId: queryAddressSource
+      parameters:
+        - name: source_key
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^[a-z0-9-]+$"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Source response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+        "400":
+          $ref: "#/components/responses/QueryError"
+        "404":
+          $ref: "#/components/responses/QueryError"
+        "501":
+          $ref: "#/components/responses/QueryError"
+        "504":
+          $ref: "#/components/responses/QueryError"
+  /v1/datasets:
+    get:
+      summary: List public datasets
+      description: Public gateway contract to finalize before publishing the connector.
+      operationId: listDatasets
+      responses:
+        "200":
+          description: Public dataset catalog.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - datasets
+                properties:
+                  datasets:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PublicDataset"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  responses:
+    QueryError:
+      description: Query error envelope.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/QueryResponse"
+  schemas:
+    Coordinates:
+      type: object
+      required:
+        - lon
+        - lat
+      properties:
+        lon:
+          type: number
+        lat:
+          type: number
+    AddressResolveRequest:
+      type: object
+      properties:
+        address:
+          type: string
+        coordinates:
+          $ref: "#/components/schemas/Coordinates"
+        response_mode:
+          type: string
+          enum:
+            - documentation
+            - simplified
+      anyOf:
+        - required:
+            - address
+        - required:
+            - coordinates
+      additionalProperties: true
+    AddressSourcesRequest:
+      type: object
+      properties:
+        address:
+          type: string
+        coordinates:
+          $ref: "#/components/schemas/Coordinates"
+        source_keys:
+          type: array
+          items:
+            type: string
+        source_overrides:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties: true
+        response_mode:
+          type: string
+          enum:
+            - documentation
+            - simplified
+      anyOf:
+        - required:
+            - address
+        - required:
+            - coordinates
+      additionalProperties: true
+    QueryResponse:
+      type: object
+      required:
+        - request_id
+        - query
+        - status
+        - source
+        - data
+        - warnings
+        - meta
+      properties:
+        request_id:
+          type: string
+        query:
+          type: object
+          required:
+            - normalized_address
+            - match_score
+          properties:
+            normalized_address:
+              type:
+                - object
+                - "null"
+              additionalProperties: true
+            match_score:
+              type:
+                - number
+                - "null"
+          additionalProperties: true
+        status:
+          type: string
+          enum:
+            - ok
+            - empty
+            - error
+        source:
+          type: object
+          required:
+            - source_key
+            - dataset_updated_at
+            - method
+            - limitations
+          properties:
+            source_key:
+              type: string
+            dataset_updated_at:
+              type:
+                - string
+                - "null"
+              format: date-time
+            method:
+              type: string
+              enum:
+                - internal_component
+                - preloaded_import
+                - live_adapter
+                - mixed
+            limitations:
+              type: array
+              items:
+                type: string
+          additionalProperties: true
+        data:
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - type: array
+              items: {}
+            - type: "null"
+        warnings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Warning"
+        meta:
+          type: object
+          required:
+            - pagination
+          properties:
+            pagination:
+              oneOf:
+                - $ref: "#/components/schemas/Pagination"
+                - type: "null"
+          additionalProperties: true
+    Warning:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        field:
+          type: string
+    Pagination:
+      type: object
+      required:
+        - page
+        - page_size
+        - total_items
+        - total_pages
+        - has_next_page
+      properties:
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_items:
+          type:
+            - integer
+            - "null"
+        total_pages:
+          type:
+            - integer
+            - "null"
+        has_next_page:
+          type: boolean
+    PublicDataset:
+      type: object
+      required:
+        - source_key
+        - label
+        - exposure
+      properties:
+        source_key:
+          type: string
+        label:
+          type: string
+        exposure:
+          type: string
+          enum:
+            - public
+            - explicit_only
+            - internal
+        dataset_updated_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        license:
+          type:
+            - string
+            - "null"
+        fields:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
