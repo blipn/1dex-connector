@@ -51,7 +51,7 @@ try {
   ], { cwd: installDir });
 
   const help = run(join(installDir, 'node_modules/.bin/1dex'), ['--help'], { cwd: installDir });
-  if (!help.stdout.includes('1dex map parcelles <address>')) {
+  if (!help.stdout.includes('1dex parcelles <address>')) {
     throw new Error(`Installed 1dex binary returned unexpected help:\n${help.stdout}`);
   }
   const shortHelp = run(join(installDir, 'node_modules/.bin/1dex'), ['-h'], { cwd: installDir });
@@ -62,8 +62,11 @@ try {
   if (!/^\d+\.\d+\.\d+/u.test(version.stdout.trim())) {
     throw new Error(`Installed 1dex binary returned unexpected version:\n${version.stdout}`);
   }
+  const examples = run(join(installDir, 'node_modules/.bin/1dex'), ['examples'], { cwd: installDir });
+  if (!examples.stdout.includes('1dex doctor')) {
+    throw new Error(`Installed 1dex binary returned unexpected examples:\n${examples.stdout}`);
+  }
   const url = run(join(installDir, 'node_modules/.bin/1dex'), [
-    'map',
     'parcelles',
     '--address',
     '50 rue des tanneurs aix',

@@ -12,26 +12,32 @@ Or install it in a project and run it with `npx`:
 
 ```bash
 npm i @1dex-fr/1dex
-npx 1dex map parcelles "50 rue des tanneurs aix" --viewport-render-mode features
+npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 ```
 
 ## Usage
 
 ```bash
-1dex map parcelles "50 rue des tanneurs aix" --viewport-render-mode features
+1dex parcelles "50 rue des tanneurs aix" --format summary
 ```
 
-The command calls `https://1dex.fr/explore/map-layer/parcelles` and prints the JSON response.
+The command calls `https://1dex.fr/explore/map-layer/parcelles` and prints JSON, CSV, or a short summary.
 
 ```bash
-1dex map parcelles "50 rue des tanneurs aix" --viewport-render-mode features --format csv
+1dex parcelles "50 rue des tanneurs aix" --format csv
+1dex parcelles "50 rue des tanneurs aix" --url
 ```
+
+Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the public endpoint answers from your machine.
 
 ## Options
 
 ```text
+1dex parcelles <address> [options]
 1dex map parcelles <address> [options]
 1dex map parcelles --address <address> [options]
+1dex examples
+1dex doctor [--address <address>] [options]
 
 -a, --address <text>                 Address to resolve.
 -r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
@@ -51,12 +57,13 @@ The command calls `https://1dex.fr/explore/map-layer/parcelles` and prints the J
 Examples:
 
 ```bash
-1dex map parcelles --address "50 rue des tanneurs aix" --url
-1dex map parcelles "50 rue des tanneurs aix" -f summary
-1dex map parcelles "50 rue des tanneurs aix" \
+1dex parcelles --address "50 rue des tanneurs aix" --url
+1dex parcelles "50 rue des tanneurs aix" -f summary
+1dex parcelles "50 rue des tanneurs aix" \
   --lon 5.446245 --lat 43.52782 \
   --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
   --viewport-zoom 19
+1dex doctor
 ```
 
 Set `ONEDEX_BASE_URL` only if you need to target another compatible environment.

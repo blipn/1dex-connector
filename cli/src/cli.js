@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
+const DEFAULT_SAMPLE_ADDRESS = '50 rue des tanneurs aix';
 const SUPPORTED_FORMATS = new Set(['json', 'csv', 'summary']);
 const FLAG_ALIASES = Object.freeze({
   a: 'address',
@@ -109,7 +110,8 @@ class OneDexClient {
       if (error?.name === 'AbortError') {
         throw new OneDexApiError('1dex API request timed out.', { status: 0 });
       }
-      throw error;
+      const message = error instanceof Error ? error.message : String(error);
+      throw new OneDexApiError(`Unable to reach 1dex API: ${message}`, { status: 0 });
     } finally {
       if (timer) {
         clearTimeout(timer);
@@ -145,8 +147,11 @@ function usage() {
   return `1dex CLI
 
 Usage:
+  1dex parcelles <address> [options]
   1dex map parcelles <address> [options]
   1dex map parcelles --address <address> [options]
+  1dex examples
+  1dex doctor [--address <address>] [options]
 
 Options:
   -a, --address <text>                 Address to resolve. Overrides positional address.
@@ -165,6 +170,31 @@ Options:
 
 Environment:
   ONEDEX_BASE_URL (defaults to https://1dex.fr)
+`;
+}
+
+function examples() {
+  return `Examples:
+
+  # Fastest path: resolve parcels around an address.
+  1dex parcelles "${DEFAULT_SAMPLE_ADDRESS}" -f summary
+
+  # Same command, explicit namespace.
+  1dex map parcelles "${DEFAULT_SAMPLE_ADDRESS}" --format json
+
+  # Print the generated public URL without sending the request.
+  1dex parcelles --address "${DEFAULT_SAMPLE_ADDRESS}" --url
+
+  # Reuse map context when your app already knows it.
+  1dex parcelles "${DEFAULT_SAMPLE_ADDRESS}" \\
+    --lon 5.446245 \\
+    --lat 43.52782 \\
+    --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \\
+    --viewport-zoom 19 \\
+    --format csv
+
+  # Check that the public endpoint is reachable from this machine.
+  1dex doctor
 `;
 }
 
@@ -265,6 +295,27 @@ function buildParcellesInput(flags, subjectParts) {
   };
 }
 
+function resolveCommand(positional) {
+  const [resource, action, ...subjectParts] = positional;
+
+  if (resource === 'map' && action === 'parcelles') {
+    return { name: 'parcelles', subjectParts };
+  }
+
+  if (resource === 'parcelles') {
+    return {
+      name: 'parcelles',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'examples' || resource === 'doctor' || resource === 'help') {
+    return { name: resource, subjectParts: [action, ...subjectParts].filter(Boolean) };
+  }
+
+  return { name: 'unknown', subjectParts: positional };
+}
+
 function buildParcellesUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
   return `${baseUrl}${appendQuery('/explore/map-layer/parcelles', input)}`;
@@ -310,32 +361,73 @@ function printResult(response, flags) {
   console.log(JSON.stringify(response, null, 2));
 }
 
+async function runDoctor(flags) {
+  const input = buildParcellesInput(
+    { ...flags, address: flags.address ?? DEFAULT_SAMPLE_ADDRESS },
+    [],
+  );
+  const url = buildParcellesUrl(flags, input);
+  const startedAt = Date.now();
+  const client = createClient(flags);
+  const response = await client.map.parcelles(input);
+  const durationMs = Date.now() - startedAt;
+
+  console.log([
+    '1dex doctor: ok',
+    `baseUrl=${normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL)}`,
+    `endpoint=/explore/map-layer/parcelles`,
+    `url=${url}`,
+    `durationMs=${durationMs}`,
+    `status=${response?.status ?? ''}`,
+    `features=${response?.data?.features?.length ?? 0}`,
+  ].join('\n'));
+}
+
+function printCliHint(error) {
+  if (!(error instanceof Error)) {
+    return;
+  }
+  if (/Unknown command|Unknown option|Missing address|Missing value|Unsupported format|must be a number/u.test(error.message)) {
+    console.error('Hint: run "1dex --help" or "1dex examples".');
+  }
+}
+
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
-  const [resource, action, ...subjectParts] = positional;
+  const command = resolveCommand(positional);
 
   if (flags.version) {
     console.log(readVersion());
     return;
   }
 
-  if (!resource || flags.help) {
+  if (!command.name || command.name === 'help' || flags.help) {
     console.log(usage());
     return;
   }
 
-  const client = createClient(flags);
   let response;
 
-  if (resource === 'map' && action === 'parcelles') {
-    const input = buildParcellesInput(flags, subjectParts);
+  if (command.name === 'examples') {
+    console.log(examples());
+    return;
+  }
+
+  if (command.name === 'doctor') {
+    await runDoctor(flags);
+    return;
+  }
+
+  if (command.name === 'parcelles') {
+    const input = buildParcellesInput(flags, command.subjectParts);
     if (flags.url) {
       console.log(buildParcellesUrl(flags, input));
       return;
     }
+    const client = createClient(flags);
     response = await client.map.parcelles(input);
   } else {
-    throw new Error(`Unknown command: ${process.argv.slice(2).join(' ')}`);
+    throw new Error(`Unknown command: ${process.argv.slice(2).join(' ') || '(empty)'}`);
   }
 
   printResult(response, flags);
@@ -349,6 +441,7 @@ main().catch((error) => {
     }
   } else {
     console.error(error instanceof Error ? error.message : String(error));
+    printCliHint(error);
   }
   process.exitCode = 1;
 });

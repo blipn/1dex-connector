@@ -57,7 +57,7 @@
         <div class="hero-copy" data-reveal>
           <p class="eyebrow">Connecteur open source · Données publiques · JSON propre</p>
           <h1 id="hero-title">Testez le endpoint parcelles public 1dex.</h1>
-          <p class="hero-text">Les curieux commencent par le connecteur: <code>npm i @1dex-fr/1dex</code>, une route publique vérifiée, une console de test, des exemples curl, Go, JavaScript et Python. Ensuite seulement, ils découvrent 1dex.</p>
+          <p class="hero-text">Les curieux commencent par le connecteur: <code>npm i @1dex-fr/1dex</code>, une route publique vérifiée, une console de test, des exemples curl, Go, JavaScript et Python. Gratuit aujourd'hui: résoudre les parcelles autour d'une adresse. Le reste de la plateforme 1dex vient ensuite.</p>
           <div class="hero-actions">
             <a class="primary-action" href="./api.html#try">Tester le endpoint</a>
             <a class="secondary-action" href="#quickstart">Voir les SDK</a>
@@ -72,14 +72,12 @@
             <span class="parcel parcel-b"></span>
             <span class="parcel parcel-c"></span>
           </div>
-          <pre><code><span class="muted">$</span> 1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+          <pre><code><span class="muted">$</span> 1dex parcelles "50 rue des tanneurs aix" \
+  --format summary
 
-{
-  "layerKey": "parcelles",
-  "status": "success",
-  "data": { "type": "FeatureCollection" }
-}</code></pre>
+layerKey=parcelles
+status=success
+features=500</code></pre>
         </div>
       </section>
 
@@ -101,11 +99,11 @@
               <button type="button" data-copy="npm-sample">Copier</button>
             </div>
             <pre id="npm-sample"><code>npm i @1dex-fr/1dex
-npx 1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 
-1dex map parcelles --address "50 rue des tanneurs aix" --url
-1dex map parcelles "50 rue des tanneurs aix" --format summary</code></pre>
+1dex parcelles --address "50 rue des tanneurs aix" --url
+1dex examples
+1dex doctor</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -182,7 +180,7 @@ func main() {
           </div>
           <div data-reveal>
             <h3>CLI</h3>
-            <p>Commande <code>map parcelles</code> pour tester la route publique et afficher la réponse en JSON ou CSV.</p>
+            <p>Commande <code>parcelles</code>, alias <code>map parcelles</code>, sortie JSON/CSV/résumé, génération d'URL et diagnostic réseau.</p>
           </div>
         </div>
       </section>
@@ -191,7 +189,7 @@ func main() {
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Contrat API</p>
           <h2 id="api-title">Une route publique, vérifiée et testable.</h2>
-          <p>Le contrat OpenAPI public ne décrit que l'endpoint fonctionnel exposé aujourd'hui sur 1dex.fr.</p>
+          <p>Le contrat OpenAPI public ne décrit que l'endpoint fonctionnel exposé aujourd'hui sur 1dex.fr. Les surfaces privées, payantes ou futures ne sont pas inventées dans ce repo.</p>
         </div>
         <div class="endpoint-list" data-reveal>
           <a href="./api.html#operation-parcelles"><span>GET</span> /explore/map-layer/parcelles?address=...</a>

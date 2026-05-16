@@ -14,3 +14,14 @@ export ONEDEX_BASE_URL=https://1dex.fr
 ```
 
 `ONEDEX_BASE_URL` is optional unless you intentionally target another environment.
+
+CLI examples:
+
+```bash
+1dex parcelles "50 rue des tanneurs aix" -f summary
+1dex parcelles "50 rue des tanneurs aix" --url
+1dex examples
+1dex doctor
+```
+
+`1dex parcelles` is the short form. `1dex map parcelles` remains available for users who prefer the explicit map-layer namespace.

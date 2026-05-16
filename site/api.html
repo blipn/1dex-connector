@@ -82,7 +82,7 @@
 
           <div class="api-note">
             <strong>Limite volontaire.</strong>
-            Pas de host API séparé, pas de clé privée, pas de route future inventée. Les paramètres avancés servent seulement aux apps qui disposent déjà d'un contexte carte.
+            Pas de host API séparé, pas de clé privée, pas de route future inventée. Gratuit ici: résoudre les parcelles autour d'une adresse. Les surfaces privées, payantes ou futures restent hors de cette doc tant qu'elles n'ont pas de contrat public vérifié.
           </div>
         </section>
 
@@ -188,6 +188,10 @@
 
           <pre class="api-code"><code>curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&amp;viewport_render_mode=features" \
   -H "Accept: application/json"</code></pre>
+
+          <pre class="api-code"><code>npm i @1dex-fr/1dex
+npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex parcelles "50 rue des tanneurs aix" --url</code></pre>
         </section>
 
         <section id="schema" class="api-section" data-reveal>

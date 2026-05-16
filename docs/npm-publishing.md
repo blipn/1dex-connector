@@ -25,7 +25,8 @@ In the npm package settings for `@1dex-fr/1dex`, configure:
 ```bash
 npm view @1dex-fr/1dex version
 npm i @1dex-fr/1dex
-npx 1dex map parcelles "50 rue des tanneurs aix" --viewport-render-mode features
+npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex doctor
 ```
 
 The workflow publishes from `cli/` with:

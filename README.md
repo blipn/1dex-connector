@@ -24,6 +24,13 @@ Discover 1dex after testing the connector: <https://1dex.fr/>
 - Public response: JSON map-layer payload with a GeoJSON `FeatureCollection`.
 - No API key, account mode, or non-public endpoint is documented in this repository.
 
+## Data Positioning
+
+- Free and public today: resolve parcels around an address with the public map-layer endpoint on `1dex.fr`.
+- Free developer tooling: CLI, curl examples, OpenAPI contract, JavaScript/Python client source, and the interactive docs.
+- Not exposed in this public connector: private datasets, paid workflows, exports, internal import jobs, and future private APIs.
+- Add new paid or private surfaces only when a public contract exists and the corresponding endpoint is reachable.
+
 ## Packages
 
 - `packages/js`: JavaScript/TypeScript client with no runtime dependency.
@@ -38,16 +45,14 @@ Console:
 
 ```bash
 npm i @1dex-fr/1dex
-npx 1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 ```
 
 Pour installer la commande globalement:
 
 ```bash
 npm i -g @1dex-fr/1dex
-1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+1dex parcelles "50 rue des tanneurs aix" -f summary
 ```
 
 JavaScript:
@@ -100,16 +105,16 @@ req, err := http.NewRequest(
 CLI:
 
 ```bash
-1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex doctor
 ```
 
 CLI options:
 
 ```bash
-1dex map parcelles --address "50 rue des tanneurs aix" --url
-1dex map parcelles "50 rue des tanneurs aix" --format summary
-1dex map parcelles "50 rue des tanneurs aix" \
+1dex parcelles --address "50 rue des tanneurs aix" --url
+1dex examples
+1dex parcelles "50 rue des tanneurs aix" \
   --lon 5.446245 \
   --lat 43.52782 \
   --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
@@ -119,7 +124,7 @@ CLI options:
 
 ## npm Packages
 
-- `@1dex-fr/1dex`: standalone command-line package. Install with `npm i @1dex-fr/1dex` and run with `npx 1dex`, or install globally with `npm i -g @1dex-fr/1dex`.
+- `@1dex-fr/1dex`: published standalone command-line package: <https://www.npmjs.com/package/@1dex-fr/1dex>. Install with `npm i @1dex-fr/1dex` and run with `npx 1dex`, or install globally with `npm i -g @1dex-fr/1dex`.
 - `@1dex/connector`: JavaScript/TypeScript client source package. Publish it later when the npm scope is available.
 
 ## npm Publishing

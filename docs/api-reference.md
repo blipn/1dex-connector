@@ -21,6 +21,13 @@ curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanne
   -H "Accept: application/json"
 ```
 
+Même test depuis le CLI npm:
+
+```bash
+1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex parcelles "50 rue des tanneurs aix" --url
+```
+
 Paramètres:
 
 | Paramètre | Position | Obligatoire | Description |

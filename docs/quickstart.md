@@ -6,16 +6,14 @@ Les exemples utilisent uniquement l'endpoint public vérifié sur `https://1dex.
 
 ```bash
 npm i @1dex-fr/1dex
-npx 1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 ```
 
 Pour avoir la commande `1dex` disponible directement dans le terminal:
 
 ```bash
 npm i -g @1dex-fr/1dex
-1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+1dex parcelles "50 rue des tanneurs aix" -f summary
 ```
 
 ## JavaScript
@@ -66,16 +64,16 @@ req, err := http.NewRequest(
 ## CLI
 
 ```bash
-1dex map parcelles "50 rue des tanneurs aix" \
-  --viewport-render-mode features
+1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex examples
+1dex doctor
 ```
 
 Options utiles:
 
 ```bash
-1dex map parcelles --address "50 rue des tanneurs aix" --url
-1dex map parcelles "50 rue des tanneurs aix" --format summary
-1dex map parcelles "50 rue des tanneurs aix" \
+1dex parcelles --address "50 rue des tanneurs aix" --url
+1dex parcelles "50 rue des tanneurs aix" \
   --lon 5.446245 \
   --lat 43.52782 \
   --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
