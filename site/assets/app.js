@@ -56,6 +56,7 @@ if (explorer) {
   const form = document.getElementById('api-request-form');
   const baseUrlInput = document.getElementById('api-base-url');
   const addressInput = document.getElementById('api-address');
+  const layerInput = document.getElementById('api-layer');
   const renderModeInput = document.getElementById('api-render-mode');
   const curlOutput = document.querySelector('#api-curl code');
   const responseOutput = document.querySelector('#api-response code');
@@ -89,7 +90,8 @@ if (explorer) {
       throw new Error('Adresse requise.');
     }
 
-    const path = '/explore/map-layer/parcelles';
+    const layer = layerInput.value || 'parcelles';
+    const path = `/explore/map-layer/${encodeURIComponent(layer)}`;
     const query = new URLSearchParams();
     query.set('address', address);
 

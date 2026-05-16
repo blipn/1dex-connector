@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>API parcelles cadastrales par adresse - 1dex Connector</title>
-    <meta name="description" content="Recherchez des parcelles cadastrales depuis une adresse avec l'API publique 1dex. Test en ligne, CLI npm, curl, GeoJSON et OpenAPI.">
+    <title>API parcelles cadastrales, DVF et travaux par adresse - 1dex Connector</title>
+    <meta name="description" content="Recherchez des parcelles cadastrales, ventes DVF, travaux et IRIS depuis une adresse avec l'API publique 1dex. Test en ligne, CLI npm, curl, GeoJSON et OpenAPI.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="API parcelles cadastrales par adresse - 1dex Connector">
-    <meta property="og:description" content="Requête adresse vers parcelles cadastrales, réponse GeoJSON, CLI npm, curl et documentation OpenAPI.">
+    <meta property="og:title" content="API parcelles cadastrales, DVF et travaux par adresse - 1dex Connector">
+    <meta property="og:description" content="Requête adresse vers parcelles cadastrales, ventes DVF, travaux et IRIS, réponse GeoJSON, CLI npm, curl et OpenAPI.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="1dex Connector">
-    <meta name="twitter:description" content="API publique pour rechercher des parcelles cadastrales depuis une adresse.">
+    <meta name="twitter:description" content="API publique pour rechercher parcelles cadastrales, DVF et travaux depuis une adresse.">
     <meta name="twitter:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <link rel="stylesheet" href="./assets/styles.css">
     <script type="application/ld+json">
@@ -24,7 +24,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "1dex Connector",
-        "description": "API publique, CLI npm et exemples pour rechercher des parcelles cadastrales depuis une adresse avec 1dex.fr.",
+        "description": "API publique, CLI npm et exemples pour rechercher des parcelles cadastrales, ventes DVF, travaux et IRIS depuis une adresse avec 1dex.fr.",
         "codeRepository": "https://github.com/blipn/1dex-connector",
         "programmingLanguage": ["JavaScript", "TypeScript", "Python", "Go", "Shell"],
         "license": "https://github.com/blipn/1dex-connector/blob/main/LICENSE",
@@ -55,9 +55,9 @@
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy" data-reveal>
-          <p class="eyebrow">API cadastre · Parcelles par adresse · GeoJSON</p>
-          <h1 id="hero-title">Trouvez les parcelles cadastrales autour d'une adresse.</h1>
-          <p class="hero-text">Interrogez l'endpoint public 1dex pour convertir une adresse en couche parcelles exploitable: GeoJSON, résumé CLI, URL partageable, exemples curl, Go, JavaScript et Python.</p>
+          <p class="eyebrow">API cadastre · DVF · Travaux · GeoJSON</p>
+          <h1 id="hero-title">Trouvez les parcelles, ventes DVF et travaux autour d'une adresse.</h1>
+          <p class="hero-text">Interrogez les couches publiques 1dex pour convertir une adresse en données exploitables: parcelles cadastrales, ventes DVF par parcelle, travaux actifs, IRIS, résumé CLI, URL partageable, exemples curl, Go, JavaScript et Python.</p>
           <div class="hero-actions">
             <a class="primary-action" href="./api.html#try">Tester l'API parcelles</a>
             <a class="secondary-action" href="#quickstart">Installer le CLI</a>
@@ -82,15 +82,15 @@ features=500</code></pre>
       </section>
 
       <section class="trust-band" aria-label="Garanties publiques">
-        <p><strong>Requête simple.</strong> Une adresse suffit pour obtenir les parcelles proches.</p>
+        <p><strong>Requête simple.</strong> Une adresse suffit pour obtenir les parcelles, ventes DVF, travaux et IRIS proches.</p>
         <p><strong>API vérifiée.</strong> La doc expose uniquement ce qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
       </section>
 
       <section id="quickstart" class="section section-light" aria-labelledby="quickstart-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Quickstart</p>
-          <h2 id="quickstart-title">Une adresse en entrée, des parcelles en sortie.</h2>
-          <p>Le CLI pointe par défaut sur <code>https://1dex.fr</code> et renvoie une couche parcelles en JSON: <code>layerKey</code>, <code>status</code>, <code>warnings</code> et <code>data.features</code>.</p>
+          <h2 id="quickstart-title">Une adresse en entrée, plusieurs couches en sortie.</h2>
+          <p>Le CLI pointe par défaut sur <code>https://1dex.fr</code> et renvoie une couche publique en JSON: <code>parcelles</code>, <code>parcelles_dvf</code>, <code>parcelles_travaux</code>, <code>iris</code>, <code>context</code> ou <code>parcelles_labels</code>.</p>
         </div>
         <div class="code-columns">
           <article class="code-sample" data-reveal>
@@ -100,6 +100,8 @@ features=500</code></pre>
             </div>
             <pre id="npm-sample"><code>npm i @1dex-fr/1dex
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex dvf "50 rue des tanneurs aix" -f summary
+npx 1dex travaux "50 rue des tanneurs aix" -f summary
 
 1dex parcelles --address "50 rue des tanneurs aix" --url
 1dex examples
@@ -180,7 +182,7 @@ func main() {
           </div>
           <div data-reveal>
             <h3>CLI</h3>
-            <p>Commande <code>parcelles</code>, alias <code>map parcelles</code>, sortie JSON/CSV/résumé, génération d'URL et diagnostic réseau.</p>
+            <p>Commandes <code>parcelles</code>, <code>dvf</code>, <code>travaux</code> et <code>layer</code>, sortie JSON/CSV/résumé, génération d'URL et diagnostic réseau.</p>
           </div>
         </div>
       </section>
@@ -188,11 +190,11 @@ func main() {
       <section id="api" class="section section-light" aria-labelledby="api-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Contrat API</p>
-          <h2 id="api-title">Une API publique pour les parcelles cadastrales.</h2>
-          <p>Le contrat OpenAPI décrit la route fonctionnelle exposée aujourd'hui sur 1dex.fr: recherche par adresse, paramètres de carte optionnels et réponse GeoJSON.</p>
+          <h2 id="api-title">Une API publique pour cadastre, DVF, travaux et IRIS.</h2>
+          <p>Le contrat OpenAPI décrit les couches fonctionnelles exposées aujourd'hui sur 1dex.fr: recherche par adresse, paramètres de carte optionnels et réponse GeoJSON.</p>
         </div>
         <div class="endpoint-list" data-reveal>
-          <a href="./api.html#operation-parcelles"><span>GET</span> /explore/map-layer/parcelles?address=...</a>
+          <a href="./api.html#operation-parcelles"><span>GET</span> /explore/map-layer/{layer}?address=...</a>
         </div>
         <div class="section-actions" data-reveal>
           <a class="secondary-action" href="./api.html">Lire la documentation API</a>
@@ -214,7 +216,7 @@ func main() {
 
       <section class="final-cta" aria-labelledby="cta-title" data-reveal>
         <p class="eyebrow">Prêt à tester</p>
-        <h2 id="cta-title">Testez une adresse et récupérez les parcelles.</h2>
+        <h2 id="cta-title">Testez une adresse et récupérez les couches publiques.</h2>
         <div class="hero-actions">
           <a class="primary-action" href="./api.html#try">Tester l'API</a>
           <a class="secondary-action" href="https://1dex.fr/" rel="noopener">Découvrir 1dex</a>

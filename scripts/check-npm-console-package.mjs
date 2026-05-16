@@ -55,7 +55,7 @@ try {
     throw new Error(`Installed 1dex binary returned unexpected help:\n${help.stdout}`);
   }
   const shortHelp = run(join(installDir, 'node_modules/.bin/1dex'), ['-h'], { cwd: installDir });
-  if (!shortHelp.stdout.includes('--format <json|csv|summary>')) {
+  if (!shortHelp.stdout.includes('1dex dvf <address>') || !shortHelp.stdout.includes('--format <json|csv|summary>')) {
     throw new Error(`Installed 1dex binary returned unexpected short help:\n${shortHelp.stdout}`);
   }
   const version = run(join(installDir, 'node_modules/.bin/1dex'), ['--version'], { cwd: installDir });
@@ -67,7 +67,7 @@ try {
     throw new Error(`Installed 1dex binary returned unexpected examples:\n${examples.stdout}`);
   }
   const url = run(join(installDir, 'node_modules/.bin/1dex'), [
-    'parcelles',
+    'dvf',
     '--address',
     '50 rue des tanneurs aix',
     '--lon',
@@ -76,7 +76,7 @@ try {
     '47.468617',
     '--url',
   ], { cwd: installDir });
-  if (!url.stdout.includes('/explore/map-layer/parcelles?address=50+rue+des+tanneurs+aix')) {
+  if (!url.stdout.includes('/explore/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix')) {
     throw new Error(`Installed 1dex binary returned unexpected URL:\n${url.stdout}`);
   }
 

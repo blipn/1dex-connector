@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- Add verified public map layers for DVF, active works, IRIS, address context, and parcel labels.
+- Add CLI commands `1dex dvf`, `1dex travaux`, `1dex iris`, and `1dex layer <layer>`.
+- Extend JavaScript and Python clients with `map.dvf`, `map.travaux`, `map.iris`, `map.context`, and `map.layer`.
+- Update OpenAPI and docs from one parcel-only route to `GET /explore/map-layer/{layer}`.
+
 ## 0.1.1
 
 - Add the shorter `1dex parcelles` command while keeping `1dex map parcelles`.

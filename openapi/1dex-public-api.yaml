@@ -2,16 +2,29 @@ openapi: 3.1.0
 info:
   title: 1dex Public Map Layer API
   version: 0.1.0
-  description: Public contract for the currently functional 1dex parcel map-layer endpoint exposed on 1dex.fr.
+  description: Public contract for the currently functional 1dex map-layer endpoints exposed on 1dex.fr.
 servers:
   - url: https://1dex.fr
     description: Public 1dex website host.
 paths:
-  /explore/map-layer/parcelles:
+  /explore/map-layer/{layer}:
     get:
-      summary: Fetch parcel features around an address
-      operationId: getParcelMapLayer
+      summary: Fetch a public map layer around an address
+      operationId: getPublicMapLayer
       parameters:
+        - name: layer
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - context
+              - iris
+              - parcelles
+              - parcelles_dvf
+              - parcelles_travaux
+              - parcelles_labels
+          example: parcelles_dvf
         - name: address
           in: query
           required: true
@@ -58,7 +71,7 @@ paths:
           example: features
       responses:
         "200":
-          description: Parcel map-layer payload.
+          description: Public map-layer payload.
           content:
             application/json:
               schema:
@@ -89,9 +102,9 @@ components:
           type: array
           items: {}
         data:
-          $ref: "#/components/schemas/ParcelFeatureCollection"
+          $ref: "#/components/schemas/MapFeatureCollection"
       additionalProperties: true
-    ParcelFeatureCollection:
+    MapFeatureCollection:
       type: object
       required:
         - type

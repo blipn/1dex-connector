@@ -1,8 +1,8 @@
 # Référence API
 
-Cette page ne documente que l'endpoint public effectivement fonctionnel aujourd'hui sur `1dex.fr`.
+Cette page ne documente que les couches publiques effectivement fonctionnelles aujourd'hui sur `1dex.fr`.
 
-La route vérifiée renvoie les parcelles visibles autour d'une adresse.
+Les routes vérifiées renvoient des couches GeoJSON visibles autour d'une adresse: parcelles, DVF, travaux, IRIS, contexte adresse et étiquettes.
 
 ## Base URL
 
@@ -12,12 +12,16 @@ https://1dex.fr
 
 ## Endpoint
 
-### `GET /explore/map-layer/parcelles`
+### `GET /explore/map-layer/{layer}`
 
 Exemple vérifié:
 
 ```bash
 curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
+  -H "Accept: application/json"
+curl "https://1dex.fr/explore/map-layer/parcelles_dvf?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
+  -H "Accept: application/json"
+curl "https://1dex.fr/explore/map-layer/parcelles_travaux?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
   -H "Accept: application/json"
 ```
 
@@ -25,6 +29,9 @@ Même test depuis le CLI npm:
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex dvf "50 rue des tanneurs aix" --format summary
+1dex travaux "50 rue des tanneurs aix" --format summary
+1dex layer iris "50 rue des tanneurs aix" --format summary
 1dex parcelles "50 rue des tanneurs aix" --url
 ```
 
@@ -32,6 +39,7 @@ Paramètres:
 
 | Paramètre | Position | Obligatoire | Description |
 | --- | --- | --- | --- |
+| `layer` | path | oui | `parcelles`, `parcelles_dvf`, `parcelles_travaux`, `iris`, `context` ou `parcelles_labels`. |
 | `address` | query | oui | Adresse saisie par l'utilisateur. |
 | `city_code` | query | non | Code commune INSEE, utile si déjà connu. |
 | `lon` | query | non | Longitude, utile pour éviter une résolution d'adresse. |

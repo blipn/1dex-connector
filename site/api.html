@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Documentation API parcelles cadastrales - 1dex Connector</title>
-    <meta name="description" content="Documentation API pour rechercher les parcelles cadastrales proches d'une adresse avec 1dex: console de test, curl, CLI npm, GeoJSON et OpenAPI.">
+    <meta name="description" content="Documentation API pour rechercher les parcelles cadastrales, ventes DVF, travaux et IRIS proches d'une adresse avec 1dex: console de test, CLI npm, GeoJSON et OpenAPI.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Documentation API parcelles cadastrales - 1dex Connector">
-    <meta property="og:description" content="Recherche de parcelles cadastrales par adresse, console de test, curl, CLI npm et OpenAPI.">
+    <meta property="og:description" content="Recherche de parcelles cadastrales, DVF, travaux et IRIS par adresse, console de test, curl, CLI npm et OpenAPI.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
@@ -24,7 +24,7 @@
         "@context": "https://schema.org",
         "@type": "TechArticle",
         "headline": "Documentation API parcelles cadastrales 1dex",
-        "description": "Documentation et console de test pour rechercher des parcelles cadastrales par adresse sur 1dex.fr.",
+        "description": "Documentation et console de test pour rechercher des parcelles cadastrales, ventes DVF, travaux et IRIS par adresse sur 1dex.fr.",
         "url": "https://blipn.github.io/1dex-connector/api.html",
         "isPartOf": {
           "@type": "WebSite",
@@ -62,13 +62,13 @@
       <section class="api-main">
         <section id="introduction" class="api-section api-intro" data-reveal>
           <p class="api-kicker">API publique cadastre</p>
-          <h1>API parcelles cadastrales par adresse</h1>
-          <p class="api-lead">Envoyez une adresse, récupérez une couche parcelles en JSON/GeoJSON. Cette page documente uniquement la route publique qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
+          <h1>API parcelles cadastrales, DVF et travaux par adresse</h1>
+          <p class="api-lead">Envoyez une adresse, récupérez une couche publique en JSON/GeoJSON: parcelles cadastrales, ventes DVF, travaux, IRIS ou point de contexte. Cette page documente uniquement les routes qui répondent aujourd'hui sur <code>1dex.fr</code>.</p>
 
           <div class="api-status-grid">
             <article>
               <span>Endpoint</span>
-              <code>GET /explore/map-layer/parcelles</code>
+              <code>GET /explore/map-layer/{layer}</code>
             </article>
             <article>
               <span>Auth</span>
@@ -82,7 +82,7 @@
 
           <div class="api-note">
             <strong>Limite volontaire.</strong>
-            Pas de host API séparé, pas de clé privée, pas de route future inventée. La surface publique actuelle couvre la recherche de parcelles autour d'une adresse. Les surfaces privées, payantes ou futures restent hors de cette doc tant qu'elles n'ont pas de contrat public vérifié.
+            Pas de host API séparé, pas de clé privée, pas de route future inventée. La surface publique actuelle couvre les couches <code>parcelles</code>, <code>parcelles_dvf</code>, <code>parcelles_travaux</code>, <code>iris</code>, <code>context</code> et <code>parcelles_labels</code>. Les autres couches Explorer restent hors contrat public lorsqu'elles demandent une session ou un accès produit.
           </div>
         </section>
 
@@ -98,6 +98,18 @@
               <label class="field-label" for="api-address">
                 Adresse
                 <input id="api-address" name="address" type="text" value="50 rue des tanneurs aix" autocomplete="street-address" required>
+              </label>
+
+              <label class="field-label" for="api-layer">
+                Donnée
+                <select id="api-layer" name="layer">
+                  <option value="parcelles">Parcelles cadastrales</option>
+                  <option value="parcelles_dvf">Ventes DVF par parcelle</option>
+                  <option value="parcelles_travaux">Travaux par parcelle</option>
+                  <option value="iris">IRIS socio-territorial</option>
+                  <option value="context">Point adresse</option>
+                  <option value="parcelles_labels">Étiquettes parcelles</option>
+                </select>
               </label>
 
               <label class="field-label" for="api-render-mode">
@@ -172,13 +184,14 @@
             <span class="method method-get">GET</span>
             <h2>/explore/map-layer/parcelles</h2>
           </div>
-          <p class="api-section-copy">Retourne les parcelles proches d'une adresse sous forme de <code>FeatureCollection</code>. L'adresse est le seul paramètre métier requis.</p>
+          <p class="api-section-copy">Retourne une couche publique proche d'une adresse sous forme de <code>FeatureCollection</code>. L'adresse est le seul paramètre métier requis.</p>
 
           <table class="param-table">
             <thead>
               <tr><th>Paramètre</th><th>Type</th><th>Usage</th></tr>
             </thead>
             <tbody>
+              <tr><td><code>layer</code></td><td>path · requis</td><td><code>parcelles</code>, <code>parcelles_dvf</code>, <code>parcelles_travaux</code>, <code>iris</code>, <code>context</code> ou <code>parcelles_labels</code>.</td></tr>
               <tr><td><code>address</code></td><td>query · requis</td><td>Adresse libre saisie par l'utilisateur.</td></tr>
               <tr><td><code>viewport_render_mode</code></td><td>query · optionnel</td><td><code>features</code> demande les contours GeoJSON.</td></tr>
               <tr><td><code>city_code</code>, <code>lon</code>, <code>lat</code></td><td>query · optionnel</td><td>Contexte géographique déjà connu par votre app.</td></tr>
@@ -191,6 +204,8 @@
 
           <pre class="api-code"><code>npm i @1dex-fr/1dex
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex dvf "50 rue des tanneurs aix" -f summary
+npx 1dex travaux "50 rue des tanneurs aix" -f summary
 npx 1dex parcelles "50 rue des tanneurs aix" --url</code></pre>
         </section>
 

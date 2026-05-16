@@ -3,12 +3,26 @@ import { readFileSync } from 'node:fs';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
 const DEFAULT_SAMPLE_ADDRESS = '50 rue des tanneurs aix';
+const PUBLIC_MAP_LAYERS = new Set([
+  'context',
+  'iris',
+  'parcelles',
+  'parcelles_dvf',
+  'parcelles_travaux',
+  'parcelles_labels',
+]);
+const PUBLIC_MAP_LAYER_ALIASES = Object.freeze({
+  dvf: 'parcelles_dvf',
+  travaux: 'parcelles_travaux',
+  labels: 'parcelles_labels',
+});
 const SUPPORTED_FORMATS = new Set(['json', 'csv', 'summary']);
 const FLAG_ALIASES = Object.freeze({
   a: 'address',
   b: 'viewport-bbox',
   f: 'format',
   h: 'help',
+  l: 'layer',
   r: 'viewport-render-mode',
   u: 'url',
   V: 'version',
@@ -19,6 +33,7 @@ const VALUE_FLAGS = new Set([
   'base-url',
   'city-code',
   'format',
+  'layer',
   'lat',
   'lon',
   'timeout-ms',
@@ -90,6 +105,7 @@ class OneDexClient {
 
     this.map = Object.freeze({
       parcelles: (input) => this.mapParcelles(input),
+      layer: (input) => this.mapLayer(input),
     });
   }
 
@@ -131,11 +147,16 @@ class OneDexClient {
   }
 
   mapParcelles(input) {
-    const { address, ...query } = input;
+    return this.mapLayer({ ...input, layer: 'parcelles' });
+  }
+
+  mapLayer(input) {
+    const { address, layer = 'parcelles', ...query } = input;
     if (typeof address !== 'string' || !address.trim()) {
-      throw new TypeError('parcelles input requires address.');
+      throw new TypeError('map layer input requires address.');
     }
-    const path = appendQuery('/explore/map-layer/parcelles', {
+    const layerKey = normalizeMapLayer(layer);
+    const path = appendQuery(`/explore/map-layer/${encodeURIComponent(layerKey)}`, {
       address: address.trim(),
       ...query,
     });
@@ -148,6 +169,10 @@ function usage() {
 
 Usage:
   1dex parcelles <address> [options]
+  1dex dvf <address> [options]
+  1dex travaux <address> [options]
+  1dex iris <address> [options]
+  1dex layer <layer> <address> [options]
   1dex map parcelles <address> [options]
   1dex map parcelles --address <address> [options]
   1dex examples
@@ -155,6 +180,7 @@ Usage:
 
 Options:
   -a, --address <text>                 Address to resolve. Overrides positional address.
+  -l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
   -r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
   -b, --viewport-bbox <bbox>           Map bbox: minLon,minLat,maxLon,maxLat.
   -z, --viewport-zoom <number>         Map zoom level.
@@ -179,8 +205,13 @@ function examples() {
   # Fastest path: resolve parcels around an address.
   1dex parcelles "${DEFAULT_SAMPLE_ADDRESS}" -f summary
 
+  # Public DVF and active works parcel overlays verified on 1dex.fr.
+  1dex dvf "${DEFAULT_SAMPLE_ADDRESS}" -f summary
+  1dex travaux "${DEFAULT_SAMPLE_ADDRESS}" -f summary
+
   # Same command, explicit namespace.
   1dex map parcelles "${DEFAULT_SAMPLE_ADDRESS}" --format json
+  1dex layer iris "${DEFAULT_SAMPLE_ADDRESS}" --format summary
 
   # Print the generated public URL without sending the request.
   1dex parcelles --address "${DEFAULT_SAMPLE_ADDRESS}" --url
@@ -196,6 +227,15 @@ function examples() {
   # Check that the public endpoint is reachable from this machine.
   1dex doctor
 `;
+}
+
+function normalizeMapLayer(layer) {
+  const normalized = String(layer ?? '').trim();
+  const layerKey = PUBLIC_MAP_LAYER_ALIASES[normalized] ?? normalized;
+  if (!PUBLIC_MAP_LAYERS.has(layerKey)) {
+    throw new Error(`Unsupported public map layer: ${normalized || '(empty)'}.`);
+  }
+  return layerKey;
 }
 
 function readVersion() {
@@ -279,13 +319,14 @@ function readFormat(flags) {
   return format;
 }
 
-function buildParcellesInput(flags, subjectParts) {
+function buildMapLayerInput(flags, subjectParts, defaultLayer = 'parcelles') {
   const address = String(flags.address ?? subjectParts.join(' ')).trim();
   if (!address) {
     throw new Error('Missing address. Use positional text or --address <text>.');
   }
   return {
     address,
+    layer: normalizeMapLayer(flags.layer ?? defaultLayer),
     city_code: flags['city-code'],
     lon: readOptionalNumber(flags.lon, 'lon'),
     lat: readOptionalNumber(flags.lat, 'lat'),
@@ -299,13 +340,26 @@ function resolveCommand(positional) {
   const [resource, action, ...subjectParts] = positional;
 
   if (resource === 'map' && action === 'parcelles') {
-    return { name: 'parcelles', subjectParts };
+    return { name: 'layer', layer: 'parcelles', subjectParts };
   }
 
-  if (resource === 'parcelles') {
+  if (resource === 'map' && action) {
+    return { name: 'layer', layer: action, subjectParts };
+  }
+
+  if (resource === 'parcelles' || resource === 'dvf' || resource === 'travaux' || resource === 'iris' || resource === 'context' || resource === 'labels') {
     return {
-      name: 'parcelles',
+      name: 'layer',
+      layer: resource,
       subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'layer') {
+    return {
+      name: 'layer',
+      layer: action,
+      subjectParts,
     };
   }
 
@@ -316,9 +370,11 @@ function resolveCommand(positional) {
   return { name: 'unknown', subjectParts: positional };
 }
 
-function buildParcellesUrl(flags, input) {
+function buildMapLayerUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
-  return `${baseUrl}${appendQuery('/explore/map-layer/parcelles', input)}`;
+  const { layer = 'parcelles', ...query } = input;
+  const layerKey = normalizeMapLayer(layer);
+  return `${baseUrl}${appendQuery(`/explore/map-layer/${encodeURIComponent(layerKey)}`, query)}`;
 }
 
 function toCsvValue(value) {
@@ -362,20 +418,20 @@ function printResult(response, flags) {
 }
 
 async function runDoctor(flags) {
-  const input = buildParcellesInput(
+  const input = buildMapLayerInput(
     { ...flags, address: flags.address ?? DEFAULT_SAMPLE_ADDRESS },
     [],
   );
-  const url = buildParcellesUrl(flags, input);
+  const url = buildMapLayerUrl(flags, input);
   const startedAt = Date.now();
   const client = createClient(flags);
-  const response = await client.map.parcelles(input);
+  const response = await client.map.layer(input);
   const durationMs = Date.now() - startedAt;
 
   console.log([
     '1dex doctor: ok',
     `baseUrl=${normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL)}`,
-    `endpoint=/explore/map-layer/parcelles`,
+    `endpoint=/explore/map-layer/${normalizeMapLayer(input.layer)}`,
     `url=${url}`,
     `durationMs=${durationMs}`,
     `status=${response?.status ?? ''}`,
@@ -387,7 +443,7 @@ function printCliHint(error) {
   if (!(error instanceof Error)) {
     return;
   }
-  if (/Unknown command|Unknown option|Missing address|Missing value|Unsupported format|must be a number/u.test(error.message)) {
+  if (/Unknown command|Unknown option|Missing address|Missing value|Unsupported format|Unsupported public map layer|must be a number/u.test(error.message)) {
     console.error('Hint: run "1dex --help" or "1dex examples".');
   }
 }
@@ -418,14 +474,14 @@ async function main() {
     return;
   }
 
-  if (command.name === 'parcelles') {
-    const input = buildParcellesInput(flags, command.subjectParts);
+  if (command.name === 'layer') {
+    const input = buildMapLayerInput(flags, command.subjectParts, command.layer);
     if (flags.url) {
-      console.log(buildParcellesUrl(flags, input));
+      console.log(buildMapLayerUrl(flags, input));
       return;
     }
     const client = createClient(flags);
-    response = await client.map.parcelles(input);
+    response = await client.map.layer(input);
   } else {
     throw new Error(`Unknown command: ${process.argv.slice(2).join(' ') || '(empty)'}`);
   }

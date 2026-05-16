@@ -18,6 +18,23 @@ export interface MapParcellesInput {
   [key: string]: unknown;
 }
 
+export type PublicMapLayerKey =
+  | 'context'
+  | 'iris'
+  | 'parcelles'
+  | 'parcelles_dvf'
+  | 'parcelles_travaux'
+  | 'parcelles_labels'
+  | 'dvf'
+  | 'travaux'
+  | 'labels';
+
+export interface MapLayerInput extends MapParcellesInput {
+  layer?: PublicMapLayerKey;
+  layerKey?: PublicMapLayerKey;
+  layer_key?: PublicMapLayerKey;
+}
+
 export class OneDexApiError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -38,8 +55,14 @@ export class OneDexClient {
 
   readonly map: {
     parcelles(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
+    dvf(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
+    travaux(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
+    iris(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
+    context(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
+    layer(input: MapLayerInput, options?: OneDexRequestOptions): Promise<unknown>;
   };
 
   request<T = unknown>(method: string, path: string, options?: OneDexRequestOptions): Promise<T>;
   mapParcelles(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
+  mapLayer(input: MapLayerInput, options?: OneDexRequestOptions): Promise<unknown>;
 }

@@ -5,9 +5,9 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0b7a53)](https://blipn.github.io/1dex-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
 
-Open source CLI, API documentation, and examples to query public 1dex parcel data from an address.
+Open source CLI, API documentation, and examples to query public 1dex map-layer data from an address.
 
-Use it to search cadastral parcels around an address, generate a shareable URL, inspect the GeoJSON response, or integrate the public endpoint with curl, JavaScript, Python, or Go. The repository only documents endpoints that are actually reachable from the public web.
+Use it to search cadastral parcels, DVF sales, active works, IRIS, and address context around an address, generate a shareable URL, inspect the GeoJSON response, or integrate the public endpoint with curl, JavaScript, Python, or Go. The repository only documents endpoints that are actually reachable from the public web.
 
 This repository contains client connectors, a small CLI, interactive API documentation, OpenAPI documentation, and examples. It is a consumption layer only: it does not include source import workers, database schema, raw data files, or private runtime code.
 
@@ -20,13 +20,14 @@ Interactive API reference: <https://blipn.github.io/1dex-connector/api.html>
 ## What works today
 
 - Public host: `https://1dex.fr`.
-- Public endpoint: `GET /explore/map-layer/parcelles?address=...`.
+- Public endpoint: `GET /explore/map-layer/{layer}?address=...`.
+- Verified public layers: `parcelles`, `parcelles_dvf`, `parcelles_travaux`, `iris`, `context`, `parcelles_labels`.
 - Public response: JSON map-layer payload with a GeoJSON `FeatureCollection`.
 - No API key, account mode, or non-public endpoint is documented in this repository.
 
 ## Public Data Scope
 
-- Public today: cadastral parcel features around an address through the public map-layer endpoint on `1dex.fr`.
+- Public today: cadastral parcel features, DVF parcel signals, active works parcel signals, IRIS, address context, and parcel labels around an address through public map-layer endpoints on `1dex.fr`.
 - Developer tooling: npm CLI, curl examples, OpenAPI contract, JavaScript/Python client source, and interactive docs.
 - Not exposed here: private datasets, paid workflows, exports, internal import jobs, and future private APIs.
 - New surfaces should be documented only when the public contract exists and the endpoint is reachable.
@@ -46,6 +47,8 @@ Console:
 ```bash
 npm i @1dex-fr/1dex
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex dvf "50 rue des tanneurs aix" -f summary
+npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ```
 
 Pour installer la commande globalement:
@@ -67,6 +70,11 @@ const response = await client.map.parcelles({
   viewport_render_mode: "features",
 });
 console.log(response.data.features.length);
+
+const dvf = await client.map.dvf({
+  address: "50 rue des tanneurs aix",
+  viewport_render_mode: "features",
+});
 ```
 
 curl:
@@ -106,6 +114,8 @@ CLI:
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex dvf "50 rue des tanneurs aix" --format summary
+1dex travaux "50 rue des tanneurs aix" --format summary
 1dex doctor
 ```
 
@@ -113,6 +123,7 @@ CLI options:
 
 ```bash
 1dex parcelles --address "50 rue des tanneurs aix" --url
+1dex layer iris "50 rue des tanneurs aix" --format summary
 1dex examples
 1dex parcelles "50 rue des tanneurs aix" \
   --lon 5.446245 \
@@ -143,9 +154,14 @@ Then run the GitHub Actions workflow `npm publish` manually. The workflow uses O
 
 ## Implemented API Surface
 
-The connector documents and tests the public route that works today:
+The connector documents and tests the public map-layer routes that work today:
 
 - `GET /explore/map-layer/parcelles?address=...`
+- `GET /explore/map-layer/parcelles_dvf?address=...`
+- `GET /explore/map-layer/parcelles_travaux?address=...`
+- `GET /explore/map-layer/iris?address=...`
+- `GET /explore/map-layer/context?address=...`
+- `GET /explore/map-layer/parcelles_labels?address=...`
 
 ## Development
 

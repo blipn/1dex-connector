@@ -1,12 +1,14 @@
 # Quickstart
 
-Les exemples utilisent uniquement l'endpoint public vérifié sur `https://1dex.fr`.
+Les exemples utilisent uniquement les couches publiques vérifiées sur `https://1dex.fr`.
 
 ## Console npm
 
 ```bash
 npm i @1dex-fr/1dex
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex dvf "50 rue des tanneurs aix" -f summary
+npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ```
 
 Pour avoir la commande `1dex` disponible directement dans le terminal:
@@ -14,6 +16,7 @@ Pour avoir la commande `1dex` disponible directement dans le terminal:
 ```bash
 npm i -g @1dex-fr/1dex
 1dex parcelles "50 rue des tanneurs aix" -f summary
+1dex dvf "50 rue des tanneurs aix" -f summary
 ```
 
 ## JavaScript
@@ -24,6 +27,11 @@ import { OneDexClient } from "@1dex/connector";
 const client = new OneDexClient();
 
 const parcelles = await client.map.parcelles({
+  address: "50 rue des tanneurs aix",
+  viewport_render_mode: "features",
+});
+
+const dvf = await client.map.dvf({
   address: "50 rue des tanneurs aix",
   viewport_render_mode: "features",
 });
@@ -65,6 +73,9 @@ req, err := http.NewRequest(
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex dvf "50 rue des tanneurs aix" --format summary
+1dex travaux "50 rue des tanneurs aix" --format summary
+1dex layer iris "50 rue des tanneurs aix" --format summary
 1dex examples
 1dex doctor
 ```

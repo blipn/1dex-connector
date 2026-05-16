@@ -8,6 +8,19 @@ from typing import Any, Mapping
 
 
 DEFAULT_BASE_URL = "https://1dex.fr"
+PUBLIC_MAP_LAYERS = frozenset((
+    "context",
+    "iris",
+    "parcelles",
+    "parcelles_dvf",
+    "parcelles_travaux",
+    "parcelles_labels",
+))
+PUBLIC_MAP_LAYER_ALIASES = {
+    "dvf": "parcelles_dvf",
+    "travaux": "parcelles_travaux",
+    "labels": "parcelles_labels",
+}
 
 
 class OneDexApiError(Exception):
@@ -56,22 +69,50 @@ def _request_id_from_body(body: Any) -> str | None:
     return None
 
 
+def _normalize_map_layer(layer: Any) -> str:
+    normalized = str(layer or "").strip()
+    layer_key = PUBLIC_MAP_LAYER_ALIASES.get(normalized, normalized)
+    if layer_key not in PUBLIC_MAP_LAYERS:
+        raise ValueError(f"Unsupported public map layer: {normalized or '(empty)'}.")
+    return layer_key
+
+
 class _MapNamespace:
     def __init__(self, client: "OneDexClient") -> None:
         self._client = client
 
-    def parcelles(self, payload: Mapping[str, Any]) -> Any:
-        data = dict(_ensure_mapping(payload, "parcelles input"))
+    def _layer(self, payload: Mapping[str, Any], default_layer: str = "parcelles") -> Any:
+        data = dict(_ensure_mapping(payload, "map layer input"))
         address = data.pop("address", None)
+        layer = data.pop("layer", data.pop("layerKey", data.pop("layer_key", default_layer)))
+        layer_key = _normalize_map_layer(layer)
         if isinstance(address, str) and address.strip():
             query = {"address": address.strip(), **data}
-            return self._client.request("GET", "/explore/map-layer/parcelles", query=query)
+            return self._client.request("GET", f"/explore/map-layer/{urllib.parse.quote(layer_key)}", query=query)
 
         address_slug = data.pop("addressSlug", data.pop("address_slug", None))
         if not isinstance(address_slug, str) or not address_slug.strip():
-            raise ValueError("parcelles input requires address or address_slug.")
-        path = f"/adresse/{urllib.parse.quote(address_slug.strip())}/explore/map-layer/parcelles"
+            raise ValueError("map layer input requires address or address_slug.")
+        path = f"/adresse/{urllib.parse.quote(address_slug.strip())}/explore/map-layer/{urllib.parse.quote(layer_key)}"
         return self._client.request("GET", path, query=data)
+
+    def parcelles(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer(payload, "parcelles")
+
+    def dvf(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer({**dict(payload), "layer": "parcelles_dvf"})
+
+    def travaux(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer({**dict(payload), "layer": "parcelles_travaux"})
+
+    def iris(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer({**dict(payload), "layer": "iris"})
+
+    def context(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer({**dict(payload), "layer": "context"})
+
+    def layer(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer(payload)
 
 
 class OneDexClient:

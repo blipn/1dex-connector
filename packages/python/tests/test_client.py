@@ -53,6 +53,49 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(request.get_method(), "GET")
         self.assertEqual(timeout, 30.0)
 
+    def test_map_layer_helpers_use_verified_public_paths(self):
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            return FakeResponse({"status": "success"})
+
+        client = OneDexClient(base_url="http://example.test", opener=opener)
+        client.map.dvf({
+            "address": "50 rue des tanneurs aix",
+            "viewport_render_mode": "features",
+        })
+        client.map.travaux({
+            "address": "50 rue des tanneurs aix",
+            "viewport_render_mode": "features",
+        })
+        client.map.layer({
+            "layer": "iris",
+            "address": "50 rue des tanneurs aix",
+        })
+
+        self.assertEqual(
+            calls[0][0].full_url,
+            "http://example.test/explore/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
+        )
+        self.assertEqual(
+            calls[1][0].full_url,
+            "http://example.test/explore/map-layer/parcelles_travaux?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
+        )
+        self.assertEqual(
+            calls[2][0].full_url,
+            "http://example.test/explore/map-layer/iris?address=50+rue+des+tanneurs+aix",
+        )
+
+    def test_unknown_public_map_layer_is_rejected_locally(self):
+        client = OneDexClient()
+
+        with self.assertRaisesRegex(ValueError, "Unsupported public map layer"):
+            client.map.layer({
+                "layer": "transactions",
+                "address": "50 rue des tanneurs aix",
+            })
+
     def test_http_error_raises_api_error(self):
         def opener(request, timeout):
             raise urllib.error.HTTPError(

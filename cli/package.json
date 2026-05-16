@@ -1,7 +1,7 @@
 {
   "name": "@1dex-fr/1dex",
-  "version": "0.1.1",
-  "description": "CLI for the public 1dex parcel map-layer endpoint.",
+  "version": "0.1.2",
+  "description": "CLI for the public 1dex map-layer endpoints.",
   "type": "module",
   "bin": {
     "1dex": "./src/cli.js"
@@ -13,6 +13,8 @@
   "keywords": [
     "1dex",
     "cadastre",
+    "dvf",
+    "travaux",
     "parcelles",
     "geojson",
     "cli"

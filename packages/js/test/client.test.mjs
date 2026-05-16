@@ -40,6 +40,46 @@ test('map.parcelles builds the working public 1dex map-layer URL', async () => {
   assert.equal(calls[0].init.method, 'GET');
 });
 
+test('map layer helpers build verified public DVF and travaux URLs', async () => {
+  const calls = [];
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return createJsonResponse({ status: 'success' });
+    },
+  });
+
+  await client.map.dvf({ address: '50 rue des tanneurs aix', viewport_render_mode: 'features' });
+  await client.map.travaux({ address: '50 rue des tanneurs aix', viewport_render_mode: 'features' });
+  await client.map.layer({ layer: 'iris', address: '50 rue des tanneurs aix' });
+
+  assert.equal(
+    calls[0].url,
+    'http://example.test/explore/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
+  );
+  assert.equal(
+    calls[1].url,
+    'http://example.test/explore/map-layer/parcelles_travaux?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
+  );
+  assert.equal(
+    calls[2].url,
+    'http://example.test/explore/map-layer/iris?address=50+rue+des+tanneurs+aix',
+  );
+});
+
+test('unknown public map layer is rejected locally', async () => {
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse({ status: 'success' }),
+  });
+
+  assert.throws(
+    () => client.map.layer({ layer: 'transactions', address: '50 rue des tanneurs aix' }),
+    /Unsupported public map layer/u,
+  );
+});
+
 test('non-2xx responses raise OneDexApiError with response metadata', async () => {
   const client = new OneDexClient({
     baseUrl: 'http://example.test',

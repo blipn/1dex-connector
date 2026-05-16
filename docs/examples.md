@@ -19,6 +19,9 @@ CLI examples:
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" -f summary
+1dex dvf "50 rue des tanneurs aix" -f summary
+1dex travaux "50 rue des tanneurs aix" -f summary
+1dex layer iris "50 rue des tanneurs aix" -f summary
 1dex parcelles "50 rue des tanneurs aix" --url
 1dex examples
 1dex doctor

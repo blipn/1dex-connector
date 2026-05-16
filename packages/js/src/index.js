@@ -1,4 +1,17 @@
 const DEFAULT_BASE_URL = 'https://1dex.fr';
+const PUBLIC_MAP_LAYERS = new Set([
+  'context',
+  'iris',
+  'parcelles',
+  'parcelles_dvf',
+  'parcelles_travaux',
+  'parcelles_labels',
+]);
+const PUBLIC_MAP_LAYER_ALIASES = Object.freeze({
+  dvf: 'parcelles_dvf',
+  travaux: 'parcelles_travaux',
+  labels: 'parcelles_labels',
+});
 
 export class OneDexApiError extends Error {
   constructor(message, options = {}) {
@@ -48,18 +61,31 @@ function appendQuery(path, query) {
   return serialized ? `${path}?${serialized}` : path;
 }
 
-function toParcellesQuery(input) {
-  assertObject(input, 'parcelles input');
+function normalizeMapLayer(layer) {
+  const normalized = String(layer ?? '').trim();
+  const layerKey = PUBLIC_MAP_LAYER_ALIASES[normalized] ?? normalized;
+  if (!PUBLIC_MAP_LAYERS.has(layerKey)) {
+    throw new TypeError(`Unsupported public map layer: ${normalized || '(empty)'}.`);
+  }
+  return layerKey;
+}
+
+function toMapLayerQuery(input, defaultLayer = 'parcelles') {
+  assertObject(input, 'map layer input');
   const {
     address,
     addressSlug,
     address_slug: addressSlugSnake,
+    layer,
+    layerKey,
+    layer_key: layerKeySnake,
     ...query
   } = input;
+  const normalizedLayer = normalizeMapLayer(layer ?? layerKey ?? layerKeySnake ?? defaultLayer);
 
   if (typeof address === 'string' && address.trim() !== '') {
     return {
-      path: '/explore/map-layer/parcelles',
+      path: `/explore/map-layer/${encodeURIComponent(normalizedLayer)}`,
       query: {
         address: address.trim(),
         ...query,
@@ -69,10 +95,10 @@ function toParcellesQuery(input) {
 
   const slug = addressSlug ?? addressSlugSnake;
   if (typeof slug !== 'string' || slug.trim() === '') {
-    throw new TypeError('parcelles input requires address or addressSlug.');
+    throw new TypeError('map layer input requires address or addressSlug.');
   }
   return {
-    path: `/adresse/${encodeURIComponent(slug.trim())}/explore/map-layer/parcelles`,
+    path: `/adresse/${encodeURIComponent(slug.trim())}/explore/map-layer/${encodeURIComponent(normalizedLayer)}`,
     query,
   };
 }
@@ -114,6 +140,11 @@ export class OneDexClient {
 
     this.map = Object.freeze({
       parcelles: (input, requestOptions) => this.mapParcelles(input, requestOptions),
+      dvf: (input, requestOptions) => this.mapLayer({ ...input, layer: 'parcelles_dvf' }, requestOptions),
+      travaux: (input, requestOptions) => this.mapLayer({ ...input, layer: 'parcelles_travaux' }, requestOptions),
+      iris: (input, requestOptions) => this.mapLayer({ ...input, layer: 'iris' }, requestOptions),
+      context: (input, requestOptions) => this.mapLayer({ ...input, layer: 'context' }, requestOptions),
+      layer: (input, requestOptions) => this.mapLayer(input, requestOptions),
     });
   }
 
@@ -172,7 +203,12 @@ export class OneDexClient {
   }
 
   mapParcelles(input, options = {}) {
-    const { path, query } = toParcellesQuery(input);
+    const { path, query } = toMapLayerQuery(input, 'parcelles');
+    return this.request('GET', appendQuery(path, query), options);
+  }
+
+  mapLayer(input, options = {}) {
+    const { path, query } = toMapLayerQuery(input);
     return this.request('GET', appendQuery(path, query), options);
   }
 }

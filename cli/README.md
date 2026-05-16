@@ -1,6 +1,6 @@
 # 1dex
 
-Command-line client for the public 1dex parcel map-layer endpoint.
+Command-line client for the public 1dex map-layer endpoints.
 
 ## Install
 
@@ -13,15 +13,19 @@ Or install it in a project and run it with `npx`:
 ```bash
 npm i @1dex-fr/1dex
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
+npx 1dex dvf "50 rue des tanneurs aix" -f summary
+npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ```
 
 ## Usage
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format summary
+1dex dvf "50 rue des tanneurs aix" --format summary
+1dex travaux "50 rue des tanneurs aix" --format summary
 ```
 
-The command calls `https://1dex.fr/explore/map-layer/parcelles` and prints JSON, CSV, or a short summary.
+The command calls `https://1dex.fr/explore/map-layer/{layer}` and prints JSON, CSV, or a short summary.
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format csv
@@ -34,12 +38,17 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 
 ```text
 1dex parcelles <address> [options]
+1dex dvf <address> [options]
+1dex travaux <address> [options]
+1dex iris <address> [options]
+1dex layer <layer> <address> [options]
 1dex map parcelles <address> [options]
 1dex map parcelles --address <address> [options]
 1dex examples
 1dex doctor [--address <address>] [options]
 
 -a, --address <text>                 Address to resolve.
+-l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
 -r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
 -b, --viewport-bbox <bbox>           Map bbox: minLon,minLat,maxLon,maxLat.
 -z, --viewport-zoom <number>         Map zoom level.
@@ -58,6 +67,9 @@ Examples:
 
 ```bash
 1dex parcelles --address "50 rue des tanneurs aix" --url
+1dex dvf "50 rue des tanneurs aix" -f summary
+1dex travaux "50 rue des tanneurs aix" -f summary
+1dex layer iris "50 rue des tanneurs aix" -f summary
 1dex parcelles "50 rue des tanneurs aix" -f summary
 1dex parcelles "50 rue des tanneurs aix" \
   --lon 5.446245 --lat 43.52782 \
