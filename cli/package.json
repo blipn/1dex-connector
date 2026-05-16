@@ -1,7 +1,7 @@
 {
   "name": "1dex",
   "version": "0.1.0",
-  "description": "CLI for the 1dex public API.",
+  "description": "CLI for the public 1dex parcel map-layer endpoint.",
   "type": "module",
   "bin": {
     "1dex": "./src/cli.js"

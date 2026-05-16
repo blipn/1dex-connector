@@ -1,12 +1,11 @@
 # Datasets
 
-The public dataset catalog is intentionally explicit: a source appears in connector docs only when it is approved for public use. Candidate public families are:
+This public repository does not publish a dataset catalog yet.
 
-- commune and administrative context: `cog`, `insee`, `iris`
-- parcel context: `cadastre`
-- market summaries and retained public sale facts: `dvf`
-- risks and environmental signals: `bdmvt`, `alearg`, `atmo`, `basol`
-- equipment and services: `bpe`, `education-nationale`, `data-es`, `acceslibre`
-- urbanism and construction signals: `sitadel`
+The only documented data surface is the verified parcel map-layer endpoint:
 
-Each public dataset entry documents freshness, source license, response fields, limitations, and whether it can be queried through aggregate fan-out.
+```http
+GET https://1dex.fr/adresse/{address_slug}/explore/map-layer/parcelles
+```
+
+Add new dataset pages only when the corresponding public endpoint is reachable and has been verified from this repository.

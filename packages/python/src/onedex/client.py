@@ -7,7 +7,7 @@ import urllib.request
 from typing import Any, Mapping
 
 
-DEFAULT_BASE_URL = "https://api.1dex.fr"
+DEFAULT_BASE_URL = "https://1dex.fr"
 
 
 class OneDexApiError(Exception):
@@ -56,63 +56,17 @@ def _request_id_from_body(body: Any) -> str | None:
     return None
 
 
-class _AddressNamespace:
+class _MapNamespace:
     def __init__(self, client: "OneDexClient") -> None:
         self._client = client
 
-    def autocomplete(self, q: str | Mapping[str, Any], *, limit: int | None = None) -> Any:
-        if isinstance(q, str):
-            query: dict[str, Any] = {"q": q}
-            if limit is not None:
-                query["limit"] = limit
-        else:
-            query = dict(_ensure_mapping(q, "autocomplete input"))
-        return self._client.request("GET", "/v1/address/autocomplete", query=query)
-
-    def resolve(self, address_or_payload: str | Mapping[str, Any]) -> Any:
-        payload = (
-            {"address": address_or_payload}
-            if isinstance(address_or_payload, str)
-            else dict(_ensure_mapping(address_or_payload, "resolve input"))
-        )
-        return self._client.request("POST", "/v1/address/resolve", body=payload)
-
-    def sources(self, address: str | None = None, **payload: Any) -> Any:
-        if isinstance(address, str):
-            payload = {"address": address, **payload}
-        elif isinstance(address, Mapping):
-            payload = {**address, **payload}
-        elif address is not None:
-            raise TypeError("address must be a string or mapping when provided.")
-        return self._client.request("POST", "/v1/address/sources", body=payload)
-
-
-class _SourceNamespace:
-    def __init__(self, client: "OneDexClient") -> None:
-        self._client = client
-
-    def query(
-        self,
-        source_key: str,
-        payload: Mapping[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> Any:
-        if not isinstance(source_key, str) or not source_key.strip():
-            raise ValueError("source_key must be a non-empty string.")
-        if payload is not None:
-            request_payload = {**dict(_ensure_mapping(payload, "source query payload")), **kwargs}
-        else:
-            request_payload = dict(kwargs)
-        path = f"/v1/address/sources/{urllib.parse.quote(source_key.strip())}"
-        return self._client.request("POST", path, body=request_payload)
-
-
-class _DatasetsNamespace:
-    def __init__(self, client: "OneDexClient") -> None:
-        self._client = client
-
-    def list(self) -> Any:
-        return self._client.request("GET", "/v1/datasets")
+    def parcelles(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "parcelles input"))
+        address_slug = data.pop("addressSlug", data.pop("address_slug", None))
+        if not isinstance(address_slug, str) or not address_slug.strip():
+            raise ValueError("parcelles input requires address_slug.")
+        path = f"/adresse/{urllib.parse.quote(address_slug.strip())}/explore/map-layer/parcelles"
+        return self._client.request("GET", path, query=data)
 
 
 class OneDexClient:
@@ -120,19 +74,15 @@ class OneDexClient:
         self,
         *,
         base_url: str | None = None,
-        api_key: str | None = None,
         headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
         opener: Any = None,
     ) -> None:
         self.base_url = _normalize_base_url(base_url)
-        self.api_key = api_key
         self.headers = dict(headers or {})
         self.timeout = timeout
         self._opener = opener or urllib.request.urlopen
-        self.address = _AddressNamespace(self)
-        self.source = _SourceNamespace(self)
-        self.datasets = _DatasetsNamespace(self)
+        self.map = _MapNamespace(self)
 
     def request(
         self,
@@ -157,9 +107,6 @@ class OneDexClient:
             **self.headers,
             **dict(headers or {}),
         }
-        if self.api_key and "Authorization" not in request_headers:
-            request_headers["Authorization"] = f"Bearer {self.api_key}"
-
         data = None
         if body is not None:
             request_headers.setdefault("Content-Type", "application/json")

@@ -1,12 +1,5 @@
 # Rate Limits
 
-The public gateway should expose standard rate-limit headers:
+No public rate-limit contract is documented for the verified `1dex.fr` parcel endpoint.
 
-```http
-RateLimit-Limit: 120
-RateLimit-Remaining: 118
-RateLimit-Reset: 60
-Retry-After: 30
-```
-
-Connectors do not retry automatically in the MVP. Callers should inspect `Retry-After` on `429` responses and apply their own backoff policy.
+Connectors do not retry automatically. If `1dex.fr` returns `429`, callers should inspect the response headers and apply their own backoff policy.

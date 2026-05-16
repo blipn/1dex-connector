@@ -5,20 +5,31 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0b7a53)](https://blipn.github.io/1dex-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
 
-Public developer kit for consuming public-data answers from the 1dex API.
+Open source connector to test the public 1dex parcel map-layer endpoint before discovering the full 1dex platform.
 
-This repository contains client connectors, a small CLI, OpenAPI documentation, and examples. It is a consumption layer only: it does not include source import workers, database schema, raw data files, or private runtime code.
+Use it for free to request the parcel layer that is publicly available on `1dex.fr` today. The repository only documents endpoints that are actually reachable from the public web.
+
+This repository contains client connectors, a small CLI, interactive API documentation, OpenAPI documentation, and examples. It is a consumption layer only: it does not include source import workers, database schema, raw data files, or private runtime code.
 
 Public docs: <https://blipn.github.io/1dex-connector/>
 
-1dex product site: <https://1dex.fr/>
+Interactive API reference: <https://blipn.github.io/1dex-connector/api.html>
+
+Discover 1dex after testing the connector: <https://1dex.fr/>
+
+## What works today
+
+- Public host: `https://1dex.fr`.
+- Public endpoint: `GET /adresse/{address_slug}/explore/map-layer/parcelles`.
+- Public response: JSON map-layer payload with a GeoJSON `FeatureCollection`.
+- No API key, account mode, or non-public endpoint is documented in this repository.
 
 ## Packages
 
 - `packages/js`: JavaScript/TypeScript client with no runtime dependency.
 - `packages/python`: Python client based on the standard library.
-- `cli`: Node CLI for smoke tests and JSON/CSV export.
-- `openapi/1dex-public-api.yaml`: public API contract draft.
+- `cli`: Node CLI for smoke tests and JSON/CSV output.
+- `openapi/1dex-public-api.yaml`: public API contract for the verified route.
 - `docs/`: quickstart, API, authentication, error, rate-limit, dataset, and example notes.
 
 ## Quickstart
@@ -28,46 +39,81 @@ JavaScript:
 ```js
 import { OneDexClient } from "@1dex/connector";
 
-const client = new OneDexClient({
-  baseUrl: "https://api.1dex.fr",
-  apiKey: process.env.ONEDEX_API_KEY,
-});
+const client = new OneDexClient();
 
-const response = await client.address.resolve("10 rue de la Paix, Paris");
-console.log(response.data);
+const response = await client.map.parcelles({
+  addressSlug: "10-rue-des-cordeliers-aix-en-provence-13100",
+  city_code: "13001",
+  lon: 5.446765371857839,
+  lat: 43.52966775616209,
+  parcel_record_key: "13001000AS0323",
+  parcel_phase: "initial",
+  viewport_bbox: "5.44628,43.52926,5.44725,43.53008",
+  viewport_zoom: 19.25,
+  viewport_render_mode: "features",
+});
+console.log(response.data.features.length);
+```
+
+curl:
+
+```bash
+curl "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features" \
+  -H "Accept: application/json"
 ```
 
 Python:
 
 ```python
-import os
 from onedex import OneDexClient
 
-client = OneDexClient(
-    base_url="https://api.1dex.fr",
-    api_key=os.environ.get("ONEDEX_API_KEY"),
-)
+client = OneDexClient()
 
-response = client.address.resolve("10 rue de la Paix, Paris")
-print(response["data"])
+response = client.map.parcelles({
+    "address_slug": "10-rue-des-cordeliers-aix-en-provence-13100",
+    "city_code": "13001",
+    "lon": 5.446765371857839,
+    "lat": 43.52966775616209,
+    "parcel_record_key": "13001000AS0323",
+    "parcel_phase": "initial",
+    "viewport_bbox": "5.44628,43.52926,5.44725,43.53008",
+    "viewport_zoom": 19.25,
+    "viewport_render_mode": "features",
+})
+print(len(response["data"]["features"]))
+```
+
+Go:
+
+```go
+package main
+
+req, err := http.NewRequest(
+	"GET",
+	"https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features",
+	nil,
+)
 ```
 
 CLI:
 
 ```bash
-ONEDEX_API_KEY=... npx 1dex address resolve "10 rue de la Paix, Paris"
+1dex map parcelles 10-rue-des-cordeliers-aix-en-provence-13100 \
+  --city-code 13001 \
+  --lon 5.446765371857839 \
+  --lat 43.52966775616209 \
+  --parcel-record-key 13001000AS0323 \
+  --parcel-phase initial \
+  --viewport-bbox 5.44628,43.52926,5.44725,43.53008 \
+  --viewport-zoom 19.25 \
+  --viewport-render-mode features
 ```
 
 ## Implemented API Surface
 
-The initial connector covers the public candidate routes:
+The connector documents and tests the public route that works today:
 
-- `GET /v1/address/autocomplete`
-- `POST /v1/address/resolve`
-- `POST /v1/address/sources`
-- `POST /v1/address/sources/{source_key}`
-
-`GET /v1/datasets` is included in the OpenAPI draft and connector shape as the public dataset catalog contract.
+- `GET /adresse/{address_slug}/explore/map-layer/parcelles`
 
 ## Development
 

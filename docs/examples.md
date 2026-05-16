@@ -1,16 +1,16 @@
 # Examples
 
-Runnable examples live under:
+Runnable examples:
 
-- `examples/curl`
-- `examples/node`
-- `examples/python`
+- `examples/curl/map-parcelles.sh`
+- `examples/go/map-parcelles.go`
+- `examples/node/map-parcelles.mjs`
+- `examples/python/map_parcelles.py`
 
-Use:
+The examples work against the public website host by default:
 
 ```bash
-export ONEDEX_BASE_URL=https://api.1dex.fr
-export ONEDEX_API_KEY=...
+export ONEDEX_BASE_URL=https://1dex.fr
 ```
 
-Set `ONEDEX_BASE_URL=https://api.1dex.fr` for the public API. A key may be optional for free demo routes and required for account-backed quotas.
+`ONEDEX_BASE_URL` is optional unless you intentionally target another environment.

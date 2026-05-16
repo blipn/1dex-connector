@@ -12,15 +12,10 @@ function usage() {
   return `1dex CLI
 
 Usage:
-  1dex address resolve <address> [--base-url <url>] [--api-key <key>] [--format json|csv]
-  1dex address autocomplete <query> [--limit <n>] [--base-url <url>] [--api-key <key>]
-  1dex address sources <address> [--source-keys <a,b>] [--base-url <url>] [--api-key <key>] [--format json|csv]
-  1dex source query <source-key> (--address <address> | --payload <json>) [--base-url <url>] [--api-key <key>] [--format json|csv]
-  1dex datasets list [--base-url <url>] [--api-key <key>]
+  1dex map parcelles <address-slug> --city-code <code> --lon <n> --lat <n> [--parcel-record-key <key>] [--viewport-bbox <bbox>] [--viewport-zoom <n>]
 
 Environment:
-  ONEDEX_BASE_URL
-  ONEDEX_API_KEY
+  ONEDEX_BASE_URL (defaults to https://1dex.fr)
 `;
 }
 
@@ -52,18 +47,7 @@ function parseArgs(argv) {
 function createClient(flags) {
   return new OneDexClient({
     baseUrl: flags['base-url'] ?? process.env.ONEDEX_BASE_URL,
-    apiKey: flags['api-key'] ?? process.env.ONEDEX_API_KEY,
   });
-}
-
-function parseSourceKeys(value) {
-  if (!value) {
-    return undefined;
-  }
-  return String(value)
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 }
 
 function toCsvValue(value) {
@@ -75,40 +59,12 @@ function toCsvValue(value) {
 }
 
 function printCsv(response) {
-  if (Array.isArray(response?.data?.results)) {
-    console.log(['source_key', 'status', 'dataset_updated_at', 'warnings'].join(','));
-    for (const result of response.data.results) {
-      console.log([
-        result?.source?.source_key,
-        result?.status,
-        result?.source?.dataset_updated_at,
-        (result?.warnings ?? []).map((warning) => warning.code).join('|'),
-      ].map(toCsvValue).join(','));
-    }
-    return;
-  }
-
-  if (Array.isArray(response?.data?.suggestions)) {
-    console.log(['label', 'match_score', 'lon', 'lat', 'city_code', 'postcode'].join(','));
-    for (const suggestion of response.data.suggestions) {
-      console.log([
-        suggestion.label,
-        suggestion.match_score,
-        suggestion.coordinates?.lon,
-        suggestion.coordinates?.lat,
-        suggestion.city_code,
-        suggestion.postcode,
-      ].map(toCsvValue).join(','));
-    }
-    return;
-  }
-
-  console.log(['request_id', 'status', 'source_key', 'data'].join(','));
+  console.log(['layerKey', 'status', 'feature_count', 'summary'].join(','));
   console.log([
-    response?.request_id,
+    response?.layerKey,
     response?.status,
-    response?.source?.source_key,
-    response?.data,
+    response?.data?.features?.length,
+    response?.summary,
   ].map(toCsvValue).join(','));
 }
 
@@ -122,7 +78,7 @@ function printResult(response, flags) {
 
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
-  const [resource, action, subject, ...rest] = positional;
+  const [resource, action, subject] = positional;
 
   if (!resource || flags.help) {
     console.log(usage());
@@ -132,45 +88,22 @@ async function main() {
   const client = createClient(flags);
   let response;
 
-  if (resource === 'address' && action === 'resolve') {
-    const address = [subject, ...rest].filter(Boolean).join(' ').trim();
-    if (!address) {
-      throw new Error('Missing address.');
+  if (resource === 'map' && action === 'parcelles') {
+    const addressSlug = subject;
+    if (!addressSlug) {
+      throw new Error('Missing address slug.');
     }
-    response = await client.address.resolve(address);
-  } else if (resource === 'address' && action === 'autocomplete') {
-    const q = [subject, ...rest].filter(Boolean).join(' ').trim();
-    if (!q) {
-      throw new Error('Missing autocomplete query.');
-    }
-    response = await client.address.autocomplete(q, {
-      limit: flags.limit ? Number(flags.limit) : undefined,
+    response = await client.map.parcelles({
+      addressSlug,
+      city_code: flags['city-code'],
+      lon: flags.lon ? Number(flags.lon) : undefined,
+      lat: flags.lat ? Number(flags.lat) : undefined,
+      parcel_record_key: flags['parcel-record-key'],
+      parcel_phase: flags['parcel-phase'] ?? 'initial',
+      viewport_bbox: flags['viewport-bbox'],
+      viewport_zoom: flags['viewport-zoom'] ? Number(flags['viewport-zoom']) : undefined,
+      viewport_render_mode: flags['viewport-render-mode'] ?? 'features',
     });
-  } else if (resource === 'address' && action === 'sources') {
-    const address = [subject, ...rest].filter(Boolean).join(' ').trim();
-    if (!address) {
-      throw new Error('Missing address.');
-    }
-    response = await client.address.sources({
-      address,
-      ...(flags['source-keys'] ? { source_keys: parseSourceKeys(flags['source-keys']) } : {}),
-    });
-  } else if (resource === 'source' && action === 'query') {
-    const sourceKey = subject;
-    if (!sourceKey) {
-      throw new Error('Missing source key.');
-    }
-    const payload = flags.payload
-      ? JSON.parse(String(flags.payload))
-      : flags.address
-        ? { address: String(flags.address) }
-        : undefined;
-    if (!payload) {
-      throw new Error('Provide --address or --payload.');
-    }
-    response = await client.source.query(sourceKey, payload);
-  } else if (resource === 'datasets' && action === 'list') {
-    response = await client.datasets.list();
   } else {
     throw new Error(`Unknown command: ${process.argv.slice(2).join(' ')}`);
   }

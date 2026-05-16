@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>1dex Connector - Documentation API publique open source</title>
-    <meta name="description" content="Connecteurs JavaScript, Python et CLI pour interroger l'API publique 1dex: adresses, sources publiques, datasets et exports JSON ou CSV.">
+    <title>1dex Connector - Endpoint parcelles public</title>
+    <meta name="description" content="Testez le connecteur 1dex avec l'endpoint parcelles public réellement disponible sur 1dex.fr.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="1dex Connector - Documentation API publique">
-    <meta property="og:description" content="SDK, CLI, OpenAPI et exemples pour requêter les données publiques 1dex gratuitement ou avec un compte.">
+    <meta property="og:title" content="1dex Connector - Endpoint parcelles public">
+    <meta property="og:description" content="Testez le connecteur 1dex avec une route publique fonctionnelle sur 1dex.fr.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="1dex Connector">
-    <meta name="twitter:description" content="Documentation open source pour requêter l'API publique 1dex.">
+    <meta name="twitter:description" content="Console, SDK et exemples pour l'endpoint parcelles public 1dex.">
     <meta name="twitter:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
     <link rel="stylesheet" href="./assets/styles.css">
     <script type="application/ld+json">
@@ -24,9 +24,9 @@
         "@context": "https://schema.org",
         "@type": "SoftwareSourceCode",
         "name": "1dex Connector",
-        "description": "Connecteurs JavaScript, Python et CLI pour l'API publique 1dex.",
+        "description": "Connecteurs JavaScript, Python et CLI pour tester l'endpoint parcelles public de 1dex.fr.",
         "codeRepository": "https://github.com/blipn/1dex-connector",
-        "programmingLanguage": ["JavaScript", "TypeScript", "Python"],
+        "programmingLanguage": ["JavaScript", "TypeScript", "Python", "Go", "Shell"],
         "license": "https://github.com/blipn/1dex-connector/blob/main/LICENSE",
         "url": "https://blipn.github.io/1dex-connector/",
         "isPartOf": {
@@ -46,7 +46,7 @@
       <nav class="nav" aria-label="Navigation principale">
         <a href="#quickstart">Quickstart</a>
         <a href="#sdk">SDK</a>
-        <a href="#api">API</a>
+        <a href="./api.html">API</a>
         <a href="#security">Accès</a>
       </nav>
       <a class="external-link" href="https://1dex.fr/" rel="noopener">1dex.fr</a>
@@ -55,12 +55,12 @@
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-copy" data-reveal>
-          <p class="eyebrow">Open source · API publique · JSON propre</p>
-          <h1 id="hero-title">Requêter les données publiques 1dex sans friction.</h1>
-          <p class="hero-text">Un kit public pour résoudre une adresse, interroger les sources autorisées et automatiser vos tests en JavaScript, Python ou CLI.</p>
+          <p class="eyebrow">Connecteur open source · Données publiques · JSON propre</p>
+          <h1 id="hero-title">Testez le endpoint parcelles public 1dex.</h1>
+          <p class="hero-text">Les curieux commencent par le connecteur: une route publique vérifiée, une console de test, des exemples curl, Go, JavaScript et Python. Ensuite seulement, ils découvrent 1dex.</p>
           <div class="hero-actions">
-            <a class="primary-action" href="#quickstart">Démarrer</a>
-            <a class="secondary-action" href="https://github.com/blipn/1dex-connector" rel="noopener">Voir sur GitHub</a>
+            <a class="primary-action" href="./api.html#try">Tester le endpoint</a>
+            <a class="secondary-action" href="#quickstart">Voir les SDK</a>
           </div>
         </div>
         <div class="hero-visual" data-reveal aria-label="Exemple de requête API 1dex">
@@ -72,27 +72,27 @@
             <span class="parcel parcel-b"></span>
             <span class="parcel parcel-c"></span>
           </div>
-          <pre><code><span class="muted">$</span> 1dex address sources "10 rue de la Paix, Paris" \
-  --source-keys cadastre,dvf
+          <pre><code><span class="muted">$</span> 1dex map parcelles 10-rue-des-cordeliers-aix-en-provence-13100 \
+  --city-code 13001 --lon 5.446765371857839 --lat 43.52966775616209
 
 {
-  "status": "ok",
-  "source": { "source_key": "address-sources" },
-  "meta": { "ok_source_keys": ["cadastre", "dvf"] }
+  "layerKey": "parcelles",
+  "status": "success",
+  "data": { "type": "FeatureCollection" }
 }</code></pre>
         </div>
       </section>
 
       <section class="trust-band" aria-label="Garanties publiques">
-        <p><strong>Pas de runtime interne.</strong> Ce dépôt ne contient que la documentation, les connecteurs, l'OpenAPI, la CLI et les exemples.</p>
-        <p><strong>Accès progressif.</strong> Gratuit quand le quota public le permet, avec clé API pour les usages compte.</p>
+        <p><strong>Public et vérifié.</strong> La doc expose uniquement ce qui répond aujourd'hui sur <code>1dex.fr</code>.</p>
+        <p><strong>Découverte d'abord.</strong> Les visiteurs testent le connecteur, puis découvrent la plateforme 1dex.</p>
       </section>
 
       <section id="quickstart" class="section section-light" aria-labelledby="quickstart-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Quickstart</p>
-          <h2 id="quickstart-title">Une adresse, une réponse exploitable.</h2>
-          <p>Le connecteur garde la même enveloppe de réponse sur les routes principales: `request_id`, `query`, `status`, `source`, `data`, `warnings`, `meta`.</p>
+          <h2 id="quickstart-title">Une adresse 1dex, une couche parcelles.</h2>
+          <p>Le connecteur pointe par défaut sur <code>https://1dex.fr</code> et renvoie le JSON map-layer public: <code>layerKey</code>, <code>status</code>, <code>warnings</code> et <code>data</code>.</p>
         </div>
         <div class="code-columns">
           <article class="code-sample" data-reveal>
@@ -102,14 +102,15 @@
             </div>
             <pre id="js-sample"><code>import { OneDexClient } from "@1dex/connector";
 
-const client = new OneDexClient({
-  baseUrl: "https://api.1dex.fr",
-  apiKey: process.env.ONEDEX_API_KEY,
-});
+const client = new OneDexClient();
 
-const answer = await client.address.resolve(
-  "10 rue de la Paix, Paris"
-);</code></pre>
+const answer = await client.map.parcelles({
+  addressSlug: "10-rue-des-cordeliers-aix-en-provence-13100",
+  city_code: "13001",
+  lon: 5.446765371857839,
+  lat: 43.52966775616209,
+  viewport_render_mode: "features",
+});</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -117,16 +118,43 @@ const answer = await client.address.resolve(
               <button type="button" data-copy="py-sample">Copier</button>
             </div>
 <pre id="py-sample"><code>from onedex import OneDexClient
-import os
 
-client = OneDexClient(
-    base_url="https://api.1dex.fr",
-    api_key=os.environ.get("ONEDEX_API_KEY"),
-)
+client = OneDexClient()
 
-answer = client.address.resolve(
-    "10 rue de la Paix, Paris"
-)</code></pre>
+answer = client.map.parcelles({
+    "address_slug": "10-rue-des-cordeliers-aix-en-provence-13100",
+    "city_code": "13001",
+    "lon": 5.446765371857839,
+    "lat": 43.52966775616209,
+    "viewport_render_mode": "features",
+})</code></pre>
+          </article>
+          <article class="code-sample" data-reveal>
+            <div class="sample-head">
+              <h3>Go</h3>
+              <button type="button" data-copy="go-sample">Copier</button>
+            </div>
+<pre id="go-sample"><code>package main
+
+import "net/http"
+
+func main() {
+  req, _ := http.NewRequest(
+    "GET",
+    "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&viewport_render_mode=features",
+    nil,
+  )
+  req.Header.Set("Accept", "application/json")
+  http.DefaultClient.Do(req)
+}</code></pre>
+          </article>
+          <article class="code-sample" data-reveal>
+            <div class="sample-head">
+              <h3>curl</h3>
+              <button type="button" data-copy="curl-sample">Copier</button>
+            </div>
+<pre id="curl-sample"><code>curl "https://1dex.fr/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features" \
+  -H "Accept: application/json"</code></pre>
           </article>
         </div>
       </section>
@@ -140,15 +168,15 @@ answer = client.address.resolve(
         <div class="feature-list">
           <div data-reveal>
             <h3>JavaScript / TypeScript</h3>
-            <p>Client `fetch`, types publics, erreurs `OneDexApiError`, support des headers et timeouts.</p>
+            <p>Client <code>fetch</code>, types publics, erreurs <code>OneDexApiError</code>, support des headers et timeouts.</p>
           </div>
           <div data-reveal>
             <h3>Python</h3>
-            <p>Client `urllib.request`, API miroir du client JS, compatible scripts et notebooks.</p>
+            <p>Client <code>urllib.request</code>, API miroir du client JS, compatible scripts et notebooks.</p>
           </div>
           <div data-reveal>
             <h3>CLI</h3>
-            <p>Commandes pour résoudre, autocompléter, interroger une source et exporter en JSON ou CSV.</p>
+            <p>Commande <code>map parcelles</code> pour tester la route publique et afficher la réponse en JSON ou CSV.</p>
           </div>
         </div>
       </section>
@@ -156,14 +184,14 @@ answer = client.address.resolve(
       <section id="api" class="section section-light" aria-labelledby="api-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Contrat API</p>
-          <h2 id="api-title">Quatre routes pour commencer proprement.</h2>
-          <p>Le contrat OpenAPI public est versionné dans le dépôt et publié avec le site.</p>
+          <h2 id="api-title">Une route publique, vérifiée et testable.</h2>
+          <p>Le contrat OpenAPI public ne décrit que l'endpoint fonctionnel exposé aujourd'hui sur 1dex.fr.</p>
         </div>
         <div class="endpoint-list" data-reveal>
-          <a href="./openapi/1dex-public-api.yaml"><span>GET</span> /v1/address/autocomplete</a>
-          <a href="./openapi/1dex-public-api.yaml"><span>POST</span> /v1/address/resolve</a>
-          <a href="./openapi/1dex-public-api.yaml"><span>POST</span> /v1/address/sources</a>
-          <a href="./openapi/1dex-public-api.yaml"><span>POST</span> /v1/address/sources/{source_key}</a>
+          <a href="./api.html#map-parcelles"><span>GET</span> /adresse/{address_slug}/explore/map-layer/parcelles</a>
+        </div>
+        <div class="section-actions" data-reveal>
+          <a class="secondary-action" href="./api.html">Lire la documentation API</a>
         </div>
       </section>
 
@@ -174,7 +202,7 @@ answer = client.address.resolve(
           <p>La documentation publique ne publie pas de secrets, de schémas internes, de raw data ni de procédures opérateur.</p>
         </div>
         <div class="policy-lines" data-reveal>
-          <p><strong>Authentification.</strong> Les démos publiques peuvent être gratuites; les quotas compte passent par `Authorization: Bearer`.</p>
+          <p><strong>Authentification.</strong> L'endpoint public documenté aujourd'hui est anonyme et fonctionne directement sur <code>1dex.fr</code>.</p>
           <p><strong>Erreurs.</strong> Les warnings restent lisibles par machine pour déboguer sans scraper les messages.</p>
           <p><strong>SEO.</strong> Le site pointe vers <a href="https://1dex.fr/" rel="noopener">1dex.fr</a>, l'OpenAPI et le dépôt GitHub.</p>
         </div>
@@ -184,8 +212,8 @@ answer = client.address.resolve(
         <p class="eyebrow">Prêt à tester</p>
         <h2 id="cta-title">Démarrez avec une adresse publique.</h2>
         <div class="hero-actions">
-          <a class="primary-action" href="https://1dex.fr/" rel="noopener">Découvrir 1dex</a>
-          <a class="secondary-action" href="https://github.com/blipn/1dex-connector/tree/main/examples" rel="noopener">Exemples</a>
+          <a class="primary-action" href="./api.html#try">Tester le connecteur</a>
+          <a class="secondary-action" href="https://1dex.fr/" rel="noopener">Découvrir 1dex</a>
         </div>
       </section>
     </main>
@@ -194,6 +222,7 @@ answer = client.address.resolve(
       <span>1dex Connector</span>
       <a href="https://1dex.fr/" rel="noopener">1dex.fr</a>
       <a href="https://github.com/blipn/1dex-connector" rel="noopener">GitHub</a>
+      <a href="./api.html">API</a>
       <a href="./openapi/1dex-public-api.yaml">OpenAPI</a>
     </footer>
 

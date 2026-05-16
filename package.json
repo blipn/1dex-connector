@@ -1,6 +1,5 @@
 {
   "name": "1dex-connector-workspace",
-  "private": true,
   "type": "module",
   "workspaces": [
     "packages/js",

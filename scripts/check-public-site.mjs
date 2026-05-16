@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 
 const root = process.cwd();
 const siteIndex = await readFile(join(root, 'dist/site/index.html'), 'utf8');
+const apiPage = await readFile(join(root, 'dist/site/api.html'), 'utf8');
 
 const requiredFragments = [
   '<title>1dex Connector',
@@ -13,11 +14,30 @@ const requiredFragments = [
   'https://1dex.fr/',
   'https://github.com/blipn/1dex-connector',
   './openapi/1dex-public-api.yaml',
+  'Tester le endpoint',
+  '/explore/map-layer/parcelles',
 ];
 
 for (const fragment of requiredFragments) {
   if (!siteIndex.includes(fragment)) {
     throw new Error(`Missing public site fragment: ${fragment}`);
+  }
+}
+
+const requiredApiFragments = [
+  '<title>Documentation API 1dex Connector</title>',
+  'rel="canonical"',
+  './openapi/1dex-public-api.yaml',
+  'api-explorer',
+  'Pourquoi',
+  'Tester une requête API',
+  '/explore/map-layer/parcelles',
+  'FeatureCollection',
+];
+
+for (const fragment of requiredApiFragments) {
+  if (!apiPage.includes(fragment)) {
+    throw new Error(`Missing API documentation fragment: ${fragment}`);
   }
 }
 
@@ -36,6 +56,9 @@ if (publicFiles.status !== 0) {
 
 const forbiddenPatterns = [
   /1dex-data-v2/i,
+  /https:\/\/api\.1dex\.fr/i,
+  /\/v1\//i,
+  /your-1dex-api-host/i,
   /internal address api/i,
   /postgresql:\/\//i,
   /postgres:postgres/i,

@@ -1,4 +1,4 @@
-const DEFAULT_BASE_URL = 'https://api.1dex.fr';
+const DEFAULT_BASE_URL = 'https://1dex.fr';
 
 export class OneDexApiError extends Error {
   constructor(message, options = {}) {
@@ -36,33 +36,6 @@ function assertObject(value, name) {
   }
 }
 
-function toResolvePayload(input) {
-  if (typeof input === 'string') {
-    return { address: input };
-  }
-  assertObject(input, 'resolve input');
-  return input;
-}
-
-function toSourcesPayload(input) {
-  if (typeof input === 'string') {
-    return { address: input };
-  }
-  assertObject(input, 'sources input');
-  return input;
-}
-
-function toAutocompleteQuery(input, options) {
-  if (typeof input === 'string') {
-    return {
-      q: input,
-      ...(options?.limit === undefined ? {} : { limit: options.limit }),
-    };
-  }
-  assertObject(input, 'autocomplete input');
-  return input;
-}
-
 function appendQuery(path, query) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -73,6 +46,23 @@ function appendQuery(path, query) {
   }
   const serialized = params.toString();
   return serialized ? `${path}?${serialized}` : path;
+}
+
+function toParcellesQuery(input) {
+  assertObject(input, 'parcelles input');
+  const {
+    addressSlug,
+    address_slug: addressSlugSnake,
+    ...query
+  } = input;
+  const slug = addressSlug ?? addressSlugSnake;
+  if (typeof slug !== 'string' || slug.trim() === '') {
+    throw new TypeError('parcelles input requires addressSlug.');
+  }
+  return {
+    path: `/adresse/${encodeURIComponent(slug.trim())}/explore/map-layer/parcelles`,
+    query,
+  };
 }
 
 function readRequestId(body, headers) {
@@ -102,7 +92,6 @@ async function readJsonResponse(response) {
 export class OneDexClient {
   constructor(options = {}) {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
-    this.apiKey = options.apiKey;
     this.fetch = options.fetch ?? globalThis.fetch;
     this.defaultHeaders = normalizeHeaders(options.headers);
     this.timeoutMs = options.timeoutMs ?? 30_000;
@@ -111,16 +100,8 @@ export class OneDexClient {
       throw new TypeError('A fetch implementation is required.');
     }
 
-    this.address = Object.freeze({
-      autocomplete: (input, requestOptions) => this.addressAutocomplete(input, requestOptions),
-      resolve: (input, requestOptions) => this.addressResolve(input, requestOptions),
-      sources: (input, requestOptions) => this.addressSources(input, requestOptions),
-    });
-    this.source = Object.freeze({
-      query: (sourceKey, input, requestOptions) => this.sourceQuery(sourceKey, input, requestOptions),
-    });
-    this.datasets = Object.freeze({
-      list: (requestOptions) => this.datasetsList(requestOptions),
+    this.map = Object.freeze({
+      parcelles: (input, requestOptions) => this.mapParcelles(input, requestOptions),
     });
   }
 
@@ -130,10 +111,6 @@ export class OneDexClient {
       ...this.defaultHeaders,
       ...normalizeHeaders(options.headers),
     };
-
-    if (this.apiKey && !headers.authorization) {
-      headers.authorization = `Bearer ${this.apiKey}`;
-    }
 
     let body;
     if (options.body !== undefined) {
@@ -182,37 +159,8 @@ export class OneDexClient {
     return responseBody;
   }
 
-  addressAutocomplete(input, options = {}) {
-    const query = toAutocompleteQuery(input, options);
-    return this.request('GET', appendQuery('/v1/address/autocomplete', query), options);
-  }
-
-  addressResolve(input, options = {}) {
-    return this.request('POST', '/v1/address/resolve', {
-      ...options,
-      body: toResolvePayload(input),
-    });
-  }
-
-  addressSources(input, options = {}) {
-    return this.request('POST', '/v1/address/sources', {
-      ...options,
-      body: toSourcesPayload(input),
-    });
-  }
-
-  sourceQuery(sourceKey, input, options = {}) {
-    if (typeof sourceKey !== 'string' || sourceKey.trim().length === 0) {
-      throw new TypeError('sourceKey must be a non-empty string.');
-    }
-    assertObject(input, 'source query input');
-    return this.request('POST', `/v1/address/sources/${encodeURIComponent(sourceKey.trim())}`, {
-      ...options,
-      body: input,
-    });
-  }
-
-  datasetsList(options = {}) {
-    return this.request('GET', '/v1/datasets', options);
+  mapParcelles(input, options = {}) {
+    const { path, query } = toParcellesQuery(input);
+    return this.request('GET', appendQuery(path, query), options);
   }
 }

@@ -28,44 +28,37 @@ class FakeResponse:
 
 
 class ClientTest(unittest.TestCase):
-    def test_address_resolve_posts_payload(self):
+    def test_default_base_url_uses_public_1dex_host(self):
+        client = OneDexClient()
+        self.assertEqual(client.base_url, "https://1dex.fr")
+
+    def test_map_parcelles_uses_working_public_path(self):
         calls = []
 
         def opener(request, timeout):
             calls.append((request, timeout))
-            return FakeResponse({"status": "ok"})
-
-        client = OneDexClient(
-            base_url="http://example.test/",
-            api_key="test-key",
-            opener=opener,
-        )
-
-        client.address.resolve("10 rue de la Paix, Paris")
-
-        request, timeout = calls[0]
-        self.assertEqual(request.full_url, "http://example.test/v1/address/resolve")
-        self.assertEqual(request.get_method(), "POST")
-        self.assertEqual(request.headers["Authorization"], "Bearer test-key")
-        self.assertEqual(json.loads(request.data.decode("utf-8")), {
-            "address": "10 rue de la Paix, Paris",
-        })
-        self.assertEqual(timeout, 30.0)
-
-    def test_autocomplete_uses_query_string(self):
-        calls = []
-
-        def opener(request, timeout):
-            calls.append(request)
-            return FakeResponse({"status": "ok"})
+            return FakeResponse({"status": "success"})
 
         client = OneDexClient(base_url="http://example.test", opener=opener)
-        client.address.autocomplete("10 rue", limit=3)
+        client.map.parcelles({
+            "address_slug": "10-rue-des-cordeliers-aix-en-provence-13100",
+            "city_code": "13001",
+            "lon": 5.446765371857839,
+            "lat": 43.52966775616209,
+            "parcel_record_key": "13001000AS0323",
+            "parcel_phase": "initial",
+            "viewport_bbox": "5.44628,43.52926,5.44725,43.53008",
+            "viewport_zoom": 19.25,
+            "viewport_render_mode": "features",
+        })
 
+        request, timeout = calls[0]
         self.assertEqual(
-            calls[0].full_url,
-            "http://example.test/v1/address/autocomplete?q=10+rue&limit=3",
+            request.full_url,
+            "http://example.test/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features",
         )
+        self.assertEqual(request.get_method(), "GET")
+        self.assertEqual(timeout, 30.0)
 
     def test_http_error_raises_api_error(self):
         def opener(request, timeout):
@@ -76,18 +69,18 @@ class ClientTest(unittest.TestCase):
                 {},
                 FakeResponse({
                     "request_id": "req_error",
-                    "warnings": [{"message": "Bad address."}],
+                    "warnings": [{"message": "Bad query."}],
                 }),
             )
 
         client = OneDexClient(base_url="http://example.test", opener=opener)
 
         with self.assertRaises(OneDexApiError) as context:
-            client.address.resolve({})
+            client.map.parcelles({"address_slug": "x", "city_code": "13001", "lon": 1, "lat": 2})
 
         self.assertEqual(context.exception.status, 400)
         self.assertEqual(context.exception.request_id, "req_error")
-        self.assertEqual(str(context.exception), "Bad address.")
+        self.assertEqual(str(context.exception), "Bad query.")
 
 
 if __name__ == "__main__":

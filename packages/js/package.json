@@ -1,7 +1,7 @@
 {
   "name": "@1dex/connector",
   "version": "0.1.0",
-  "description": "Public JavaScript connector for the 1dex API.",
+  "description": "JavaScript connector for the public 1dex parcel map-layer endpoint.",
   "type": "module",
   "exports": {
     ".": {

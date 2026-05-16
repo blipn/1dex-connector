@@ -13,70 +13,38 @@ function createJsonResponse(body, init = {}) {
   });
 }
 
-test('address.resolve posts a string as an address payload', async () => {
-  const calls = [];
-  const client = new OneDexClient({
-    baseUrl: 'http://example.test/',
-    apiKey: 'test-key',
-    fetch: async (url, init) => {
-      calls.push({ url, init });
-      return createJsonResponse({
-        request_id: 'req_1',
-        status: 'ok',
-        data: {},
-        warnings: [],
-        query: { normalized_address: null, match_score: null },
-        source: {
-          source_key: 'address-resolution',
-          dataset_updated_at: null,
-          method: 'internal_component',
-          limitations: [],
-        },
-        meta: { pagination: null },
-      });
-    },
-  });
-
-  await client.address.resolve('10 rue de la Paix, Paris');
-
-  assert.equal(calls[0].url, 'http://example.test/v1/address/resolve');
-  assert.equal(calls[0].init.method, 'POST');
-  assert.equal(calls[0].init.headers.authorization, 'Bearer test-key');
-  assert.deepEqual(JSON.parse(calls[0].init.body), {
-    address: '10 rue de la Paix, Paris',
-  });
+test('defaults to the public 1dex host', () => {
+  const client = new OneDexClient({ fetch: async () => createJsonResponse({ status: 'success' }) });
+  assert.equal(client.baseUrl, 'https://1dex.fr');
 });
 
-test('address.autocomplete builds a query string', async () => {
+test('map.parcelles builds the working public 1dex map-layer URL', async () => {
   const calls = [];
   const client = new OneDexClient({
     baseUrl: 'http://example.test',
     fetch: async (url, init) => {
       calls.push({ url, init });
-      return createJsonResponse({ status: 'ok' });
+      return createJsonResponse({ status: 'success' });
     },
   });
 
-  await client.address.autocomplete('10 rue', { limit: 3 });
+  await client.map.parcelles({
+    addressSlug: '10-rue-des-cordeliers-aix-en-provence-13100',
+    city_code: '13001',
+    lon: 5.446765371857839,
+    lat: 43.52966775616209,
+    parcel_record_key: '13001000AS0323',
+    parcel_phase: 'initial',
+    viewport_bbox: '5.44628,43.52926,5.44725,43.53008',
+    viewport_zoom: 19.25,
+    viewport_render_mode: 'features',
+  });
 
-  assert.equal(calls[0].url, 'http://example.test/v1/address/autocomplete?q=10+rue&limit=3');
+  assert.equal(
+    calls[0].url,
+    'http://example.test/adresse/10-rue-des-cordeliers-aix-en-provence-13100/explore/map-layer/parcelles?city_code=13001&lon=5.446765371857839&lat=43.52966775616209&parcel_record_key=13001000AS0323&parcel_phase=initial&viewport_bbox=5.44628%2C43.52926%2C5.44725%2C43.53008&viewport_zoom=19.25&viewport_render_mode=features',
+  );
   assert.equal(calls[0].init.method, 'GET');
-});
-
-test('source.query encodes the source key path segment', async () => {
-  const calls = [];
-  const client = new OneDexClient({
-    baseUrl: 'http://example.test',
-    fetch: async (url, init) => {
-      calls.push({ url, init });
-      return createJsonResponse({ status: 'ok' });
-    },
-  });
-
-  await client.source.query('dvf', { address: 'Paris' });
-
-  assert.equal(calls[0].url, 'http://example.test/v1/address/sources/dvf');
-  assert.deepEqual(JSON.parse(calls[0].init.body), { address: 'Paris' });
 });
 
 test('non-2xx responses raise OneDexApiError with response metadata', async () => {
@@ -84,17 +52,17 @@ test('non-2xx responses raise OneDexApiError with response metadata', async () =
     baseUrl: 'http://example.test',
     fetch: async () => createJsonResponse({
       request_id: 'req_error',
-      warnings: [{ code: 'INVALID_QUERY', message: 'Bad address.' }],
+      warnings: [{ code: 'INVALID_QUERY', message: 'Bad query.' }],
     }, { status: 400 }),
   });
 
   await assert.rejects(
-    () => client.address.resolve({}),
+    () => client.map.parcelles({ addressSlug: 'x', city_code: '13001', lon: 1, lat: 2 }),
     (error) => {
       assert.ok(error instanceof OneDexApiError);
       assert.equal(error.status, 400);
       assert.equal(error.requestId, 'req_error');
-      assert.equal(error.message, 'Bad address.');
+      assert.equal(error.message, 'Bad query.');
       return true;
     },
   );
