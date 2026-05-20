@@ -1,11 +1,12 @@
-# Errors
+# Erreurs
 
-The public route documented today returns the raw JSON published by `1dex.fr`.
+Le contrat public canonique des erreurs est documenté sur `1dex.fr`:
 
-Connector behavior:
+<https://1dex.fr/developpeurs/api/technique>
 
-- HTTP `2xx` responses are returned as decoded JSON.
-- Non-`2xx` responses raise `OneDexApiError`.
-- The error object includes `status`, decoded `body` when available, headers, and the best available request id.
+Comportement du connecteur:
 
-Known successful payloads include a `warnings` array. The connectors keep that array as-is instead of mapping warning codes that are not part of the public contract.
+- Les réponses HTTP `2xx` sont renvoyées en JSON décodé.
+- Les réponses non `2xx` lèvent `OneDexApiError`.
+- L'objet d'erreur contient `status`, `body` décodé lorsqu'il est disponible, et le meilleur identifiant de requête disponible.
+- Les appelants doivent respecter `Retry-After` sur les réponses `429`.

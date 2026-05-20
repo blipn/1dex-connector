@@ -68,6 +68,28 @@ test('map layer helpers build verified public DVF and travaux URLs', async () =>
   );
 });
 
+test('overview.address builds the public api v1 address overview URL', async () => {
+  const calls = [];
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return createJsonResponse({ version: 'address-overview-v1', cards: [] });
+    },
+  });
+
+  await client.overview.address({
+    address: '10 rue des cordeliers aix',
+    dvf_radius_m: 300,
+  });
+
+  assert.equal(
+    calls[0].url,
+    'http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=300',
+  );
+  assert.equal(calls[0].init.method, 'GET');
+});
+
 test('unknown public map layer is rejected locally', async () => {
   const client = new OneDexClient({
     baseUrl: 'http://example.test',

@@ -1,49 +1,55 @@
-# Quickstart
+# Démarrage
 
-Les exemples utilisent uniquement les couches publiques vérifiées sur `https://1dex.fr`.
+Racine API:
 
-Le connecteur gratuit 1dex part d'un cas d'usage volontairement simple: une adresse française en entrée, les parcelles proches en JSON/GeoJSON en sortie, sans clé API. Les commandes DVF, travaux, IRIS, contexte et labels sont des raccourcis vers des couches publiques complémentaires déjà vérifiées.
-
-## Console npm
-
-```bash
-npm i @1dex-fr/1dex
-npx 1dex parcelles "50 rue des tanneurs aix" -f summary
-npx 1dex dvf "50 rue des tanneurs aix" -f summary
-npx 1dex travaux "50 rue des tanneurs aix" -f summary
+```text
+https://1dex.fr/api/v1
 ```
 
-Pour avoir la commande `1dex` disponible directement dans le terminal:
+## Aperçu public
 
 ```bash
-npm i -g @1dex-fr/1dex
-1dex parcelles "50 rue des tanneurs aix" -f summary
-1dex dvf "50 rue des tanneurs aix" -f summary
+curl "https://1dex.fr/api/v1/public-preview?path=/ville/paris-75056"
+```
+
+## Autocomplete
+
+```bash
+curl "https://1dex.fr/api/v1/autocomplete/address?q=10+rue+de+la+paix&limit=5"
+```
+
+## État d'une page adresse
+
+```bash
+curl "https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state"
+```
+
+## Aperçu adresse
+
+```bash
+curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&dvf_radius_m=300"
+```
+
+## Focus géographique public
+
+```bash
+curl "https://1dex.fr/api/v1/map-focus/public-location?lon=2.3317&lat=48.8686"
 ```
 
 ## JavaScript
+
+Les packages du connecteur restent volontairement de petits clients HTTP. Lorsque les helpers de haut niveau ne couvrent pas encore une route `/api/v1`, appelez directement les points d'entrée publics:
 
 ```js
 import { OneDexClient } from "@1dex/connector";
 
 const client = new OneDexClient();
-
-const parcelles = await client.map.parcelles({
-  address: "50 rue des tanneurs aix",
-  viewport_render_mode: "features",
+const overview = await client.overview.address({
+  address: "10 rue des cordeliers aix",
+  dvf_radius_m: 300,
 });
 
-const dvf = await client.map.dvf({
-  address: "50 rue des tanneurs aix",
-  viewport_render_mode: "features",
-});
-```
-
-## curl
-
-```bash
-curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features" \
-  -H "Accept: application/json"
+console.log(overview.version, overview.cards);
 ```
 
 ## Python
@@ -52,46 +58,10 @@ curl "https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanne
 from onedex import OneDexClient
 
 client = OneDexClient()
-
-parcelles = client.map.parcelles({
-    "address": "50 rue des tanneurs aix",
-    "viewport_render_mode": "features",
+overview = client.overview.address({
+    "address": "10 rue des cordeliers aix",
+    "dvf_radius_m": 300,
 })
+
+print(overview["version"], overview["cards"])
 ```
-
-## Go
-
-The connector does not need a Go SDK. Use the public HTTP endpoint directly:
-
-```go
-req, err := http.NewRequest(
-	"GET",
-	"https://1dex.fr/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features",
-	nil,
-)
-```
-
-## CLI
-
-```bash
-1dex parcelles "50 rue des tanneurs aix" --format summary
-1dex dvf "50 rue des tanneurs aix" --format summary
-1dex travaux "50 rue des tanneurs aix" --format summary
-1dex layer iris "50 rue des tanneurs aix" --format summary
-1dex examples
-1dex doctor
-```
-
-Options utiles:
-
-```bash
-1dex parcelles --address "50 rue des tanneurs aix" --url
-1dex parcelles "50 rue des tanneurs aix" \
-  --lon 5.446245 \
-  --lat 43.52782 \
-  --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
-  --viewport-zoom 19 \
-  --format csv
-```
-
-Set `ONEDEX_BASE_URL` only if you need to target another environment. The public default is `https://1dex.fr`.

@@ -87,6 +87,25 @@ class ClientTest(unittest.TestCase):
             "http://example.test/explore/map-layer/iris?address=50+rue+des+tanneurs+aix",
         )
 
+    def test_overview_address_uses_public_api_v1_path(self):
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            return FakeResponse({"version": "address-overview-v1", "cards": []})
+
+        client = OneDexClient(base_url="http://example.test", opener=opener)
+        client.overview.address({
+            "address": "10 rue des cordeliers aix",
+            "dvf_radius_m": 300,
+        })
+
+        self.assertEqual(
+            calls[0][0].full_url,
+            "http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=300",
+        )
+        self.assertEqual(calls[0][0].get_method(), "GET")
+
     def test_unknown_public_map_layer_is_rejected_locally(self):
         client = OneDexClient()
 

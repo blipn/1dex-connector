@@ -35,6 +35,19 @@ export interface MapLayerInput extends MapParcellesInput {
   layer_key?: PublicMapLayerKey;
 }
 
+export interface AddressOverviewInput {
+  address?: string;
+  city_code?: string;
+  lon?: number;
+  lat?: number;
+  parcel_record_key?: string;
+  dvf_radius_m?: number;
+  dvf_year?: number;
+  dvf_date_min?: string;
+  dvf_date_max?: string;
+  [key: string]: unknown;
+}
+
 export class OneDexApiError extends Error {
   readonly status: number;
   readonly body: unknown;
@@ -62,7 +75,12 @@ export class OneDexClient {
     layer(input: MapLayerInput, options?: OneDexRequestOptions): Promise<unknown>;
   };
 
+  readonly overview: {
+    address(input: AddressOverviewInput, options?: OneDexRequestOptions): Promise<unknown>;
+  };
+
   request<T = unknown>(method: string, path: string, options?: OneDexRequestOptions): Promise<T>;
   mapParcelles(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
   mapLayer(input: MapLayerInput, options?: OneDexRequestOptions): Promise<unknown>;
+  addressOverview(input: AddressOverviewInput, options?: OneDexRequestOptions): Promise<unknown>;
 }

@@ -146,6 +146,9 @@ export class OneDexClient {
       context: (input, requestOptions) => this.mapLayer({ ...input, layer: 'context' }, requestOptions),
       layer: (input, requestOptions) => this.mapLayer(input, requestOptions),
     });
+    this.overview = Object.freeze({
+      address: (input, requestOptions) => this.addressOverview(input, requestOptions),
+    });
   }
 
   async request(method, path, options = {}) {
@@ -210,5 +213,10 @@ export class OneDexClient {
   mapLayer(input, options = {}) {
     const { path, query } = toMapLayerQuery(input);
     return this.request('GET', appendQuery(path, query), options);
+  }
+
+  addressOverview(input, options = {}) {
+    assertObject(input, 'address overview input');
+    return this.request('GET', appendQuery('/api/v1/address-overview', input), options);
   }
 }

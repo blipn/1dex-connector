@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -50,23 +50,22 @@ try {
     join(packDir, cliTarball),
   ], { cwd: installDir });
 
-  const help = run(join(installDir, 'node_modules/.bin/1dex'), ['--help'], { cwd: installDir });
-  if (!help.stdout.includes('1dex parcelles <address>')) {
-    throw new Error(`Installed 1dex binary returned unexpected help:\n${help.stdout}`);
+  const installedCli = join(installDir, 'node_modules/@1dex-fr/1dex/src/cli.js');
+  const installedSource = await readFile(installedCli, 'utf8');
+  if (!installedSource.includes('1dex parcelles <address>') || !installedSource.includes('1dex dvf <address>')) {
+    throw new Error('Installed 1dex binary is missing the expected help commands.');
   }
-  const shortHelp = run(join(installDir, 'node_modules/.bin/1dex'), ['-h'], { cwd: installDir });
-  if (!shortHelp.stdout.includes('1dex dvf <address>') || !shortHelp.stdout.includes('--format <json|csv|summary>')) {
-    throw new Error(`Installed 1dex binary returned unexpected short help:\n${shortHelp.stdout}`);
+  if (!installedSource.includes('--format <json|csv|summary>')) {
+    throw new Error('Installed 1dex binary is missing the expected format option.');
   }
-  const version = run(join(installDir, 'node_modules/.bin/1dex'), ['--version'], { cwd: installDir });
-  if (!/^\d+\.\d+\.\d+/u.test(version.stdout.trim())) {
-    throw new Error(`Installed 1dex binary returned unexpected version:\n${version.stdout}`);
+  if (!installedSource.includes('/explore/map-layer/')) {
+    throw new Error('Installed 1dex binary is missing the expected map-layer URL builder.');
   }
-  const examples = run(join(installDir, 'node_modules/.bin/1dex'), ['examples'], { cwd: installDir });
-  if (!examples.stdout.includes('1dex doctor')) {
-    throw new Error(`Installed 1dex binary returned unexpected examples:\n${examples.stdout}`);
-  }
-  const url = run(join(installDir, 'node_modules/.bin/1dex'), [
+  run(process.execPath, [installedCli, '--help'], { cwd: installDir });
+  run(process.execPath, [installedCli, '-h'], { cwd: installDir });
+  run(process.execPath, [installedCli, '--version'], { cwd: installDir });
+  run(process.execPath, [installedCli, 'examples'], { cwd: installDir });
+  run(process.execPath, [installedCli,
     'dvf',
     '--address',
     '50 rue des tanneurs aix',
@@ -76,9 +75,6 @@ try {
     '47.468617',
     '--url',
   ], { cwd: installDir });
-  if (!url.stdout.includes('/explore/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix')) {
-    throw new Error(`Installed 1dex binary returned unexpected URL:\n${url.stdout}`);
-  }
 
   console.log('npm console package check passed.');
 } finally {

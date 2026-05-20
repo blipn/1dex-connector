@@ -54,23 +54,17 @@ const explorer = document.getElementById('api-explorer');
 
 if (explorer) {
   const form = document.getElementById('api-request-form');
+  const operationInput = document.getElementById('api-operation');
   const baseUrlInput = document.getElementById('api-base-url');
-  const addressInput = document.getElementById('api-address');
-  const layerInput = document.getElementById('api-layer');
-  const renderModeInput = document.getElementById('api-render-mode');
   const curlOutput = document.querySelector('#api-curl code');
   const responseOutput = document.querySelector('#api-response code');
   const resultMeta = document.getElementById('api-result-meta');
   const routeLabel = document.getElementById('api-route-label');
   const openUrlLink = document.getElementById('api-open-url');
 
-  const optionalQueryFieldNames = [
-    'city_code',
-    'lon',
-    'lat',
-    'viewport_bbox',
-    'viewport_zoom',
-  ];
+  function readValue(name) {
+    return form.elements[name]?.value?.trim() ?? '';
+  }
 
   function prettyJson(value) {
     return JSON.stringify(value, null, 2);
@@ -80,38 +74,66 @@ if (explorer) {
     return baseUrlInput.value.trim().replace(/\/+$/, '');
   }
 
+  function appendIfPresent(query, key, value) {
+    if (value !== '') {
+      query.set(key, value);
+    }
+  }
+
   function buildRequest() {
     const baseUrl = readBaseUrl();
     if (!baseUrl) {
-      throw new Error('Base URL requise.');
-    }
-    const address = addressInput.value.trim();
-    if (!address) {
-      throw new Error('Adresse requise.');
+      throw new Error('Racine API requise.');
     }
 
-    const layer = layerInput.value || 'parcelles';
-    const path = `/explore/map-layer/${encodeURIComponent(layer)}`;
+    const operation = operationInput.value;
     const query = new URLSearchParams();
-    query.set('address', address);
+    let path = '/api/v1/address-overview';
 
-    if (renderModeInput.value) {
-      query.set('viewport_render_mode', renderModeInput.value);
-    }
-
-    for (const name of optionalQueryFieldNames) {
-      const value = form.elements[name]?.value?.trim() ?? '';
-      if (!value) {
-        continue;
+    if (operation === 'address-overview') {
+      appendIfPresent(query, 'address', readValue('address'));
+      appendIfPresent(query, 'city_code', readValue('city_code'));
+      appendIfPresent(query, 'lon', readValue('lon'));
+      appendIfPresent(query, 'lat', readValue('lat'));
+      appendIfPresent(query, 'dvf_radius_m', readValue('dvf_radius_m'));
+      if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
+        throw new Error('Adresse ou coordonnées requises.');
       }
-      query.set(name, value);
+    } else if (operation === 'public-preview') {
+      path = '/api/v1/public-preview';
+      const publicPath = readValue('public_path');
+      if (!publicPath) {
+        throw new Error('Chemin public requis.');
+      }
+      query.set('path', publicPath);
+    } else if (operation === 'autocomplete') {
+      path = '/api/v1/autocomplete/address';
+      const q = readValue('address');
+      if (q.length < 3) {
+        throw new Error('Recherche de 3 caractères minimum requise.');
+      }
+      query.set('q', q);
+      appendIfPresent(query, 'limit', readValue('limit'));
+    } else if (operation === 'map-layer') {
+      const layer = readValue('layer') || 'context';
+      path = `/api/v1/map-layer/${encodeURIComponent(layer)}`;
+      appendIfPresent(query, 'address', readValue('address'));
+      appendIfPresent(query, 'city_code', readValue('city_code'));
+      appendIfPresent(query, 'lon', readValue('lon'));
+      appendIfPresent(query, 'lat', readValue('lat'));
+      appendIfPresent(query, 'viewport_render_mode', readValue('viewport_render_mode'));
+      if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
+        throw new Error('Adresse ou coordonnées requises.');
+      }
     }
 
     const queryString = query.toString();
+    const url = queryString ? `${baseUrl}${path}?${queryString}` : `${baseUrl}${path}`;
     return {
       method: 'GET',
       path,
-      url: `${baseUrl}${path}?${queryString}`,
+      url,
+      apiKey: readValue('api_key'),
     };
   }
 
@@ -127,12 +149,17 @@ if (explorer) {
         '  -H "Accept: application/json"',
       ];
 
+      if (request.apiKey) {
+        lines.push('  -H "Authorization: Bearer $ONEDEX_API_KEY"');
+      }
+
       curlOutput.textContent = lines.join(' \\\n');
       routeLabel.textContent = `${request.method} ${request.path}`;
       openUrlLink.href = request.url;
       return request;
     } catch (error) {
       curlOutput.textContent = error.message;
+      routeLabel.textContent = 'Requête incomplète';
       return null;
     }
   }
@@ -147,7 +174,7 @@ if (explorer) {
 
     const request = renderCurl();
     if (!request) {
-      resultMeta.textContent = 'JSON invalide';
+      resultMeta.textContent = 'Paramètres incomplets';
       return;
     }
 
@@ -156,13 +183,15 @@ if (explorer) {
     responseOutput.textContent = '';
 
     const headers = { accept: 'application/json' };
-    const options = {
-      method: request.method,
-      headers,
-    };
+    if (request.apiKey) {
+      headers.authorization = `Bearer ${request.apiKey}`;
+    }
 
     try {
-      const response = await fetch(request.url, options);
+      const response = await fetch(request.url, {
+        method: request.method,
+        headers,
+      });
       const text = await response.text();
       const duration = Math.round(performance.now() - startedAt);
       resultMeta.textContent = `${response.status} ${response.statusText || ''} · ${duration} ms`.trim();
@@ -176,7 +205,7 @@ if (explorer) {
       resultMeta.textContent = 'Erreur réseau';
       responseOutput.textContent = prettyJson({
         error: error.message,
-        hint: "L'URL fonctionne en accès direct, mais le navigateur peut bloquer la lecture cross-origin sans header CORS.",
+        hint: "Si la requête échoue dans le navigateur, ouvrez l'URL générée ou copiez le curl.",
         direct_url: request.url,
       });
     }

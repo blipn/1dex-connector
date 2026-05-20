@@ -1,11 +1,9 @@
-# Authentication
+# Authentification
 
-The currently documented public map-layer endpoints on `https://1dex.fr` are anonymous:
+Les liens canoniques d'accès et d'habilitation sont maintenus sur `1dex.fr`:
 
-```http
-GET /explore/map-layer/{layer}?address=...
-```
+- Outil d’habilitation d’accès: <https://1dex.fr/contact>
+- Racine API: <https://1dex.fr/api/v1>
+- Documentation technique: <https://1dex.fr/developpeurs/api/technique>
 
-The verified public layers are `parcelles`, `parcelles_dvf`, `parcelles_travaux`, `iris`, `context`, and `parcelles_labels`.
-
-The public connectors do not require an API key for these routes.
+Les clients JS et Python ajoutent `Authorization: Bearer <api-key>` lorsque `apiKey` / `api_key` est fourni. Les méthodes du connecteur prennent en charge les lectures publiques non authentifiées et les usages rattachés à un compte lorsque l'accès est accordé.

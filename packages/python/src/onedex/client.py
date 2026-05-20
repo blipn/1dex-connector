@@ -115,6 +115,14 @@ class _MapNamespace:
         return self._layer(payload)
 
 
+class _OverviewNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def address(self, payload: Mapping[str, Any]) -> Any:
+        return self._client.address_overview(payload)
+
+
 class OneDexClient:
     def __init__(
         self,
@@ -129,6 +137,7 @@ class OneDexClient:
         self.timeout = timeout
         self._opener = opener or urllib.request.urlopen
         self.map = _MapNamespace(self)
+        self.overview = _OverviewNamespace(self)
 
     def request(
         self,
@@ -187,3 +196,10 @@ class OneDexClient:
                 request_id=_request_id_from_body(body_value),
                 headers=dict(exc.headers.items()),
             ) from exc
+
+    def address_overview(self, payload: Mapping[str, Any]) -> Any:
+        return self.request(
+            "GET",
+            "/api/v1/address-overview",
+            query=dict(_ensure_mapping(payload, "address overview input")),
+        )
