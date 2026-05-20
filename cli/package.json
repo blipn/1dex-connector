@@ -1,6 +1,6 @@
 {
   "name": "@1dex-fr/1dex",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Free CLI to test 1dex public address data: retrieve parcel GeoJSON around a French address and discover the advanced real-estate address API.",
   "type": "module",
   "bin": {

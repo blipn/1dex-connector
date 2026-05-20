@@ -1,3 +1,145 @@
+const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+if (currentPage === 'api.html' && window.location.hash === '#redoc') {
+  window.location.replace('./documentation-api.html');
+} else if (currentPage === 'api.html' && window.location.hash.startsWith('#operation/')) {
+  window.location.replace(`./documentation-api.html${window.location.hash}`);
+} else if (currentPage === 'api.html' && window.location.hash === '#getMapLayer') {
+  window.location.replace('./documentation-api.html#operation/getMapLayer');
+}
+
+function findTargetById(targetId) {
+  if (!targetId) {
+    return null;
+  }
+  const decodedId = decodeURIComponent(targetId);
+  return document.getElementById(decodedId)
+    ?? document.querySelector(`[data-section-id="${CSS.escape(decodedId)}"]`)
+    ?? document.querySelector(`[data-item-id="${CSS.escape(decodedId)}"]`);
+}
+
+function scrollToTargetId(targetId) {
+  const target = findTargetById(targetId);
+  if (!target) {
+    return false;
+  }
+  const stickyOffset = 84;
+  const top = target.getBoundingClientRect().top + window.scrollY - stickyOffset;
+  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  return true;
+}
+
+function scheduleTargetScroll(targetId) {
+  if (!targetId) {
+    return;
+  }
+  let attempts = 0;
+  const maxAttempts = 200;
+  const timer = window.setInterval(() => {
+    attempts += 1;
+    if (scrollToTargetId(targetId) || attempts >= maxAttempts) {
+      window.clearInterval(timer);
+    }
+  }, 50);
+}
+
+function scheduleHashScroll() {
+  scheduleTargetScroll(window.location.hash.slice(1));
+}
+
+function readClickedTargetId(target) {
+  const link = target.closest('a[href^="#"]');
+  if (link) {
+    return link.getAttribute('href').slice(1);
+  }
+  const menuItem = target.closest('[data-item-id], [role="menuitem"]');
+  const itemId = menuItem?.getAttribute('data-item-id') ?? menuItem?.getAttribute('aria-controls') ?? '';
+  return itemId.startsWith('#') ? itemId.slice(1) : itemId;
+}
+
+const operationConsoleLinks = {
+  getAddressOverview: './api.html?operation=address-overview',
+  autocompleteAddress: './api.html?operation=autocomplete',
+  getAddressPageState: './api.html?operation=address-page-state',
+  getMapLayer: './api.html?operation=map-layer&layer=parcelles',
+  getMapViewport: './api.html?operation=map-viewport&layers=context,iris',
+};
+
+function addOperationTestLinks() {
+  for (const [operationId, href] of Object.entries(operationConsoleLinks)) {
+    const target = document.getElementById(`operation/${operationId}`);
+    if (!target || target.querySelector('.redoc-operation-actions')) {
+      continue;
+    }
+    const actions = document.createElement('div');
+    actions.className = 'redoc-operation-actions';
+    const link = document.createElement('a');
+    link.className = 'secondary-action';
+    link.href = href;
+    link.textContent = 'Tester cette requête';
+    actions.append(link);
+    target.prepend(actions);
+  }
+}
+
+if (currentPage === 'documentation-api.html') {
+  window.addEventListener('hashchange', scheduleHashScroll);
+  window.addEventListener('load', scheduleHashScroll);
+  document.addEventListener('click', (event) => {
+    const targetId = readClickedTargetId(event.target);
+    if (!targetId) {
+      return;
+    }
+    window.setTimeout(() => scheduleTargetScroll(targetId), 0);
+  }, true);
+  window.addEventListener('load', () => {
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      addOperationTestLinks();
+      if (document.querySelectorAll('.redoc-operation-actions').length >= Object.keys(operationConsoleLinks).length || attempts >= 200) {
+        window.clearInterval(timer);
+      }
+    }, 50);
+  });
+}
+
+const redocContainer = document.getElementById('redoc-container');
+if (redocContainer && window.Redoc?.init) {
+  window.Redoc.init(
+    redocContainer.dataset.specUrl,
+    {
+      hideHostname: true,
+      scrollYOffset: 84,
+      theme: {
+        spacing: {
+          unit: 4,
+          sectionVertical: 18,
+        },
+        typography: {
+          fontSize: '13px',
+          lineHeight: '1.45em',
+          headings: {
+            fontSize: '18px',
+            lineHeight: '1.25em',
+          },
+          code: {
+            fontSize: '12px',
+            lineHeight: '1.45em',
+          },
+        },
+        sidebar: {
+          width: '245px',
+        },
+        rightPanel: {
+          width: '34%',
+        },
+      },
+    },
+    redocContainer,
+    scheduleHashScroll,
+  );
+}
+
 const revealElements = document.querySelectorAll('[data-reveal]');
 const observer = new IntersectionObserver((entries) => {
   for (const entry of entries) {
@@ -15,7 +157,7 @@ for (const element of revealElements) {
 const navLinks = [...document.querySelectorAll('.nav a')];
 const sections = navLinks
   .filter((link) => link.getAttribute('href')?.startsWith('#'))
-  .map((link) => document.querySelector(link.getAttribute('href')))
+  .map((link) => document.getElementById(link.getAttribute('href').slice(1)))
   .filter(Boolean);
 
 const navObserver = new IntersectionObserver((entries) => {
@@ -67,7 +209,9 @@ if (explorer) {
   const responseOutput = document.querySelector('#api-response code');
   const resultMeta = document.getElementById('api-result-meta');
   const routeLabel = document.getElementById('api-route-label');
+  const docLink = document.getElementById('api-doc-link');
   const operationFields = [...form.querySelectorAll('[data-visible-for]')];
+  const pageParams = new URLSearchParams(window.location.search);
 
   function readValue(name) {
     return form.elements[name]?.value?.trim() ?? '';
@@ -114,6 +258,12 @@ if (explorer) {
       }
       query.set('q', q);
       appendIfPresent(query, 'limit', readValue('limit'));
+    } else if (operation === 'address-page-state') {
+      const slug = readValue('slug');
+      if (!slug) {
+        throw new Error('Slug page adresse requis.');
+      }
+      path = `/api/v1/address-pages/${encodeURIComponent(slug)}/state`;
     } else if (operation === 'map-layer') {
       const layer = readValue('layer') || 'context';
       path = `/api/v1/map-layer/${encodeURIComponent(layer)}`;
@@ -122,6 +272,19 @@ if (explorer) {
       appendIfPresent(query, 'lon', readValue('lon'));
       appendIfPresent(query, 'lat', readValue('lat'));
       appendIfPresent(query, 'viewport_render_mode', readValue('viewport_render_mode'));
+      if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
+        throw new Error('Adresse ou coordonnées requises.');
+      }
+    } else if (operation === 'map-viewport') {
+      path = '/api/v1/map-viewport';
+      appendIfPresent(query, 'layers', readValue('layers') || 'context,iris');
+      appendIfPresent(query, 'address', readValue('address'));
+      appendIfPresent(query, 'city_code', readValue('city_code'));
+      appendIfPresent(query, 'lon', readValue('lon'));
+      appendIfPresent(query, 'lat', readValue('lat'));
+      if (!query.has('layers')) {
+        throw new Error('Calques viewport requis.');
+      }
       if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
         throw new Error('Adresse ou coordonnées requises.');
       }
@@ -142,6 +305,42 @@ if (explorer) {
     for (const field of operationFields) {
       const visibleOperations = field.dataset.visibleFor.split(',').map((value) => value.trim());
       field.hidden = !visibleOperations.includes(operation);
+    }
+    if (docLink) {
+      const operationIds = {
+        'address-overview': 'getAddressOverview',
+        autocomplete: 'autocompleteAddress',
+        'address-page-state': 'getAddressPageState',
+        'map-layer': 'getMapLayer',
+        'map-viewport': 'getMapViewport',
+      };
+      docLink.href = `./documentation-api.html#operation/${operationIds[operation] ?? 'getAddressOverview'}`;
+    }
+  }
+
+  function applyInitialParams() {
+    const requestedOperation = pageParams.get('operation') ?? pageParams.get('op');
+    if (requestedOperation && Array.from(operationInput.options).some((option) => option.value === requestedOperation)) {
+      operationInput.value = requestedOperation;
+    }
+
+    for (const name of [
+      'address',
+      'city_code',
+      'lon',
+      'lat',
+      'dvf_radius_m',
+      'limit',
+      'slug',
+      'layer',
+      'layers',
+      'viewport_render_mode',
+      'api_key',
+    ]) {
+      const value = pageParams.get(name);
+      if (value !== null && form.elements[name]) {
+        form.elements[name].value = value;
+      }
     }
   }
 
@@ -219,6 +418,7 @@ if (explorer) {
     }
   });
 
+  applyInitialParams();
   updateOperationFields();
   renderCurl();
 }

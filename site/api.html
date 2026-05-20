@@ -4,13 +4,13 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tester l'API publique - 1dex Connector</title>
-    <meta name="description" content="Console de test, documentation Redoc et liens officiels pour l'API publique 1dex.">
+    <meta name="description" content="Console de test et liens officiels pour l'API publique 1dex.">
     <meta name="robots" content="index,follow">
     <meta name="theme-color" content="#0b7a53">
     <link rel="canonical" href="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Tester l'API publique - 1dex Connector">
-    <meta property="og:description" content="Console de test, documentation Redoc et liens officiels pour l'API publique 1dex.">
+    <meta property="og:description" content="Console de test et liens officiels pour l'API publique 1dex.">
     <meta property="og:url" content="https://blipn.github.io/1dex-connector/api.html">
     <meta property="og:site_name" content="1dex Connector">
     <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
@@ -20,8 +20,8 @@
       {
         "@context": "https://schema.org",
         "@type": "TechArticle",
-        "headline": "Console et documentation API publique 1dex",
-        "description": "Console de test et documentation Redoc pour l'API publique 1dex.",
+        "headline": "Console API publique 1dex",
+        "description": "Console de test pour l'API publique 1dex.",
         "url": "https://blipn.github.io/1dex-connector/api.html"
       }
     </script>
@@ -34,7 +34,7 @@
       </a>
       <nav class="nav" aria-label="Navigation API">
         <a href="#tester">Tester</a>
-        <a href="#redoc">Redoc</a>
+        <a href="./documentation-api.html">Documentation API</a>
         <a href="#liens">Liens officiels</a>
       </nav>
       <a class="external-link" href="#tester">Console</a>
@@ -43,7 +43,7 @@
     <main id="top" class="api-shell">
       <aside class="api-sidebar" aria-label="Sommaire API">
         <a href="#tester">Console de test</a>
-        <a href="#redoc">Documentation Redoc</a>
+        <a href="./documentation-api.html">Documentation API</a>
         <a href="#liens">Liens officiels</a>
         <a href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI YAML</a>
       </aside>
@@ -61,7 +61,9 @@
                 <select id="api-operation" name="operation">
                   <option value="address-overview">Aperçu adresse</option>
                   <option value="autocomplete">Autocomplete adresse</option>
+                  <option value="address-page-state">État page adresse</option>
                   <option value="map-layer">Calque carte</option>
+                  <option value="map-viewport">Viewport multi-calques</option>
                 </select>
               </label>
 
@@ -72,13 +74,18 @@
                 </select>
               </label>
 
-              <label class="field-label" for="api-address">
+              <label class="field-label" for="api-address" data-visible-for="address-overview,autocomplete,map-layer,map-viewport">
                 Adresse
                 <input id="api-address" name="address" type="text" value="10 rue des cordeliers aix" autocomplete="street-address">
               </label>
 
-              <div class="form-grid" data-visible-for="map-layer">
-                <label class="field-label" for="api-layer">
+              <label class="field-label" for="api-slug" data-visible-for="address-page-state">
+                Slug page adresse
+                <input id="api-slug" name="slug" type="text" value="10-rue-de-la-paix-paris-75002" autocomplete="off">
+              </label>
+
+              <div class="form-grid" data-visible-for="map-layer,map-viewport">
+                <label class="field-label" for="api-layer" data-visible-for="map-layer">
                   Calque
                   <select id="api-layer" name="layer">
                     <option value="context">Contexte</option>
@@ -89,7 +96,12 @@
                   </select>
                 </label>
 
-                <label class="field-label" for="api-render-mode">
+                <label class="field-label" for="api-layers" data-visible-for="map-viewport">
+                  Calques viewport
+                  <input id="api-layers" name="layers" type="text" value="context,iris" autocomplete="off">
+                </label>
+
+                <label class="field-label" for="api-render-mode" data-visible-for="map-layer">
                   Rendu carte
                   <select id="api-render-mode" name="viewport_render_mode">
                     <option value="">Réponse par défaut</option>
@@ -101,7 +113,7 @@
               <div class="form-grid">
                 <label class="field-label" for="api-dvf-radius" data-visible-for="address-overview">
                   Rayon DVF
-                  <input id="api-dvf-radius" name="dvf_radius_m" type="number" min="1" value="300" autocomplete="off">
+                  <input id="api-dvf-radius" name="dvf_radius_m" type="number" min="1" value="600" autocomplete="off">
                 </label>
 
                 <label class="field-label" for="api-limit" data-visible-for="autocomplete">
@@ -113,15 +125,15 @@
               <details class="advanced-fields">
                 <summary>Paramètres avancés</summary>
                 <div class="form-grid">
-                  <label class="field-label" for="api-city-code" data-visible-for="address-overview,map-layer">
+                  <label class="field-label" for="api-city-code" data-visible-for="address-overview,map-layer,map-viewport">
                     Code commune
                     <input id="api-city-code" name="city_code" type="text" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-lon" data-visible-for="address-overview,map-layer">
+                  <label class="field-label" for="api-lon" data-visible-for="address-overview,map-layer,map-viewport">
                     Longitude
                     <input id="api-lon" name="lon" type="number" step="any" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-lat" data-visible-for="address-overview,map-layer">
+                  <label class="field-label" for="api-lat" data-visible-for="address-overview,map-layer,map-viewport">
                     Latitude
                     <input id="api-lat" name="lat" type="number" step="any" autocomplete="off">
                   </label>
@@ -135,6 +147,7 @@
               <div class="console-actions">
                 <button id="api-send" class="primary-action" type="submit">Envoyer</button>
                 <button class="secondary-action" type="button" data-copy="api-curl">Copier curl</button>
+                <a id="api-doc-link" class="secondary-action" href="./documentation-api.html#operation/getAddressOverview">Documentation API</a>
               </div>
             </form>
 
@@ -160,17 +173,6 @@
           </div>
         </section>
 
-        <section id="redoc" class="api-section api-section--redoc" data-reveal>
-          <div class="api-section-head">
-            <p class="api-kicker">Redoc</p>
-            <h2>Documentation machine rendue depuis l'OpenAPI officiel</h2>
-            <p>La spécification affichée ci-dessous est chargée depuis <code>https://1dex.fr/api/v1/openapi.yaml</code>.</p>
-          </div>
-          <div class="redoc-frame">
-            <redoc spec-url="https://1dex.fr/api/v1/openapi.yaml"></redoc>
-          </div>
-        </section>
-
         <section id="liens" class="api-section" data-reveal>
           <div class="api-section-head">
             <p class="api-kicker">Référence</p>
@@ -191,11 +193,11 @@
     <footer class="footer">
       <span>1dex Connector</span>
       <a href="./index.html">Accueil</a>
+      <a href="./documentation-api.html">Documentation API</a>
       <a href="https://github.com/blipn/1dex-connector" rel="noopener">GitHub</a>
       <a href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI</a>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
     <script src="./assets/app.js" type="module"></script>
   </body>
 </html>

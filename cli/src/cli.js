@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
-const DEFAULT_SAMPLE_ADDRESS = '50 rue des tanneurs aix';
+const DEFAULT_SAMPLE_ADDRESS = '10 rue des cordeliers aix';
 const NPM_LATEST_URL = 'https://registry.npmjs.org/@1dex-fr%2f1dex/latest';
 const PUBLIC_MAP_LAYERS = new Set([
   'context',
@@ -37,6 +37,7 @@ const VALUE_FLAGS = new Set([
   'layer',
   'lat',
   'lon',
+  'dvf-radius-m',
   'timeout-ms',
   'viewport-bbox',
   'viewport-render-mode',
@@ -108,6 +109,9 @@ class OneDexClient {
       parcelles: (input) => this.mapParcelles(input),
       layer: (input) => this.mapLayer(input),
     });
+    this.overview = Object.freeze({
+      address: (input) => this.addressOverview(input),
+    });
   }
 
   async request(method, path) {
@@ -163,6 +167,18 @@ class OneDexClient {
     });
     return this.request('GET', path);
   }
+
+  addressOverview(input) {
+    const { address, ...query } = input;
+    if (typeof address !== 'string' || !address.trim()) {
+      throw new TypeError('address overview input requires address.');
+    }
+    const path = appendQuery('/api/v1/address-overview', {
+      address: address.trim(),
+      ...query,
+    });
+    return this.request('GET', path);
+  }
 }
 
 function usage() {
@@ -189,6 +205,7 @@ Options:
       --city-code <code>               INSEE city code if already known.
       --lon <number>                   Longitude if already known.
       --lat <number>                   Latitude if already known.
+      --dvf-radius-m <number>          DVF radius for address overview. Default: 600.
       --base-url <url>                 Override API base URL.
       --timeout-ms <number>            Request timeout in milliseconds. Default: 30000.
   -f, --format <json|csv|summary>      Output format. Default: json.
@@ -205,7 +222,7 @@ Environment:
 function examples() {
   return `Examples:
 
-  # Fastest path: install, then resolve parcels around an address.
+  # Fastest path: install, then read the address overview.
   npm i -g @1dex-fr/1dex
   1dex "${DEFAULT_SAMPLE_ADDRESS}"
 
@@ -407,6 +424,20 @@ function buildMapLayerInput(flags, subjectParts, defaultLayer = 'parcelles') {
   };
 }
 
+function buildAddressOverviewInput(flags, subjectParts) {
+  const address = String(flags.address ?? subjectParts.join(' ')).trim();
+  if (!address) {
+    throw new Error('Missing address. Use positional text or --address <text>.');
+  }
+  return {
+    address,
+    city_code: flags['city-code'],
+    lon: readOptionalNumber(flags.lon, 'lon'),
+    lat: readOptionalNumber(flags.lat, 'lat'),
+    dvf_radius_m: readOptionalNumber(flags['dvf-radius-m'], 'dvf-radius-m') ?? 600,
+  };
+}
+
 function resolveCommand(positional) {
   const [resource, action, ...subjectParts] = positional;
 
@@ -423,7 +454,7 @@ function resolveCommand(positional) {
     'parcelles',
     'travaux',
   ].includes(resource)) {
-    return { name: 'layer', layer: 'parcelles', subjectParts: positional };
+    return { name: 'overview', subjectParts: positional };
   }
 
   if (resource === 'map' && action === 'parcelles') {
@@ -464,6 +495,11 @@ function buildMapLayerUrl(flags, input) {
   return `${baseUrl}${appendQuery(`/explore/map-layer/${encodeURIComponent(layerKey)}`, query)}`;
 }
 
+function buildAddressOverviewUrl(flags, input) {
+  const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+  return `${baseUrl}${appendQuery('/api/v1/address-overview', input)}`;
+}
+
 function toCsvValue(value) {
   if (value === null || value === undefined) {
     return '';
@@ -473,6 +509,20 @@ function toCsvValue(value) {
 }
 
 function printCsv(response) {
+  if (Array.isArray(response?.cards)) {
+    console.log(['eyebrow', 'label', 'value', 'detail', 'tabKey', 'sectionKey'].join(','));
+    for (const card of response.cards) {
+      console.log([
+        card?.eyebrow,
+        card?.label,
+        card?.value,
+        card?.detail,
+        card?.tabKey,
+        card?.sectionKey,
+      ].map(toCsvValue).join(','));
+    }
+    return;
+  }
   console.log(['layerKey', 'status', 'feature_count', 'summary'].join(','));
   console.log([
     response?.layerKey,
@@ -483,6 +533,22 @@ function printCsv(response) {
 }
 
 function printSummary(response) {
+  if (Array.isArray(response?.cards)) {
+    const lines = [
+      `version=${response?.version ?? ''}`,
+      `cards=${response.cards.length}`,
+    ];
+    for (const card of response.cards) {
+      lines.push([
+        card?.eyebrow,
+        card?.label,
+        card?.value,
+        card?.detail,
+      ].filter(Boolean).join(' | '));
+    }
+    console.log(lines.join('\n'));
+    return;
+  }
   console.log([
     `layerKey=${response?.layerKey ?? ''}`,
     `status=${response?.status ?? ''}`,
@@ -537,7 +603,7 @@ function printCliHint(error) {
 
 async function main() {
   const { positional, flags } = parseArgs(process.argv.slice(2));
-  const command = resolveCommand(positional);
+  let command = resolveCommand(positional);
 
   if (flags.version) {
     console.log(readVersion());
@@ -562,6 +628,10 @@ async function main() {
     return;
   }
 
+  if (command.name === 'unknown' && flags.address) {
+    command = { name: 'overview', subjectParts: [] };
+  }
+
   if (command.name === 'layer') {
     const input = buildMapLayerInput(flags, command.subjectParts, command.layer);
     if (flags.url) {
@@ -570,6 +640,14 @@ async function main() {
     }
     const client = createClient(flags);
     response = await client.map.layer(input);
+  } else if (command.name === 'overview') {
+    const input = buildAddressOverviewInput(flags, command.subjectParts);
+    if (flags.url) {
+      console.log(buildAddressOverviewUrl(flags, input));
+      return;
+    }
+    const client = createClient(flags);
+    response = await client.overview.address(input);
   } else {
     throw new Error(`Unknown command: ${process.argv.slice(2).join(' ') || '(empty)'}`);
   }

@@ -48,7 +48,7 @@
         <a href="#quickstart">Démarrage</a>
         <a href="./quickstart.html">Guide</a>
         <a href="./api.html">Tester l'API</a>
-        <a href="#redoc">Redoc</a>
+        <a href="./documentation-api.html">Documentation API</a>
         <a href="#packages">Packages</a>
       </nav>
       <a class="external-link" href="./api.html">Tester l'API</a>
@@ -62,6 +62,7 @@
           <p class="hero-text">Clients JavaScript, Python et CLI pour appeler l'API publique. Les contrats API, l'OpenAPI, les quotas et la documentation métier restent maintenus sur <code>1dex.fr</code>.</p>
           <div class="hero-actions">
             <a class="primary-action" href="./api.html">Tester l'API</a>
+            <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
             <a class="secondary-action" href="https://github.com/blipn/1dex-connector" rel="noopener">GitHub</a>
           </div>
         </div>
@@ -74,16 +75,8 @@
             <span class="parcel parcel-b"></span>
             <span class="parcel parcel-c"></span>
           </div>
-          <pre><code><span class="muted">import</span> { OneDexClient } <span class="muted">from</span> "@1dex/connector";
-
-const client = new OneDexClient({
-  baseUrl: "https://1dex.fr",
-});
-
-const overview = await client.overview.address({
-  address: "10 rue des cordeliers aix",
-  dvf_radius_m: 300,
-});</code></pre>
+          <pre><code>npm i -g @1dex-fr/1dex
+1dex "10 rue des cordeliers aix"</code></pre>
         </div>
       </section>
 
@@ -122,7 +115,7 @@ const overview = await client.overview.address({
               <h3>curl</h3>
               <button type="button" data-copy="curl-sample">Copier</button>
             </div>
-            <pre id="curl-sample"><code>curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=300"</code></pre>
+            <pre id="curl-sample"><code>curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -134,7 +127,7 @@ const overview = await client.overview.address({
 const client = new OneDexClient();
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
-  dvf_radius_m: 300,
+  dvf_radius_m: 600,
 });
 
 console.log(overview.cards);</code></pre>
@@ -149,7 +142,7 @@ console.log(overview.cards);</code></pre>
 client = OneDexClient()
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
-    "dvf_radius_m": 300,
+    "dvf_radius_m": 600,
 })
 
 print(overview["cards"])</code></pre>
@@ -157,19 +150,18 @@ print(overview["cards"])</code></pre>
         </div>
       </section>
 
-      <section id="redoc" class="section section-redoc" aria-labelledby="redoc-title">
+      <section id="documentation-api" class="section section-redoc" aria-labelledby="documentation-api-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Documentation officielle</p>
-          <h2 id="redoc-title">Contrat OpenAPI.</h2>
-          <p>La référence ci-dessous est chargée depuis <code>https://1dex.fr/api/v1/openapi.yaml</code>.</p>
+          <h2 id="documentation-api-title">Documentation API.</h2>
+          <p>La documentation interactive est rendue sur une page dédiée depuis <code>https://1dex.fr/api/v1/openapi.yaml</code>.</p>
         </div>
         <div class="redoc-actions" data-reveal>
           <a class="primary-action" href="./api.html">Console de test</a>
+          <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
+          <a class="secondary-action" href="./documentation-api.html#operation/getMapLayer">getMapLayer</a>
           <a class="secondary-action" href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI YAML</a>
           <a class="secondary-action" href="https://1dex.fr/developpeurs/api" rel="noopener">Documentation 1dex.fr</a>
-        </div>
-        <div class="redoc-frame redoc-frame--home" data-reveal>
-          <redoc spec-url="https://1dex.fr/api/v1/openapi.yaml"></redoc>
         </div>
       </section>
 
@@ -188,9 +180,10 @@ print(overview["cards"])</code></pre>
 
       <section class="final-cta" aria-labelledby="cta-title" data-reveal>
         <p class="eyebrow">Contrat vivant</p>
-        <h2 id="cta-title">Console, Redoc et clients.</h2>
+        <h2 id="cta-title">Console, documentation API et clients.</h2>
         <div class="hero-actions">
-          <a class="primary-action" href="./api.html">Console et Redoc</a>
+          <a class="primary-action" href="./api.html">Console API</a>
+          <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
           <a class="secondary-action" href="./quickstart.html">Démarrage connecteur</a>
         </div>
       </section>
@@ -199,12 +192,12 @@ print(overview["cards"])</code></pre>
     <footer class="footer">
       <span>1dex Connector</span>
       <a href="./api.html">Tester l'API</a>
+      <a href="./documentation-api.html">Documentation API</a>
       <a href="./quickstart.html">Démarrage</a>
       <a href="https://github.com/blipn/1dex-connector" rel="noopener">GitHub</a>
       <a href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI</a>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/redoc@next/bundles/redoc.standalone.js"></script>
     <script src="./assets/app.js" type="module"></script>
   </body>
 </html>

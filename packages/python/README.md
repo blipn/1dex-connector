@@ -18,6 +18,6 @@ dvf = client.map.dvf({
 
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
-    "dvf_radius_m": 300,
+    "dvf_radius_m": 600,
 })
 ```

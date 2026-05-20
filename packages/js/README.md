@@ -23,7 +23,7 @@ const dvf = await client.map.dvf({
 
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
-  dvf_radius_m: 300,
+  dvf_radius_m: 600,
 });
 
 console.log(response.data.features.length);

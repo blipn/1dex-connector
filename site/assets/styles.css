@@ -458,6 +458,103 @@ h3 {
   margin-right: calc(-1 * max(20px, calc((100vw - var(--max)) / 2)));
 }
 
+.documentation-api-page {
+  background: var(--paper);
+}
+
+.documentation-api-intro {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding-top: 24px;
+  padding-bottom: 18px;
+}
+
+.documentation-api-intro h1 {
+  max-width: 760px;
+  font-size: clamp(30px, 3.2vw, 42px);
+}
+
+.documentation-api-intro .api-lead {
+  max-width: 860px;
+  margin-top: 10px;
+  font-size: 15px;
+}
+
+.documentation-api-intro .api-lead a {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.documentation-api-intro .primary-action {
+  color: white;
+}
+
+.doc-test-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.doc-test-actions .primary-action,
+.doc-test-actions .secondary-action {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+.redoc-operation-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin: 0 0 12px;
+}
+
+.redoc-operation-actions .secondary-action {
+  min-height: 36px;
+  padding: 0 12px;
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 720;
+}
+
+.documentation-api-page [id] {
+  scroll-margin-top: 84px;
+}
+
+.redoc-frame--dedicated {
+  min-height: calc(100svh - 68px);
+}
+
+.redoc-frame--dedicated redoc {
+  min-height: calc(100svh - 68px);
+}
+
+#redoc-container {
+  min-height: calc(100svh - 68px);
+}
+
+#redoc-container .menu-content {
+  font-size: 12px;
+}
+
+#redoc-container .api-content {
+  padding-top: 0;
+}
+
+#redoc-container h1 {
+  font-size: 28px;
+}
+
+#redoc-container h2 {
+  font-size: 22px;
+}
+
+#redoc-container h3 {
+  font-size: 16px;
+}
+
 .final-cta {
   padding-top: 88px;
   padding-bottom: 92px;
@@ -472,7 +569,7 @@ h3 {
 
 .api-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: 190px minmax(0, 1fr);
   max-width: 1360px;
   margin: 0 auto;
   background: var(--paper);
@@ -483,28 +580,31 @@ h3 {
   top: 68px;
   align-self: start;
   display: grid;
-  gap: 2px;
+  align-content: start;
+  gap: 6px;
   height: calc(100svh - 68px);
-  padding: 18px 14px;
+  padding: 22px 12px;
   border-right: 1px solid var(--line);
-  background: #fbfcfa;
+  background: var(--surface);
   overflow-y: auto;
 }
 
 .api-sidebar a {
   display: flex;
   align-items: center;
-  gap: 7px;
-  min-height: 32px;
-  padding: 0 9px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid transparent;
   color: var(--muted);
   font-size: 13px;
-  font-weight: 680;
+  font-weight: 650;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
 }
 
 .api-sidebar a:hover {
-  color: var(--ink);
-  background: rgba(11, 122, 83, 0.07);
+  color: var(--accent-dark);
+  background: var(--paper);
+  border-color: var(--line);
 }
 
 .api-sidebar span,

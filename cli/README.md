@@ -2,20 +2,20 @@
 
 Command-line client for the free 1dex connector.
 
-The main use case is simple: start from a French address and retrieve nearby cadastral parcels in JSON, CSV, or summary format, without an API key. Verified complementary layers are available for DVF, works, IRIS, context, and parcel labels when you need to inspect the public map-layer signals exposed today on `1dex.fr`.
+The main use case is simple: start from a French address and retrieve the address overview in JSON, CSV, or summary format, without an API key. Verified complementary layers are available for parcels, DVF, works, IRIS, context, and parcel labels when you need to inspect the public map-layer signals exposed today on `1dex.fr`.
 
 ## Install
 
 ```bash
 npm i -g @1dex-fr/1dex
-1dex "50 rue des tanneurs aix"
+1dex "10 rue des cordeliers aix"
 ```
 
 Or install it in a project and run it with `npx`:
 
 ```bash
 npm i @1dex-fr/1dex
-npx 1dex "50 rue des tanneurs aix"
+npx 1dex "10 rue des cordeliers aix"
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 npx 1dex dvf "50 rue des tanneurs aix" -f summary
 npx 1dex travaux "50 rue des tanneurs aix" -f summary
@@ -24,13 +24,13 @@ npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ## Usage
 
 ```bash
-1dex "50 rue des tanneurs aix"
+1dex "10 rue des cordeliers aix"
 1dex parcelles "50 rue des tanneurs aix" --format summary
 1dex dvf "50 rue des tanneurs aix" --format summary
 1dex travaux "50 rue des tanneurs aix" --format summary
 ```
 
-The command calls `https://1dex.fr/explore/map-layer/{layer}` and prints JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
+The bare address command calls `https://1dex.fr/api/v1/address-overview` and prints JSON, CSV, or a short summary. Explicit map-layer commands call `https://1dex.fr/explore/map-layer/{layer}`. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
 
 ```bash
 1dex parcelles "50 rue des tanneurs aix" --format csv
@@ -61,6 +61,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
     --city-code <code>               INSEE city code if already known.
     --lon <number>                   Longitude if already known.
     --lat <number>                   Latitude if already known.
+    --dvf-radius-m <number>          DVF radius for address overview. Default: 600.
     --base-url <url>                 Override API base URL.
     --timeout-ms <number>            Request timeout in milliseconds.
 -f, --format <json|csv|summary>      Output format.
@@ -72,7 +73,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 Examples:
 
 ```bash
-1dex "50 rue des tanneurs aix"
+1dex "10 rue des cordeliers aix"
 1dex parcelles --address "50 rue des tanneurs aix" --url
 1dex dvf "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" -f summary

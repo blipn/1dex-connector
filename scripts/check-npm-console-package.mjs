@@ -61,10 +61,17 @@ try {
   if (!installedSource.includes('/explore/map-layer/')) {
     throw new Error('Installed 1dex binary is missing the expected map-layer URL builder.');
   }
+  if (!installedSource.includes('/api/v1/address-overview')) {
+    throw new Error('Installed 1dex binary is missing the expected address overview URL builder.');
+  }
   run(process.execPath, [installedCli, '--help'], { cwd: installDir });
   run(process.execPath, [installedCli, '-h'], { cwd: installDir });
   run(process.execPath, [installedCli, '--version'], { cwd: installDir });
   run(process.execPath, [installedCli, 'examples'], { cwd: installDir });
+  run(process.execPath, [installedCli,
+    '10 rue des cordeliers aix',
+    '--url',
+  ], { cwd: installDir });
   run(process.execPath, [installedCli,
     'dvf',
     '--address',

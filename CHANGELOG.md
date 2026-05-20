@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.4
+
+- Publish the CLI address-overview default after `0.1.3` was already released with the previous parcel default.
+- Make `1dex "<address>"` call `/api/v1/address-overview` with `dvf_radius_m=600`.
+- Keep parcel and map-layer requests behind explicit commands such as `1dex parcelles "<address>"`.
+
+## 0.1.3
+
+- Add the public address overview connector surface for the JSON aperçu contract.
+- Document `client.overview.address(...)` in JavaScript and Python examples.
+- Refresh CLI package metadata for the next npm publication.
+
 ## 0.1.2
 
 - Add verified public map layers for DVF, active works, IRIS, address context, and parcel labels.

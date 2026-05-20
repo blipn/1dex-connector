@@ -21,7 +21,7 @@ curl "https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state"
 ## Aperçu adresse
 
 ```bash
-curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&dvf_radius_m=300"
+curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&dvf_radius_m=600"
 ```
 
 ## Focus géographique public
@@ -40,7 +40,7 @@ import { OneDexClient } from "@1dex/connector";
 const client = new OneDexClient();
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
-  dvf_radius_m: 300,
+  dvf_radius_m: 600,
 });
 
 console.log(overview.version, overview.cards);
@@ -54,7 +54,7 @@ from onedex import OneDexClient
 client = OneDexClient()
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
-    "dvf_radius_m": 300,
+    "dvf_radius_m": 600,
 })
 
 print(overview["version"], overview["cards"])

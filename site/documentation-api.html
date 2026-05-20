@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Documentation API - 1dex Connector</title>
+    <meta name="description" content="Documentation API interactive 1dex rendue depuis l'OpenAPI officiel.">
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#0b7a53">
+    <link rel="canonical" href="https://blipn.github.io/1dex-connector/documentation-api.html">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Documentation API - 1dex Connector">
+    <meta property="og:description" content="Documentation API interactive 1dex rendue depuis l'OpenAPI officiel.">
+    <meta property="og:url" content="https://blipn.github.io/1dex-connector/documentation-api.html">
+    <meta property="og:site_name" content="1dex Connector">
+    <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+    <link rel="stylesheet" href="./assets/styles.css">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Documentation API 1dex",
+        "description": "Documentation API interactive 1dex rendue depuis l'OpenAPI officiel.",
+        "url": "https://blipn.github.io/1dex-connector/documentation-api.html"
+      }
+    </script>
+  </head>
+  <body>
+    <header class="topbar" data-reveal>
+      <a class="brand" href="./index.html" aria-label="1dex Connector">
+        <span class="brand-mark" aria-hidden="true">1</span>
+        <span>1dex Connector</span>
+      </a>
+      <nav class="nav" aria-label="Navigation documentation API">
+        <a href="./api.html">Tester l'API</a>
+        <a href="#tester">Tester</a>
+        <a href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI YAML</a>
+      </nav>
+      <a class="external-link" href="./api.html">Console</a>
+    </header>
+
+    <main id="top" class="documentation-api-page">
+      <section class="api-section documentation-api-intro" data-reveal>
+        <p class="api-kicker">Documentation API</p>
+        <h1>Référence interactive des points d'entrée 1dex</h1>
+        <p class="api-lead">La documentation ci-dessous est rendue depuis <code>https://1dex.fr/api/v1/openapi.yaml</code>. Les liens d'opération, comme <a href="#operation/getMapLayer">getMapLayer</a>, restent sur cette page dédiée.</p>
+        <div id="tester" class="doc-test-actions">
+          <a class="primary-action" href="./api.html?operation=address-overview">Tester l'aperçu adresse</a>
+          <a class="secondary-action" href="./api.html?operation=autocomplete">Tester l'autocomplete</a>
+          <a class="secondary-action" href="./api.html?operation=address-page-state">Tester l'état page</a>
+          <a class="secondary-action" href="./api.html?operation=map-layer&amp;layer=parcelles">Tester getMapLayer</a>
+          <a class="secondary-action" href="./api.html?operation=map-viewport&amp;layers=context,iris">Tester getMapViewport</a>
+          <a class="secondary-action" href="#operation/getMapLayer">Voir getMapLayer</a>
+          <a class="secondary-action" href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI YAML</a>
+        </div>
+      </section>
+
+      <section class="redoc-frame redoc-frame--dedicated" aria-label="Documentation API interactive">
+        <div id="redoc-container" data-spec-url="https://1dex.fr/api/v1/openapi.yaml"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>1dex Connector</span>
+      <a href="./index.html">Accueil</a>
+      <a href="./api.html">Tester l'API</a>
+      <a href="https://github.com/blipn/1dex-connector" rel="noopener">GitHub</a>
+      <a href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">OpenAPI</a>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/redoc@2.5.2/bundles/redoc.standalone.js"></script>
+    <script src="./assets/app.js" type="module"></script>
+  </body>
+</html>

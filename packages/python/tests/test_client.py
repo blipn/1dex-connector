@@ -97,12 +97,12 @@ class ClientTest(unittest.TestCase):
         client = OneDexClient(base_url="http://example.test", opener=opener)
         client.overview.address({
             "address": "10 rue des cordeliers aix",
-            "dvf_radius_m": 300,
+            "dvf_radius_m": 600,
         })
 
         self.assertEqual(
             calls[0][0].full_url,
-            "http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=300",
+            "http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=600",
         )
         self.assertEqual(calls[0][0].get_method(), "GET")
 

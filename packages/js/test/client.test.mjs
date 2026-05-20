@@ -80,12 +80,12 @@ test('overview.address builds the public api v1 address overview URL', async () 
 
   await client.overview.address({
     address: '10 rue des cordeliers aix',
-    dvf_radius_m: 300,
+    dvf_radius_m: 600,
   });
 
   assert.equal(
     calls[0].url,
-    'http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=300',
+    'http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=600',
   );
   assert.equal(calls[0].init.method, 'GET');
 });

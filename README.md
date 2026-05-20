@@ -34,7 +34,7 @@ const client = new OneDexClient({
 
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
-  dvf_radius_m: 300,
+  dvf_radius_m: 600,
 });
 console.log(overview.cards);
 ```
@@ -50,7 +50,7 @@ client = OneDexClient(
 
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
-    "dvf_radius_m": 300,
+    "dvf_radius_m": 600,
 })
 print(overview["cards"])
 ```
@@ -59,7 +59,7 @@ CLI:
 
 ```bash
 npm i -g @1dex-fr/1dex
-1dex "10 rue de la Paix, Paris"
+1dex "10 rue des cordeliers aix"
 ```
 
 ## Liens publics canoniques de l'API

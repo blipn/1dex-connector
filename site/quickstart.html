@@ -37,6 +37,7 @@
         <a href="#javascript">JavaScript</a>
         <a href="#python">Python</a>
         <a href="./api.html">Tester l'API</a>
+        <a href="./documentation-api.html">Documentation API</a>
       </nav>
       <a class="external-link" href="./api.html">Tester l'API</a>
     </header>
@@ -47,6 +48,7 @@
         <a href="#javascript">JavaScript</a>
         <a href="#python">Python</a>
         <a href="./api.html">Console API</a>
+        <a href="./documentation-api.html">Documentation API</a>
         <a href="https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md" rel="noopener">Markdown GitHub</a>
       </aside>
 
@@ -57,6 +59,7 @@
           <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous reprennent les appels de démarrage sans renvoyer vers un fichier Markdown brut.</p>
           <div class="console-actions docs-actions">
             <a class="primary-action" href="./api.html">Tester dans la console</a>
+            <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
             <a class="secondary-action" href="https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md" rel="noopener">Lire le Markdown sur GitHub</a>
           </div>
         </section>
@@ -88,7 +91,7 @@
                 <h3>Aperçu adresse</h3>
                 <button type="button" data-copy="curl-address-overview">Copier</button>
               </div>
-              <pre id="curl-address-overview"><code>curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=300"</code></pre>
+              <pre id="curl-address-overview"><code>curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"</code></pre>
             </article>
 
             <article class="code-sample">
@@ -117,7 +120,7 @@
 const client = new OneDexClient();
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
-  dvf_radius_m: 300,
+  dvf_radius_m: 600,
 });
 
 console.log(overview.version, overview.cards);</code></pre>
@@ -139,7 +142,7 @@ console.log(overview.version, overview.cards);</code></pre>
 client = OneDexClient()
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
-    "dvf_radius_m": 300,
+    "dvf_radius_m": 600,
 })
 
 print(overview["version"], overview["cards"])</code></pre>
@@ -152,6 +155,7 @@ print(overview["version"], overview["cards"])</code></pre>
       <span>1dex Connector</span>
       <a href="./index.html">Accueil</a>
       <a href="./api.html">Tester l'API</a>
+      <a href="./documentation-api.html">Documentation API</a>
       <a href="https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md" rel="noopener">Markdown GitHub</a>
     </footer>
 
