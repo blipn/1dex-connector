@@ -86,3 +86,4 @@ Examples:
 ```
 
 Set `ONEDEX_BASE_URL` only if you need to target another compatible environment.
+Set `ONEDEX_NO_UPDATE_CHECK=1` to disable the npm update notice in automated environments.

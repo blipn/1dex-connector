@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
 const DEFAULT_SAMPLE_ADDRESS = '50 rue des tanneurs aix';
+const NPM_LATEST_URL = 'https://registry.npmjs.org/@1dex-fr%2f1dex/latest';
 const PUBLIC_MAP_LAYERS = new Set([
   'context',
   'iris',
@@ -197,6 +198,7 @@ Options:
 
 Environment:
   ONEDEX_BASE_URL (defaults to https://1dex.fr)
+  ONEDEX_NO_UPDATE_CHECK=1 disables the npm version update notice
 `;
 }
 
@@ -250,6 +252,70 @@ function readVersion() {
   } catch {
     return '0.0.0';
   }
+}
+
+function parseVersionParts(version) {
+  const [core] = String(version ?? '').replace(/^v/u, '').split('-');
+  return core.split('.').map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function compareVersions(left, right) {
+  const leftParts = parseVersionParts(left);
+  const rightParts = parseVersionParts(right);
+  const length = Math.max(leftParts.length, rightParts.length, 3);
+  for (let index = 0; index < length; index += 1) {
+    const leftValue = leftParts[index] ?? 0;
+    const rightValue = rightParts[index] ?? 0;
+    if (leftValue > rightValue) {
+      return 1;
+    }
+    if (leftValue < rightValue) {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+function shouldCheckForUpdates() {
+  const disabled = String(process.env.ONEDEX_NO_UPDATE_CHECK ?? '').toLowerCase();
+  return disabled !== '1' && disabled !== 'true' && !process.env.CI;
+}
+
+async function readLatestVersion() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1_000);
+  try {
+    const response = await globalThis.fetch(NPM_LATEST_URL, {
+      headers: { accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const body = await response.json();
+    return typeof body?.version === 'string' ? body.version : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function maybePrintUpdateNotice() {
+  if (!shouldCheckForUpdates() || typeof globalThis.fetch !== 'function') {
+    return;
+  }
+
+  const currentVersion = readVersion();
+  const latestVersion = await readLatestVersion();
+  if (!latestVersion || compareVersions(latestVersion, currentVersion) <= 0) {
+    return;
+  }
+
+  console.error([
+    `Update available: @1dex-fr/1dex ${currentVersion} -> ${latestVersion}`,
+    'Run: npm i -g @1dex-fr/1dex',
+  ].join('\n'));
 }
 
 function parseArgs(argv) {
@@ -492,6 +558,7 @@ async function main() {
 
   if (command.name === 'doctor') {
     await runDoctor(flags);
+    await maybePrintUpdateNotice();
     return;
   }
 
@@ -508,6 +575,7 @@ async function main() {
   }
 
   printResult(response, flags);
+  await maybePrintUpdateNotice();
 }
 
 main().catch((error) => {
