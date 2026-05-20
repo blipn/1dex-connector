@@ -58,7 +58,8 @@ print(overview["cards"])
 CLI:
 
 ```bash
-ONEDEX_API_KEY=... npx 1dex address resolve "10 rue de la Paix, Paris"
+npm i -g @1dex-fr/1dex
+1dex "10 rue de la Paix, Paris"
 ```
 
 ## Liens publics canoniques de l'API

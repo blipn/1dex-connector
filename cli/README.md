@@ -8,12 +8,14 @@ The main use case is simple: start from a French address and retrieve nearby cad
 
 ```bash
 npm i -g @1dex-fr/1dex
+1dex "50 rue des tanneurs aix"
 ```
 
 Or install it in a project and run it with `npx`:
 
 ```bash
 npm i @1dex-fr/1dex
+npx 1dex "50 rue des tanneurs aix"
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 npx 1dex dvf "50 rue des tanneurs aix" -f summary
 npx 1dex travaux "50 rue des tanneurs aix" -f summary
@@ -22,6 +24,7 @@ npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ## Usage
 
 ```bash
+1dex "50 rue des tanneurs aix"
 1dex parcelles "50 rue des tanneurs aix" --format summary
 1dex dvf "50 rue des tanneurs aix" --format summary
 1dex travaux "50 rue des tanneurs aix" --format summary
@@ -39,6 +42,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 ## Options
 
 ```text
+1dex <address> [options]
 1dex parcelles <address> [options]
 1dex dvf <address> [options]
 1dex travaux <address> [options]
@@ -68,6 +72,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 Examples:
 
 ```bash
+1dex "50 rue des tanneurs aix"
 1dex parcelles --address "50 rue des tanneurs aix" --url
 1dex dvf "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" -f summary

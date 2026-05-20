@@ -104,15 +104,18 @@ const overview = await client.overview.address({
               <h3>npm</h3>
               <button type="button" data-copy="npm-sample">Copier</button>
             </div>
-            <pre id="npm-sample"><code>npm install @1dex/connector
+            <pre id="npm-sample"><code>npm i -g @1dex-fr/1dex
+1dex "10 rue des cordeliers aix"
 
-node -e 'import("@1dex/connector").then(({ OneDexClient }) => {
-  const client = new OneDexClient();
-  return client.overview.address({
-    address: "10 rue des cordeliers aix",
-    dvf_radius_m: 300,
-  });
-}).then((overview) => console.log(overview.cards));'</code></pre>
+# =&gt;
+{
+  "layerKey": "parcelles",
+  "status": "ok",
+  "data": {
+    "type": "FeatureCollection",
+    "features": [...]
+  }
+}</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">

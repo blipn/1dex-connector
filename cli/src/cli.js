@@ -168,6 +168,7 @@ function usage() {
   return `1dex CLI
 
 Usage:
+  1dex <address> [options]
   1dex parcelles <address> [options]
   1dex dvf <address> [options]
   1dex travaux <address> [options]
@@ -201,6 +202,10 @@ Environment:
 
 function examples() {
   return `Examples:
+
+  # Fastest path: install, then resolve parcels around an address.
+  npm i -g @1dex-fr/1dex
+  1dex "${DEFAULT_SAMPLE_ADDRESS}"
 
   # Fastest path: resolve parcels around an address.
   1dex parcelles "${DEFAULT_SAMPLE_ADDRESS}" -f summary
@@ -338,6 +343,22 @@ function buildMapLayerInput(flags, subjectParts, defaultLayer = 'parcelles') {
 
 function resolveCommand(positional) {
   const [resource, action, ...subjectParts] = positional;
+
+  if (resource && ![
+    'context',
+    'doctor',
+    'dvf',
+    'examples',
+    'help',
+    'iris',
+    'labels',
+    'layer',
+    'map',
+    'parcelles',
+    'travaux',
+  ].includes(resource)) {
+    return { name: 'layer', layer: 'parcelles', subjectParts: positional };
+  }
 
   if (resource === 'map' && action === 'parcelles') {
     return { name: 'layer', layer: 'parcelles', subjectParts };
