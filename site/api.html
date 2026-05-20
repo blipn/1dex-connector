@@ -52,7 +52,7 @@
         <section id="tester" class="api-section api-intro" data-reveal>
           <p class="api-kicker">Console</p>
           <h1>Tester les points d'entrée publics 1dex</h1>
-          <p class="api-lead">Choisissez une route, ajustez les paramètres, puis envoyez la requête depuis cette page ou ouvrez l'URL générée.</p>
+          <p class="api-lead">Choisissez une route, ajustez les paramètres, puis envoyez la requête depuis cette page.</p>
 
           <div id="api-explorer" class="api-console api-console--wide">
             <form id="api-request-form" class="api-request-panel">
@@ -60,7 +60,6 @@
                 Point d'entrée
                 <select id="api-operation" name="operation">
                   <option value="address-overview">Aperçu adresse</option>
-                  <option value="public-preview">Aperçu public</option>
                   <option value="autocomplete">Autocomplete adresse</option>
                   <option value="map-layer">Calque carte</option>
                 </select>
@@ -78,12 +77,7 @@
                 <input id="api-address" name="address" type="text" value="10 rue des cordeliers aix" autocomplete="street-address">
               </label>
 
-              <label class="field-label" for="api-public-path">
-                Chemin public
-                <input id="api-public-path" name="public_path" type="text" value="/ville/paris-75056" autocomplete="off">
-              </label>
-
-              <div class="form-grid">
+              <div class="form-grid" data-visible-for="map-layer">
                 <label class="field-label" for="api-layer">
                   Calque
                   <select id="api-layer" name="layer">
@@ -105,12 +99,12 @@
               </div>
 
               <div class="form-grid">
-                <label class="field-label" for="api-dvf-radius">
+                <label class="field-label" for="api-dvf-radius" data-visible-for="address-overview">
                   Rayon DVF
                   <input id="api-dvf-radius" name="dvf_radius_m" type="number" min="1" value="300" autocomplete="off">
                 </label>
 
-                <label class="field-label" for="api-limit">
+                <label class="field-label" for="api-limit" data-visible-for="autocomplete">
                   Limite
                   <input id="api-limit" name="limit" type="number" min="1" max="8" value="5" autocomplete="off">
                 </label>
@@ -119,15 +113,15 @@
               <details class="advanced-fields">
                 <summary>Paramètres avancés</summary>
                 <div class="form-grid">
-                  <label class="field-label" for="api-city-code">
+                  <label class="field-label" for="api-city-code" data-visible-for="address-overview,map-layer">
                     Code commune
                     <input id="api-city-code" name="city_code" type="text" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-lon">
+                  <label class="field-label" for="api-lon" data-visible-for="address-overview,map-layer">
                     Longitude
                     <input id="api-lon" name="lon" type="number" step="any" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-lat">
+                  <label class="field-label" for="api-lat" data-visible-for="address-overview,map-layer">
                     Latitude
                     <input id="api-lat" name="lat" type="number" step="any" autocomplete="off">
                   </label>
@@ -141,7 +135,6 @@
               <div class="console-actions">
                 <button id="api-send" class="primary-action" type="submit">Envoyer</button>
                 <button class="secondary-action" type="button" data-copy="api-curl">Copier curl</button>
-                <a id="api-open-url" class="secondary-action" href="https://1dex.fr/api/v1" target="_blank" rel="noopener">Ouvrir</a>
               </div>
             </form>
 

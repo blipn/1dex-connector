@@ -517,6 +517,10 @@ h3 {
   min-width: 0;
 }
 
+.docs-shell {
+  max-width: 1180px;
+}
+
 .api-section {
   padding: 34px clamp(22px, 4vw, 56px);
   border-bottom: 1px solid var(--line);
@@ -558,6 +562,20 @@ h3 {
   max-width: 760px;
   margin: 14px 0 0;
   font-size: 17px;
+}
+
+.docs-actions {
+  margin-top: 24px;
+}
+
+.docs-code-list {
+  display: grid;
+  gap: 20px;
+}
+
+.docs-code-list .code-sample pre,
+.docs-shell .api-section > .code-sample pre {
+  min-height: 0;
 }
 
 .api-status-grid {

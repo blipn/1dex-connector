@@ -6,12 +6,6 @@ Racine API:
 https://1dex.fr/api/v1
 ```
 
-## Aperçu public
-
-```bash
-curl "https://1dex.fr/api/v1/public-preview?path=/ville/paris-75056"
-```
-
 ## Autocomplete
 
 ```bash

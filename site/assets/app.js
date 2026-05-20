@@ -41,9 +41,16 @@ for (const button of document.querySelectorAll('[data-copy]')) {
     if (!text) {
       return;
     }
-    await navigator.clipboard.writeText(text);
     const previous = button.textContent;
-    button.textContent = 'Copié';
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error('Clipboard unavailable');
+      }
+      await navigator.clipboard.writeText(text);
+      button.textContent = 'Copié';
+    } catch {
+      button.textContent = 'Erreur';
+    }
     setTimeout(() => {
       button.textContent = previous;
     }, 1200);
@@ -60,7 +67,7 @@ if (explorer) {
   const responseOutput = document.querySelector('#api-response code');
   const resultMeta = document.getElementById('api-result-meta');
   const routeLabel = document.getElementById('api-route-label');
-  const openUrlLink = document.getElementById('api-open-url');
+  const operationFields = [...form.querySelectorAll('[data-visible-for]')];
 
   function readValue(name) {
     return form.elements[name]?.value?.trim() ?? '';
@@ -99,13 +106,6 @@ if (explorer) {
       if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
         throw new Error('Adresse ou coordonnées requises.');
       }
-    } else if (operation === 'public-preview') {
-      path = '/api/v1/public-preview';
-      const publicPath = readValue('public_path');
-      if (!publicPath) {
-        throw new Error('Chemin public requis.');
-      }
-      query.set('path', publicPath);
     } else if (operation === 'autocomplete') {
       path = '/api/v1/autocomplete/address';
       const q = readValue('address');
@@ -137,6 +137,14 @@ if (explorer) {
     };
   }
 
+  function updateOperationFields() {
+    const operation = operationInput.value;
+    for (const field of operationFields) {
+      const visibleOperations = field.dataset.visibleFor.split(',').map((value) => value.trim());
+      field.hidden = !visibleOperations.includes(operation);
+    }
+  }
+
   function shellQuote(value) {
     return `'${String(value).replaceAll("'", "'\\''")}'`;
   }
@@ -155,7 +163,6 @@ if (explorer) {
 
       curlOutput.textContent = lines.join(' \\\n');
       routeLabel.textContent = `${request.method} ${request.path}`;
-      openUrlLink.href = request.url;
       return request;
     } catch (error) {
       curlOutput.textContent = error.message;
@@ -168,6 +175,8 @@ if (explorer) {
     input.addEventListener('input', renderCurl);
     input.addEventListener('change', renderCurl);
   }
+
+  operationInput.addEventListener('change', updateOperationFields);
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -205,11 +214,11 @@ if (explorer) {
       resultMeta.textContent = 'Erreur réseau';
       responseOutput.textContent = prettyJson({
         error: error.message,
-        hint: "Si la requête échoue dans le navigateur, ouvrez l'URL générée ou copiez le curl.",
-        direct_url: request.url,
+        hint: "Si la requête échoue dans le navigateur, copiez le curl.",
       });
     }
   });
 
+  updateOperationFields();
   renderCurl();
 }

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Démarrage connecteur - 1dex Connector</title>
+    <meta name="description" content="Exemples curl, JavaScript et Python pour démarrer avec le connecteur API publique 1dex.">
+    <meta name="robots" content="index,follow">
+    <meta name="theme-color" content="#0b7a53">
+    <link rel="canonical" href="https://blipn.github.io/1dex-connector/quickstart.html">
+    <meta property="og:type" content="article">
+    <meta property="og:title" content="Démarrage connecteur - 1dex Connector">
+    <meta property="og:description" content="Exemples curl, JavaScript et Python pour appeler les points d'entrée publics 1dex.">
+    <meta property="og:url" content="https://blipn.github.io/1dex-connector/quickstart.html">
+    <meta property="og:site_name" content="1dex Connector">
+    <meta property="og:image" content="https://blipn.github.io/1dex-connector/assets/og.svg">
+    <link rel="icon" type="image/svg+xml" href="./assets/favicon.svg">
+    <link rel="stylesheet" href="./assets/styles.css">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "Démarrage connecteur 1dex",
+        "description": "Exemples curl, JavaScript et Python pour appeler les points d'entrée publics 1dex.",
+        "url": "https://blipn.github.io/1dex-connector/quickstart.html"
+      }
+    </script>
+  </head>
+  <body>
+    <header class="topbar" data-reveal>
+      <a class="brand" href="./index.html" aria-label="1dex Connector">
+        <span class="brand-mark" aria-hidden="true">1</span>
+        <span>1dex Connector</span>
+      </a>
+      <nav class="nav" aria-label="Navigation démarrage">
+        <a href="#curl">curl</a>
+        <a href="#javascript">JavaScript</a>
+        <a href="#python">Python</a>
+        <a href="./api.html">Tester l'API</a>
+      </nav>
+      <a class="external-link" href="./api.html">Tester l'API</a>
+    </header>
+
+    <main id="top" class="api-shell docs-shell">
+      <aside class="api-sidebar" aria-label="Sommaire démarrage">
+        <a href="#curl">curl</a>
+        <a href="#javascript">JavaScript</a>
+        <a href="#python">Python</a>
+        <a href="./api.html">Console API</a>
+        <a href="https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md" rel="noopener">Markdown GitHub</a>
+      </aside>
+
+      <section class="api-main">
+        <section class="api-section api-intro docs-intro" data-reveal>
+          <p class="api-kicker">Démarrage</p>
+          <h1>Appeler l'API publique 1dex</h1>
+          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous reprennent les appels de démarrage sans renvoyer vers un fichier Markdown brut.</p>
+          <div class="console-actions docs-actions">
+            <a class="primary-action" href="./api.html">Tester dans la console</a>
+            <a class="secondary-action" href="https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md" rel="noopener">Lire le Markdown sur GitHub</a>
+          </div>
+        </section>
+
+        <section id="curl" class="api-section" data-reveal>
+          <div class="api-section-head">
+            <p class="api-kicker">curl</p>
+            <h2>Points d'entrée publics</h2>
+          </div>
+          <div class="docs-code-list">
+            <article class="code-sample">
+              <div class="sample-head">
+                <h3>Autocomplete adresse</h3>
+                <button type="button" data-copy="curl-autocomplete">Copier</button>
+              </div>
+              <pre id="curl-autocomplete"><code>curl "https://1dex.fr/api/v1/autocomplete/address?q=10+rue+de+la+paix&amp;limit=5"</code></pre>
+            </article>
+
+            <article class="code-sample">
+              <div class="sample-head">
+                <h3>Etat d'une page adresse</h3>
+                <button type="button" data-copy="curl-address-state">Copier</button>
+              </div>
+              <pre id="curl-address-state"><code>curl "https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state"</code></pre>
+            </article>
+
+            <article class="code-sample">
+              <div class="sample-head">
+                <h3>Aperçu adresse</h3>
+                <button type="button" data-copy="curl-address-overview">Copier</button>
+              </div>
+              <pre id="curl-address-overview"><code>curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=300"</code></pre>
+            </article>
+
+            <article class="code-sample">
+              <div class="sample-head">
+                <h3>Focus géographique public</h3>
+                <button type="button" data-copy="curl-map-focus">Copier</button>
+              </div>
+              <pre id="curl-map-focus"><code>curl "https://1dex.fr/api/v1/map-focus/public-location?lon=2.3317&amp;lat=48.8686"</code></pre>
+            </article>
+          </div>
+        </section>
+
+        <section id="javascript" class="api-section" data-reveal>
+          <div class="api-section-head">
+            <p class="api-kicker">JavaScript</p>
+            <h2>Client npm</h2>
+            <p>Le package reste un petit client HTTP. Lorsque les helpers de haut niveau ne couvrent pas encore une route <code>/api/v1</code>, appelez directement les points d'entrée publics.</p>
+          </div>
+          <article class="code-sample">
+            <div class="sample-head">
+              <h3>@1dex/connector</h3>
+              <button type="button" data-copy="js-quickstart">Copier</button>
+            </div>
+            <pre id="js-quickstart"><code>import { OneDexClient } from "@1dex/connector";
+
+const client = new OneDexClient();
+const overview = await client.overview.address({
+  address: "10 rue des cordeliers aix",
+  dvf_radius_m: 300,
+});
+
+console.log(overview.version, overview.cards);</code></pre>
+          </article>
+        </section>
+
+        <section id="python" class="api-section" data-reveal>
+          <div class="api-section-head">
+            <p class="api-kicker">Python</p>
+            <h2>Client Python</h2>
+          </div>
+          <article class="code-sample">
+            <div class="sample-head">
+              <h3>onedex</h3>
+              <button type="button" data-copy="python-quickstart">Copier</button>
+            </div>
+            <pre id="python-quickstart"><code>from onedex import OneDexClient
+
+client = OneDexClient()
+overview = client.overview.address({
+    "address": "10 rue des cordeliers aix",
+    "dvf_radius_m": 300,
+})
+
+print(overview["version"], overview["cards"])</code></pre>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>1dex Connector</span>
+      <a href="./index.html">Accueil</a>
+      <a href="./api.html">Tester l'API</a>
+      <a href="https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md" rel="noopener">Markdown GitHub</a>
+    </footer>
+
+    <script src="./assets/app.js" type="module"></script>
+  </body>
+</html>
