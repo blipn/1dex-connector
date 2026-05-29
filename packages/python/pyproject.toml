@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "onedex"
 version = "0.1.0"
-description = "Python connector to retrieve nearby French cadastral parcels by address."
+description = "Python connector for 1dex public address overview and verified public map layers."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }

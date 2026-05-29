@@ -21,6 +21,7 @@ const SUPPORTED_FORMATS = new Set(['json', 'csv', 'summary']);
 const FLAG_ALIASES = Object.freeze({
   a: 'address',
   b: 'viewport-bbox',
+  d: 'dvf-radius-m',
   f: 'format',
   h: 'help',
   l: 'layer',
@@ -33,11 +34,11 @@ const VALUE_FLAGS = new Set([
   'address',
   'base-url',
   'city-code',
+  'dvf-radius-m',
   'format',
   'layer',
   'lat',
   'lon',
-  'dvf-radius-m',
   'timeout-ms',
   'viewport-bbox',
   'viewport-render-mode',
@@ -186,6 +187,7 @@ function usage() {
 
 Usage:
   1dex <address> [options]
+  1dex overview <address> [options]
   1dex parcelles <address> [options]
   1dex dvf <address> [options]
   1dex travaux <address> [options]
@@ -198,6 +200,7 @@ Usage:
 
 Options:
   -a, --address <text>                 Address to resolve. Overrides positional address.
+  -d, --dvf-radius-m <number>          DVF radius in meters for address overview.
   -l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
   -r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
   -b, --viewport-bbox <bbox>           Map bbox: minLon,minLat,maxLon,maxLat.
@@ -225,6 +228,9 @@ function examples() {
   # Fastest path: install, then read the address overview.
   npm i -g @1dex-fr/1dex
   1dex "${DEFAULT_SAMPLE_ADDRESS}"
+
+  # Public address overview (cards, market summary, nearby context).
+  1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 
   # Fastest path: resolve parcels around an address.
   1dex parcelles "${DEFAULT_SAMPLE_ADDRESS}" -f summary
@@ -424,7 +430,7 @@ function buildMapLayerInput(flags, subjectParts, defaultLayer = 'parcelles') {
   };
 }
 
-function buildAddressOverviewInput(flags, subjectParts) {
+function buildOverviewInput(flags, subjectParts) {
   const address = String(flags.address ?? subjectParts.join(' ')).trim();
   if (!address) {
     throw new Error('Missing address. Use positional text or --address <text>.');
@@ -451,6 +457,7 @@ function resolveCommand(positional) {
     'labels',
     'layer',
     'map',
+    'overview',
     'parcelles',
     'travaux',
   ].includes(resource)) {
@@ -481,6 +488,13 @@ function resolveCommand(positional) {
     };
   }
 
+  if (resource === 'overview') {
+    return {
+      name: 'overview',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
   if (resource === 'examples' || resource === 'doctor' || resource === 'help') {
     return { name: resource, subjectParts: [action, ...subjectParts].filter(Boolean) };
   }
@@ -495,7 +509,7 @@ function buildMapLayerUrl(flags, input) {
   return `${baseUrl}${appendQuery(`/explore/map-layer/${encodeURIComponent(layerKey)}`, query)}`;
 }
 
-function buildAddressOverviewUrl(flags, input) {
+function buildOverviewUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
   return `${baseUrl}${appendQuery('/api/v1/address-overview', input)}`;
 }
@@ -557,8 +571,18 @@ function printSummary(response) {
   ].join('\n'));
 }
 
-function printResult(response, flags) {
+function printResult(response, flags, commandName = 'layer') {
   const format = readFormat(flags);
+  if (commandName === 'overview') {
+    if (format === 'csv') {
+      printCsv(response);
+      return;
+    }
+    if (format === 'summary') {
+      printSummary(response);
+      return;
+    }
+  }
   if (format === 'csv') {
     printCsv(response);
     return;
@@ -641,9 +665,9 @@ async function main() {
     const client = createClient(flags);
     response = await client.map.layer(input);
   } else if (command.name === 'overview') {
-    const input = buildAddressOverviewInput(flags, command.subjectParts);
+    const input = buildOverviewInput(flags, command.subjectParts);
     if (flags.url) {
-      console.log(buildAddressOverviewUrl(flags, input));
+      console.log(buildOverviewUrl(flags, input));
       return;
     }
     const client = createClient(flags);
@@ -652,7 +676,7 @@ async function main() {
     throw new Error(`Unknown command: ${process.argv.slice(2).join(' ') || '(empty)'}`);
   }
 
-  printResult(response, flags);
+  printResult(response, flags, command.name);
   await maybePrintUpdateNotice();
 }
 

@@ -18,6 +18,8 @@ export ONEDEX_BASE_URL=https://1dex.fr
 CLI examples:
 
 ```bash
+1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex "10 rue des cordeliers aix"
 1dex parcelles "50 rue des tanneurs aix" -f summary
 1dex dvf "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" -f summary
@@ -27,4 +29,4 @@ CLI examples:
 1dex doctor
 ```
 
-`1dex parcelles` is the short form. `1dex map parcelles` remains available for users who prefer the explicit map-layer namespace.
+`1dex <address>` and `1dex overview <address>` both call the public address overview route. `1dex parcelles` is the short form for the public map-layer route, and `1dex map parcelles` remains available for users who prefer the explicit map-layer namespace.

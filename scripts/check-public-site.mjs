@@ -21,7 +21,7 @@ const requiredFragments = [
   'https://1dex.fr/api/v1',
   '@1dex/connector',
   'npm i -g @1dex-fr/1dex',
-  '1dex "10 rue des cordeliers aix"',
+  '1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300',
   'curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"',
   'Les contrats API, l\'OpenAPI, les quotas et la documentation métier restent maintenus sur <code>1dex.fr</code>',
   'Clients API pour 1dex.',

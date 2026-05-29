@@ -1,6 +1,6 @@
 # onedex
 
-Python connector to retrieve nearby French cadastral parcels by address. The main public layer is `parcelles`; DVF, works, IRIS, context, and labels are verified complementary public layers on `1dex.fr`.
+Python connector for the public 1dex address overview and verified public map layers. Use `overview.address()` for the main address cards flow, then `map.*` helpers when you need public parcelles, DVF, works, IRIS, context, or labels layers from `1dex.fr`.
 
 ```python
 from onedex import OneDexClient

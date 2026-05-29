@@ -2,20 +2,20 @@
 
 Command-line client for the free 1dex connector.
 
-The main use case is simple: start from a French address and retrieve the address overview in JSON, CSV, or summary format, without an API key. Verified complementary layers are available for parcels, DVF, works, IRIS, context, and parcel labels when you need to inspect the public map-layer signals exposed today on `1dex.fr`.
+The CLI covers both the public address overview and the verified public map layers on `1dex.fr`. Use `overview` when you want the address cards flow; use the map-layer commands when you need parcelles, DVF, works, IRIS, context, or parcel labels in JSON, CSV, or summary format. The bare form `1dex <address>` remains the compatibility shortcut for the public address overview.
 
 ## Install
 
 ```bash
 npm i -g @1dex-fr/1dex
-1dex "10 rue des cordeliers aix"
+1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 ```
 
 Or install it in a project and run it with `npx`:
 
 ```bash
 npm i @1dex-fr/1dex
-npx 1dex "10 rue des cordeliers aix"
+npx 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 npx 1dex dvf "50 rue des tanneurs aix" -f summary
 npx 1dex travaux "50 rue des tanneurs aix" -f summary
@@ -24,15 +24,17 @@ npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ## Usage
 
 ```bash
-1dex "10 rue des cordeliers aix"
+1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex parcelles "50 rue des tanneurs aix" --format summary
 1dex dvf "50 rue des tanneurs aix" --format summary
 1dex travaux "50 rue des tanneurs aix" --format summary
 ```
 
-The bare address command calls `https://1dex.fr/api/v1/address-overview` and prints JSON, CSV, or a short summary. Explicit map-layer commands call `https://1dex.fr/explore/map-layer/{layer}`. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
+`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. The bare `1dex <address>` form keeps the same overview route for backwards compatibility. The map-layer commands call `https://1dex.fr/explore/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
 
 ```bash
+1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex "10 rue des cordeliers aix"
 1dex parcelles "50 rue des tanneurs aix" --format csv
 1dex parcelles "50 rue des tanneurs aix" --url
 ```
@@ -43,6 +45,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 
 ```text
 1dex <address> [options]
+1dex overview <address> [options]
 1dex parcelles <address> [options]
 1dex dvf <address> [options]
 1dex travaux <address> [options]
@@ -54,6 +57,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 1dex doctor [--address <address>] [options]
 
 -a, --address <text>                 Address to resolve.
+-d, --dvf-radius-m <number>          DVF radius for address overview. Default: 600.
 -l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
 -r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
 -b, --viewport-bbox <bbox>           Map bbox: minLon,minLat,maxLon,maxLat.
@@ -61,7 +65,6 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
     --city-code <code>               INSEE city code if already known.
     --lon <number>                   Longitude if already known.
     --lat <number>                   Latitude if already known.
-    --dvf-radius-m <number>          DVF radius for address overview. Default: 600.
     --base-url <url>                 Override API base URL.
     --timeout-ms <number>            Request timeout in milliseconds.
 -f, --format <json|csv|summary>      Output format.
@@ -73,7 +76,8 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 Examples:
 
 ```bash
-1dex "10 rue des cordeliers aix"
+1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex "50 rue des tanneurs aix"
 1dex parcelles --address "50 rue des tanneurs aix" --url
 1dex dvf "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" -f summary
