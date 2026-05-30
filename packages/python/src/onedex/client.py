@@ -77,6 +77,29 @@ def _normalize_map_layer(layer: Any) -> str:
     return layer_key
 
 
+class _AutocompleteNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def address(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "autocomplete input"))
+        query = data.get("q")
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("autocomplete input requires q.")
+        data["q"] = query.strip()
+        return self._client.request("GET", "/api/v1/autocomplete/address", query=data)
+
+
+class _AddressPagesNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def state(self, slug: str) -> Any:
+        if not isinstance(slug, str) or not slug.strip():
+            raise ValueError("address page state requires slug.")
+        return self._client.request("GET", f"/api/v1/address-pages/{urllib.parse.quote(slug.strip())}/state")
+
+
 class _MapNamespace:
     def __init__(self, client: "OneDexClient") -> None:
         self._client = client
@@ -84,15 +107,20 @@ class _MapNamespace:
     def _layer(self, payload: Mapping[str, Any], default_layer: str = "parcelles") -> Any:
         data = dict(_ensure_mapping(payload, "map layer input"))
         address = data.pop("address", None)
+        lon = data.get("lon")
+        lat = data.get("lat")
         layer = data.pop("layer", data.pop("layerKey", data.pop("layer_key", default_layer)))
         layer_key = _normalize_map_layer(layer)
         if isinstance(address, str) and address.strip():
             query = {"address": address.strip(), **data}
-            return self._client.request("GET", f"/explore/map-layer/{urllib.parse.quote(layer_key)}", query=query)
+            return self._client.request("GET", f"/api/v1/map-layer/{urllib.parse.quote(layer_key)}", query=query)
+
+        if lon is not None and lat is not None:
+            return self._client.request("GET", f"/api/v1/map-layer/{urllib.parse.quote(layer_key)}", query=data)
 
         address_slug = data.pop("addressSlug", data.pop("address_slug", None))
         if not isinstance(address_slug, str) or not address_slug.strip():
-            raise ValueError("map layer input requires address or address_slug.")
+            raise ValueError("map layer input requires address, lon/lat, or address_slug.")
         path = f"/adresse/{urllib.parse.quote(address_slug.strip())}/explore/map-layer/{urllib.parse.quote(layer_key)}"
         return self._client.request("GET", path, query=data)
 
@@ -111,8 +139,27 @@ class _MapNamespace:
     def context(self, payload: Mapping[str, Any]) -> Any:
         return self._layer({**dict(payload), "layer": "context"})
 
+    def labels(self, payload: Mapping[str, Any]) -> Any:
+        return self._layer({**dict(payload), "layer": "parcelles_labels"})
+
     def layer(self, payload: Mapping[str, Any]) -> Any:
         return self._layer(payload)
+
+    def viewport(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "map viewport input"))
+        layers = data.get("layers")
+        if not isinstance(layers, str) or not layers.strip():
+            raise ValueError("map viewport input requires layers.")
+        address = data.get("address")
+        lon = data.get("lon")
+        lat = data.get("lat")
+        if (not isinstance(address, str) or not address.strip()) and (lon is None or lat is None):
+            raise ValueError("map viewport input requires address or lon/lat.")
+        return self._client.request(
+            "GET",
+            "/api/v1/map-viewport",
+            query=data,
+        )
 
 
 class _OverviewNamespace:
@@ -121,6 +168,26 @@ class _OverviewNamespace:
 
     def address(self, payload: Mapping[str, Any]) -> Any:
         return self._client.address_overview(payload)
+
+
+class _ScoreNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def address(self, payload: Mapping[str, Any]) -> Any:
+        return self._client.score_address(payload)
+
+    def compare(self, payload: Mapping[str, Any]) -> Any:
+        return self._client.score_compare(payload)
+
+    def grid(self, payload: Mapping[str, Any]) -> Any:
+        return self._client.score_grid(payload)
+
+    def address_suggest(self, payload: Mapping[str, Any]) -> Any:
+        return self._client.score_address_suggest(payload)
+
+    def addressSuggest(self, payload: Mapping[str, Any]) -> Any:  # noqa: N802
+        return self.address_suggest(payload)
 
 
 class OneDexClient:
@@ -136,8 +203,12 @@ class OneDexClient:
         self.headers = dict(headers or {})
         self.timeout = timeout
         self._opener = opener or urllib.request.urlopen
+        self.autocomplete = _AutocompleteNamespace(self)
+        self.address_pages = _AddressPagesNamespace(self)
+        self.addressPages = self.address_pages  # noqa: N815
         self.map = _MapNamespace(self)
         self.overview = _OverviewNamespace(self)
+        self.score = _ScoreNamespace(self)
 
     def request(
         self,
@@ -203,3 +274,32 @@ class OneDexClient:
             "/api/v1/address-overview",
             query=dict(_ensure_mapping(payload, "address overview input")),
         )
+
+    def score_address(self, payload: Mapping[str, Any]) -> Any:
+        return self.request(
+            "POST",
+            "/api/v1/score/address",
+            body=dict(_ensure_mapping(payload, "score address input")),
+        )
+
+    def score_compare(self, payload: Mapping[str, Any]) -> Any:
+        return self.request(
+            "POST",
+            "/api/v1/score/compare",
+            body=dict(_ensure_mapping(payload, "score compare input")),
+        )
+
+    def score_grid(self, payload: Mapping[str, Any]) -> Any:
+        return self.request(
+            "GET",
+            "/api/v1/score/grid",
+            query=dict(_ensure_mapping(payload, "score grid input")),
+        )
+
+    def score_address_suggest(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "score address suggest input"))
+        query = data.get("q")
+        if not isinstance(query, str) or not query.strip():
+            raise ValueError("score address suggest input requires q.")
+        data["q"] = query.strip()
+        return self.request("GET", "/api/v1/score/address-suggest", query=data)

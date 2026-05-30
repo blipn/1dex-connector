@@ -20,6 +20,13 @@ CLI examples:
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex "10 rue des cordeliers aix"
+1dex autocomplete "10 rue des cordeliers aix" --limit 5
+1dex state "10-rue-de-la-paix-paris-75002"
+1dex score address "10 rue des cordeliers aix" -f summary
+1dex score compare --input '{"items":[{"address":"10 rue des cordeliers aix"},{"address":"50 rue des tanneurs aix"}],"sortBy":"global"}'
+1dex score grid --bbox 5.4457,43.5274,5.4468,43.5282 --zoom 15 --category global -f summary
+1dex score suggest "10 rue des cordeliers aix" --limit 5
+1dex viewport "10 rue des cordeliers aix" --layers context,iris -f summary
 1dex parcelles "50 rue des tanneurs aix" -f summary
 1dex dvf "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" -f summary
@@ -29,4 +36,4 @@ CLI examples:
 1dex doctor
 ```
 
-`1dex <address>` and `1dex overview <address>` both call the public address overview route. `1dex parcelles` is the short form for the public map-layer route, and `1dex map parcelles` remains available for users who prefer the explicit map-layer namespace.
+`1dex <address>` and `1dex overview <address>` both call the public address overview route. The other commands map directly to the canonical `/api/v1` public endpoints.

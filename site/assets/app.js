@@ -62,6 +62,10 @@ const operationConsoleLinks = {
   getAddressPageState: './api.html?operation=address-page-state',
   getMapLayer: './api.html?operation=map-layer&layer=parcelles',
   getMapViewport: './api.html?operation=map-viewport&layers=context,iris',
+  scoreAddress: './api.html?operation=score-address',
+  scoreCompare: './api.html?operation=score-compare',
+  scoreGrid: './api.html?operation=score-grid&bbox=5.4457,43.5274,5.4468,43.5282&zoom=15&category=global',
+  scoreAddressSuggest: './api.html?operation=score-suggest&address=10%20rue%20des%20cordeliers%20aix&limit=5',
 };
 
 function addOperationTestLinks() {
@@ -240,6 +244,8 @@ if (explorer) {
     const operation = operationInput.value;
     const query = new URLSearchParams();
     let path = '/api/v1/address-overview';
+    let method = 'GET';
+    let body = null;
 
     if (operation === 'address-overview') {
       appendIfPresent(query, 'address', readValue('address'));
@@ -288,14 +294,55 @@ if (explorer) {
       if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
         throw new Error('Adresse ou coordonnées requises.');
       }
+    } else if (operation === 'score-address') {
+      path = '/api/v1/score/address';
+      method = 'POST';
+      const rawItems = readValue('score_items');
+      const items = rawItems ? JSON.parse(rawItems) : [{ address: readValue('address') }];
+      if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('Items score requis (JSON array).');
+      }
+      body = { items };
+      appendIfPresent(body, 'profile', readValue('profile'));
+    } else if (operation === 'score-compare') {
+      path = '/api/v1/score/compare';
+      method = 'POST';
+      const rawItems = readValue('score_items');
+      if (!rawItems) {
+        throw new Error('Items score requis (JSON array).');
+      }
+      const items = JSON.parse(rawItems);
+      if (!Array.isArray(items) || items.length === 0) {
+        throw new Error('Items score requis (JSON array).');
+      }
+      body = { items };
+      appendIfPresent(body, 'profile', readValue('profile'));
+      appendIfPresent(body, 'sortBy', readValue('sortBy') || 'global');
+    } else if (operation === 'score-grid') {
+      path = '/api/v1/score/grid';
+      appendIfPresent(query, 'bbox', readValue('bbox'));
+      appendIfPresent(query, 'zoom', readValue('zoom'));
+      appendIfPresent(query, 'category', readValue('category'));
+      if (!query.has('bbox') || !query.has('zoom')) {
+        throw new Error('BBox et zoom requis pour la grille score.');
+      }
+    } else if (operation === 'score-suggest') {
+      path = '/api/v1/score/address-suggest';
+      const q = readValue('address');
+      if (q.length < 3) {
+        throw new Error('Recherche de 3 caractères minimum requise.');
+      }
+      query.set('q', q);
+      appendIfPresent(query, 'limit', readValue('limit'));
     }
 
     const queryString = query.toString();
     const url = queryString ? `${baseUrl}${path}?${queryString}` : `${baseUrl}${path}`;
     return {
-      method: 'GET',
+      method,
       path,
       url,
+      body,
       apiKey: readValue('api_key'),
     };
   }
@@ -313,6 +360,10 @@ if (explorer) {
         'address-page-state': 'getAddressPageState',
         'map-layer': 'getMapLayer',
         'map-viewport': 'getMapViewport',
+        'score-address': 'scoreAddress',
+        'score-compare': 'scoreCompare',
+        'score-grid': 'scoreGrid',
+        'score-suggest': 'scoreAddressSuggest',
       };
       docLink.href = `./documentation-api.html#operation/${operationIds[operation] ?? 'getAddressOverview'}`;
     }
@@ -335,6 +386,12 @@ if (explorer) {
       'layer',
       'layers',
       'viewport_render_mode',
+      'bbox',
+      'zoom',
+      'category',
+      'profile',
+      'sortBy',
+      'score_items',
       'api_key',
     ]) {
       const value = pageParams.get(name);
@@ -352,9 +409,14 @@ if (explorer) {
     try {
       const request = buildRequest();
       const lines = [
-        `curl ${shellQuote(request.url)}`,
+        request.method === 'POST' ? `curl -X POST ${shellQuote(request.url)}` : `curl ${shellQuote(request.url)}`,
         '  -H "Accept: application/json"',
       ];
+
+      if (request.body) {
+        lines.push('  -H "Content-Type: application/json"');
+        lines.push(`  -d ${shellQuote(prettyJson(request.body))}`);
+      }
 
       if (request.apiKey) {
         lines.push('  -H "Authorization: Bearer $ONEDEX_API_KEY"');
@@ -370,7 +432,7 @@ if (explorer) {
     }
   }
 
-  for (const input of form.querySelectorAll('input, select')) {
+  for (const input of form.querySelectorAll('input, select, textarea')) {
     input.addEventListener('input', renderCurl);
     input.addEventListener('change', renderCurl);
   }
@@ -391,6 +453,9 @@ if (explorer) {
     responseOutput.textContent = '';
 
     const headers = { accept: 'application/json' };
+    if (request.body) {
+      headers['content-type'] = 'application/json';
+    }
     if (request.apiKey) {
       headers.authorization = `Bearer ${request.apiKey}`;
     }
@@ -399,6 +464,7 @@ if (explorer) {
       const response = await fetch(request.url, {
         method: request.method,
         headers,
+        body: request.body ? JSON.stringify(request.body) : undefined,
       });
       const text = await response.text();
       const duration = Math.round(performance.now() - startedAt);

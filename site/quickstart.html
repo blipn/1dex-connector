@@ -56,7 +56,7 @@
         <section class="api-section api-intro docs-intro" data-reveal>
           <p class="api-kicker">Démarrage</p>
           <h1>Appeler l'API publique 1dex</h1>
-          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous reprennent les appels de démarrage sans renvoyer vers un fichier Markdown brut.</p>
+          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous couvrent l'aperçu, les suggestions, le score public et les routes cartographiques canoniques.</p>
           <div class="console-actions docs-actions">
             <a class="primary-action" href="./api.html">Tester dans la console</a>
             <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
@@ -96,10 +96,24 @@
 
             <article class="code-sample">
               <div class="sample-head">
-                <h3>Focus géographique public</h3>
-                <button type="button" data-copy="curl-map-focus">Copier</button>
+                <h3>Calque carte et viewport</h3>
+                <button type="button" data-copy="curl-map-layer">Copier</button>
               </div>
-              <pre id="curl-map-focus"><code>curl "https://1dex.fr/api/v1/map-focus/public-location?lon=2.3317&amp;lat=48.8686"</code></pre>
+              <pre id="curl-map-layer"><code>curl "https://1dex.fr/api/v1/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&amp;viewport_render_mode=features"
+curl "https://1dex.fr/api/v1/map-viewport?layers=context,iris&amp;address=10%20rue%20des%20cordeliers%20aix"</code></pre>
+            </article>
+
+            <article class="code-sample">
+              <div class="sample-head">
+                <h3>Score public</h3>
+                <button type="button" data-copy="curl-score">Copier</button>
+              </div>
+              <pre id="curl-score"><code>curl -X POST "https://1dex.fr/api/v1/score/address" \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"address":"10 rue des cordeliers aix"}]}'
+
+curl "https://1dex.fr/api/v1/score/address-suggest?q=10%20rue%20des%20cordeliers%20aix&amp;limit=5"
+curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&amp;zoom=15&amp;category=global"</code></pre>
             </article>
           </div>
         </section>
@@ -108,7 +122,7 @@
           <div class="api-section-head">
             <p class="api-kicker">JavaScript</p>
             <h2>Client npm</h2>
-            <p>Le package reste un petit client HTTP. Lorsque les helpers de haut niveau ne couvrent pas encore une route <code>/api/v1</code>, appelez directement les points d'entrée publics.</p>
+            <p>Le package JS couvre les routes publiques d'aperçu, autocomplete, score, état de page adresse, calques carte et viewport.</p>
           </div>
           <article class="code-sample">
             <div class="sample-head">
@@ -122,8 +136,15 @@ const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
   dvf_radius_m: 600,
 });
+const suggestions = await client.autocomplete.address({
+  q: "10 rue des cordeliers aix",
+  limit: 5,
+});
+const score = await client.score.address({
+  items: [{ address: "10 rue des cordeliers aix" }],
+});
 
-console.log(overview.version, overview.cards);</code></pre>
+console.log(overview.version, suggestions.suggestions, score.items);</code></pre>
           </article>
         </section>
 
@@ -144,8 +165,15 @@ overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
     "dvf_radius_m": 600,
 })
+suggestions = client.autocomplete.address({
+    "q": "10 rue des cordeliers aix",
+    "limit": 5,
+})
+score = client.score.address({
+    "items": [{"address": "10 rue des cordeliers aix"}],
+})
 
-print(overview["version"], overview["cards"])</code></pre>
+print(overview["version"], suggestions["suggestions"], score["items"])</code></pre>
           </article>
         </section>
       </section>

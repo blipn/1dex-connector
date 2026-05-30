@@ -76,7 +76,8 @@
             <span class="parcel parcel-c"></span>
           </div>
           <pre><code>npm i -g @1dex-fr/1dex
-1dex "10 rue des cordeliers aix"</code></pre>
+1dex "10 rue des cordeliers aix"
+1dex score address "10 rue des cordeliers aix"</code></pre>
         </div>
       </section>
 
@@ -88,7 +89,7 @@
       <section id="quickstart" class="section section-light" aria-labelledby="quickstart-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Démarrage</p>
-          <h2 id="quickstart-title">Lire un aperçu d'adresse.</h2>
+          <h2 id="quickstart-title">Lire, suggérer et scorer une adresse.</h2>
           <p>Le connecteur expose des helpers pour les routes publiques documentées sur <code>1dex.fr</code>.</p>
         </div>
         <div class="code-columns">
@@ -99,19 +100,17 @@
             </div>
             <pre id="npm-sample"><code>npm i -g @1dex-fr/1dex
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
-
-# =&gt;
-{
-  "version": "address-overview-v1",
-  "cards": [...]
-}</code></pre>
+1dex score address "10 rue des cordeliers aix" -f summary</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
               <h3>curl</h3>
               <button type="button" data-copy="curl-sample">Copier</button>
             </div>
-            <pre id="curl-sample"><code>curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"</code></pre>
+            <pre id="curl-sample"><code>curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"
+curl -sS -X POST "https://1dex.fr/api/v1/score/address" \
+  -H "Content-Type: application/json" \
+  -d '{"items":[{"address":"10 rue des cordeliers aix"}]}'</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -121,12 +120,15 @@
             <pre id="js-sample"><code>import { OneDexClient } from "@1dex/connector";
 
 const client = new OneDexClient();
-const overview = await client.overview.address({
-  address: "10 rue des cordeliers aix",
-  dvf_radius_m: 600,
+const suggestions = await client.autocomplete.address({
+  q: "10 rue des cordeliers aix",
+  limit: 5,
+});
+const score = await client.score.address({
+  items: [{ address: "10 rue des cordeliers aix" }],
 });
 
-console.log(overview.cards);</code></pre>
+console.log(suggestions.suggestions, score.items);</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -136,12 +138,15 @@ console.log(overview.cards);</code></pre>
 <pre id="py-sample"><code>from onedex import OneDexClient
 
 client = OneDexClient()
-overview = client.overview.address({
-    "address": "10 rue des cordeliers aix",
-    "dvf_radius_m": 600,
+suggestions = client.autocomplete.address({
+    "q": "10 rue des cordeliers aix",
+    "limit": 5,
+})
+score = client.score.address({
+    "items": [{"address": "10 rue des cordeliers aix"}],
 })
 
-print(overview["cards"])</code></pre>
+print(suggestions["suggestions"], score["items"])</code></pre>
           </article>
         </div>
       </section>

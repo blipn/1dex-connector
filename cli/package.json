@@ -1,7 +1,7 @@
 {
   "name": "@1dex-fr/1dex",
   "version": "0.1.4",
-  "description": "Free CLI to test 1dex public address overview and verified public map layers from a French address.",
+  "description": "CLI for the public 1dex API surface: overview, autocomplete, score, address state, and map routes.",
   "type": "module",
   "bin": {
     "1dex": "src/cli.js"

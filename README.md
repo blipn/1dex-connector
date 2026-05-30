@@ -5,7 +5,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0b7a53)](https://blipn.github.io/1dex-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
 
-Connecteurs clients pour consommer l'API publique 1dex, avec helpers d'aperçu d'adresse et calques cartographiques publics vérifiés.
+Connecteurs clients pour consommer l'API publique 1dex: aperçu d'adresse, autocomplete, score public, état de page adresse et routes cartographiques publiques vérifiées.
 
 Ce dépôt contient le client JavaScript, le client Python, la CLI et des exemples d'intégration. Il reste une couche de consommation: il ne porte pas le contrat public de l'API, la documentation métier, les quotas, les imports de sources, le schéma de base de données, les fichiers bruts ni le code privé du runtime.
 
@@ -17,7 +17,7 @@ Documentation publique canonique de l'API: <https://1dex.fr/developpeurs/api>
 
 - `packages/js`: client JavaScript/TypeScript sans dépendance runtime.
 - `packages/python`: client Python fondé sur la bibliothèque standard.
-- `cli`: CLI Node pour les smoke tests rapides, l'aperçu d'adresse public et les exports JSON/CSV des calques carte.
+- `cli`: CLI Node pour les smoke tests rapides, l'aperçu d'adresse public, le score public, les suggestions et les exports JSON/CSV.
 - `docs/`: notes d'usage du connecteur qui renvoient vers la documentation canonique `1dex.fr`.
 - `examples/`: petits exemples curl, Node, Python et Go.
 
@@ -36,7 +36,10 @@ const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
   dvf_radius_m: 600,
 });
-console.log(overview.cards);
+const score = await client.score.address({
+  items: [{ address: "10 rue des cordeliers aix" }],
+});
+console.log(overview.cards, score.items);
 ```
 
 Python:
@@ -52,7 +55,10 @@ overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
     "dvf_radius_m": 600,
 })
-print(overview["cards"])
+score = client.score.address({
+    "items": [{"address": "10 rue des cordeliers aix"}],
+})
+print(overview["cards"], score["items"])
 ```
 
 CLI:
@@ -60,6 +66,7 @@ CLI:
 ```bash
 npm i -g @1dex-fr/1dex
 1dex "10 rue des cordeliers aix"
+1dex score address "10 rue des cordeliers aix" -f summary
 ```
 
 ## Liens publics canoniques de l'API

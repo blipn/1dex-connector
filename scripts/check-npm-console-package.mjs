@@ -54,13 +54,13 @@ try {
 
   const installedCli = join(installDir, 'node_modules/@1dex-fr/1dex/src/cli.js');
   const installedSource = await readFile(installedCli, 'utf8');
-  if (!installedSource.includes('1dex overview <address>') || !installedSource.includes('1dex parcelles <address>') || !installedSource.includes('1dex dvf <address>')) {
+  if (!installedSource.includes('1dex overview <address>') || !installedSource.includes('1dex autocomplete <query>') || !installedSource.includes('1dex score address <address>') || !installedSource.includes('1dex parcelles <address>')) {
     throw new Error('Installed 1dex binary is missing the expected help commands.');
   }
   if (!installedSource.includes('--format <json|csv|summary>')) {
     throw new Error('Installed 1dex binary is missing the expected format option.');
   }
-  if (!installedSource.includes('/explore/map-layer/')) {
+  if (!installedSource.includes('/api/v1/map-layer/')) {
     throw new Error('Installed 1dex binary is missing the expected map-layer URL builder.');
   }
   if (!installedSource.includes('/api/v1/address-overview')) {
@@ -76,6 +76,17 @@ try {
     '10 rue des cordeliers aix',
     '--dvf-radius-m',
     '300',
+    '--url',
+  ], { cwd: installDir });
+  run(process.execPath, [installedCli,
+    'autocomplete',
+    '10 rue des cordeliers aix',
+    '--url',
+  ], { cwd: installDir });
+  run(process.execPath, [installedCli,
+    'score',
+    'address',
+    '10 rue des cordeliers aix',
     '--url',
   ], { cwd: installDir });
   run(process.execPath, [installedCli,

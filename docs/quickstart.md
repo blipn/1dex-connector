@@ -24,15 +24,14 @@ curl "https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state"
 curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&dvf_radius_m=600"
 ```
 
-## Focus géographique public
+## Calque carte et viewport
 
 ```bash
-curl "https://1dex.fr/api/v1/map-focus/public-location?lon=2.3317&lat=48.8686"
+curl "https://1dex.fr/api/v1/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features"
+curl "https://1dex.fr/api/v1/map-viewport?layers=context,iris&address=10%20rue%20des%20cordeliers%20aix"
 ```
 
 ## Score public
-
-Les routes score publiques sont documentées dans l'OpenAPI canonique mais ne disposent pas encore de helpers dédiés dans ce dépôt connecteur. Appelez-les directement quand vous en avez besoin:
 
 ```bash
 curl -X POST "https://1dex.fr/api/v1/score/address" \
@@ -49,7 +48,7 @@ curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&zoom=
 
 ## JavaScript
 
-Les packages du connecteur restent volontairement de petits clients HTTP. Lorsque les helpers de haut niveau ne couvrent pas encore une route `/api/v1`, appelez directement les points d'entrée publics:
+Le package JS couvre les routes publiques d'aperçu, autocomplete, score, état de page adresse, calques carte et viewport:
 
 ```js
 import { OneDexClient } from "@1dex/connector";
@@ -59,8 +58,15 @@ const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
   dvf_radius_m: 600,
 });
+const suggestions = await client.autocomplete.address({
+  q: "10 rue des cordeliers aix",
+  limit: 5,
+});
+const score = await client.score.address({
+  items: [{ address: "10 rue des cordeliers aix" }],
+});
 
-console.log(overview.version, overview.cards);
+console.log(overview.version, suggestions.suggestions, score.items);
 ```
 
 ## Python
@@ -73,6 +79,13 @@ overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
     "dvf_radius_m": 600,
 })
+suggestions = client.autocomplete.address({
+    "q": "10 rue des cordeliers aix",
+    "limit": 5,
+})
+score = client.score.address({
+    "items": [{"address": "10 rue des cordeliers aix"}],
+})
 
-print(overview["version"], overview["cards"])
+print(overview["version"], suggestions["suggestions"], score["items"])
 ```

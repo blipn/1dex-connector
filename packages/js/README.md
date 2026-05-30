@@ -1,6 +1,6 @@
 # @1dex/connector
 
-JavaScript connector for the public 1dex address overview and verified public map layers. Use `overview.address()` for the main address cards flow, then `map.*` helpers when you need public parcelles, DVF, works, IRIS, context, or labels layers from `1dex.fr`.
+JavaScript connector for the public 1dex API surface. Use `overview.address()` for the main address cards flow, `autocomplete.address()` / `score.addressSuggest()` for address search, `score.*` for public score routes, `addressPages.state()` for page access state, and `map.*` helpers for public map-layer and viewport calls on `1dex.fr`.
 
 ```bash
 npm i @1dex/connector
@@ -11,23 +11,29 @@ import { OneDexClient } from "@1dex/connector";
 
 const client = new OneDexClient();
 
-const response = await client.map.parcelles({
-  address: "50 rue des tanneurs aix",
-  viewport_render_mode: "features",
-});
-
-const dvf = await client.map.dvf({
-  address: "50 rue des tanneurs aix",
-  viewport_render_mode: "features",
-});
-
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
   dvf_radius_m: 600,
 });
 
-console.log(response.data.features.length);
+const suggestions = await client.autocomplete.address({
+  q: "10 rue des cordeliers aix",
+  limit: 5,
+});
+
+const score = await client.score.address({
+  items: [{ address: "10 rue des cordeliers aix" }],
+});
+
+const viewport = await client.map.viewport({
+  layers: "context,iris",
+  address: "10 rue des cordeliers aix",
+});
+
 console.log(overview.cards);
+console.log(suggestions.suggestions);
+console.log(score.items);
+console.log(Object.keys(viewport.layers));
 ```
 
 For command-line usage, install `@1dex-fr/1dex`.

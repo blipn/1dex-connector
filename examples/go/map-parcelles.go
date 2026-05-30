@@ -16,7 +16,7 @@ func main() {
 
 	req, err := http.NewRequest(
 		"GET",
-		baseURL+"/explore/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features",
+		baseURL+"/api/v1/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&viewport_render_mode=features",
 		nil,
 	)
 	if err != nil {

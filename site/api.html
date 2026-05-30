@@ -64,6 +64,10 @@
                   <option value="address-page-state">État page adresse</option>
                   <option value="map-layer">Calque carte</option>
                   <option value="map-viewport">Viewport multi-calques</option>
+                  <option value="score-address">Score adresse</option>
+                  <option value="score-compare">Score compare</option>
+                  <option value="score-grid">Score grille</option>
+                  <option value="score-suggest">Score suggest</option>
                 </select>
               </label>
 
@@ -74,7 +78,7 @@
                 </select>
               </label>
 
-              <label class="field-label" for="api-address" data-visible-for="address-overview,autocomplete,map-layer,map-viewport">
+              <label class="field-label" for="api-address" data-visible-for="address-overview,autocomplete,map-layer,map-viewport,score-address,score-suggest">
                 Adresse
                 <input id="api-address" name="address" type="text" value="10 rue des cordeliers aix" autocomplete="street-address">
               </label>
@@ -116,11 +120,37 @@
                   <input id="api-dvf-radius" name="dvf_radius_m" type="number" min="1" value="600" autocomplete="off">
                 </label>
 
-                <label class="field-label" for="api-limit" data-visible-for="autocomplete">
+                <label class="field-label" for="api-limit" data-visible-for="autocomplete,score-suggest">
                   Limite
                   <input id="api-limit" name="limit" type="number" min="1" max="8" value="5" autocomplete="off">
                 </label>
+
+                <label class="field-label" for="api-score-zoom" data-visible-for="score-grid">
+                  Zoom grille
+                  <input id="api-score-zoom" name="zoom" type="number" min="1" max="20" value="15" autocomplete="off">
+                </label>
+
+                <label class="field-label" for="api-score-category" data-visible-for="score-grid">
+                  Catégorie score
+                  <select id="api-score-category" name="category">
+                    <option value="global">global</option>
+                    <option value="market">market</option>
+                    <option value="daily_life">daily_life</option>
+                    <option value="environment">environment</option>
+                    <option value="vigilance">vigilance</option>
+                    <option value="potential">potential</option>
+                    <option value="price_m2">price_m2</option>
+                  </select>
+                </label>
               </div>
+
+              <label class="field-label" for="api-score-items" data-visible-for="score-address,score-compare">
+                Items score (JSON)
+                <textarea id="api-score-items" name="score_items" rows="7" autocomplete="off">[
+  {"address": "10 rue des cordeliers aix"},
+  {"address": "50 rue des tanneurs aix"}
+]</textarea>
+              </label>
 
               <details class="advanced-fields">
                 <summary>Paramètres avancés</summary>
@@ -140,6 +170,25 @@
                   <label class="field-label" for="api-api-key">
                     Jeton Bearer
                     <input id="api-api-key" name="api_key" type="password" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-score-bbox" data-visible-for="score-grid">
+                    BBox grille
+                    <input id="api-score-bbox" name="bbox" type="text" value="5.4457,43.5274,5.4468,43.5282" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-score-profile" data-visible-for="score-address,score-compare">
+                    Profil score
+                    <input id="api-score-profile" name="profile" type="text" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-score-sort-by" data-visible-for="score-compare">
+                    Tri compare
+                    <select id="api-score-sort-by" name="sortBy">
+                      <option value="global">global</option>
+                      <option value="market">market</option>
+                      <option value="daily_life">daily_life</option>
+                      <option value="environment">environment</option>
+                      <option value="vigilance">vigilance</option>
+                      <option value="potential">potential</option>
+                    </select>
                   </label>
                 </div>
               </details>

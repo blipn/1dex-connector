@@ -1,8 +1,8 @@
 # 1dex
 
-Command-line client for the free 1dex connector.
+Command-line client for the public 1dex connector.
 
-The CLI covers both the public address overview and the verified public map layers on `1dex.fr`. Use `overview` when you want the address cards flow; use the map-layer commands when you need parcelles, DVF, works, IRIS, context, or parcel labels in JSON, CSV, or summary format. The bare form `1dex <address>` remains the compatibility shortcut for the public address overview.
+The CLI covers the public address overview, autocomplete, score endpoints, address-page state, and verified public map-layer / viewport routes on `1dex.fr`. Use `overview` when you want the address cards flow; `autocomplete` or `score suggest` for address search; `score` for scoring and compare flows; `state` for page-access state; and the map commands when you need parcelles, DVF, works, IRIS, context, labels, or multi-layer viewports. The bare form `1dex <address>` remains the compatibility shortcut for the public address overview.
 
 ## Install
 
@@ -16,25 +16,30 @@ Or install it in a project and run it with `npx`:
 ```bash
 npm i @1dex-fr/1dex
 npx 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+npx 1dex autocomplete "10 rue des cordeliers aix"
+npx 1dex score address "10 rue des cordeliers aix" -f summary
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
-npx 1dex dvf "50 rue des tanneurs aix" -f summary
-npx 1dex travaux "50 rue des tanneurs aix" -f summary
 ```
 
 ## Usage
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex autocomplete "10 rue des cordeliers aix" --limit 5
+1dex score address "10 rue des cordeliers aix" -f summary
+1dex score compare --input '{"items":[{"address":"10 rue des cordeliers aix"},{"address":"50 rue des tanneurs aix"}],"sortBy":"global"}'
+1dex viewport "10 rue des cordeliers aix" --layers context,iris -f summary
 1dex parcelles "50 rue des tanneurs aix" --format summary
-1dex dvf "50 rue des tanneurs aix" --format summary
-1dex travaux "50 rue des tanneurs aix" --format summary
 ```
 
-`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. The bare `1dex <address>` form keeps the same overview route for backwards compatibility. The map-layer commands call `https://1dex.fr/explore/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
+`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. The bare `1dex <address>` form keeps the same overview route for backwards compatibility. `autocomplete`, `state`, `viewport`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex "10 rue des cordeliers aix"
+1dex autocomplete "10 rue des cordeliers aix" --url
+1dex state "10-rue-de-la-paix-paris-75002"
+1dex score grid --bbox 5.4457,43.5274,5.4468,43.5282 --zoom 15 --category global
 1dex parcelles "50 rue des tanneurs aix" --format csv
 1dex parcelles "50 rue des tanneurs aix" --url
 ```
@@ -46,48 +51,21 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 ```text
 1dex <address> [options]
 1dex overview <address> [options]
+1dex autocomplete <query> [options]
+1dex state <slug>
 1dex parcelles <address> [options]
 1dex dvf <address> [options]
 1dex travaux <address> [options]
 1dex iris <address> [options]
-1dex layer <layer> <address> [options]
-1dex map parcelles <address> [options]
-1dex map parcelles --address <address> [options]
+1dex labels <address> [options]
+1dex layer <layer> <address|--lon/--lat> [options]
+1dex viewport <address|--lon/--lat> [options]
+1dex score address <address> [options]
+1dex score compare [--input <json-or-@file>] [options]
+1dex score grid --bbox <bbox> --zoom <number> [options]
+1dex score suggest <query> [options]
 1dex examples
 1dex doctor [--address <address>] [options]
-
--a, --address <text>                 Address to resolve.
--d, --dvf-radius-m <number>          DVF radius for address overview. Default: 600.
--l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
--r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
--b, --viewport-bbox <bbox>           Map bbox: minLon,minLat,maxLon,maxLat.
--z, --viewport-zoom <number>         Map zoom level.
-    --city-code <code>               INSEE city code if already known.
-    --lon <number>                   Longitude if already known.
-    --lat <number>                   Latitude if already known.
-    --base-url <url>                 Override API base URL.
-    --timeout-ms <number>            Request timeout in milliseconds.
--f, --format <json|csv|summary>      Output format.
--u, --url                            Print the generated URL and exit.
--h, --help                           Show help.
--V, --version                        Show version.
-```
-
-Examples:
-
-```bash
-1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
-1dex "50 rue des tanneurs aix"
-1dex parcelles --address "50 rue des tanneurs aix" --url
-1dex dvf "50 rue des tanneurs aix" -f summary
-1dex travaux "50 rue des tanneurs aix" -f summary
-1dex layer iris "50 rue des tanneurs aix" -f summary
-1dex parcelles "50 rue des tanneurs aix" -f summary
-1dex parcelles "50 rue des tanneurs aix" \
-  --lon 5.446245 --lat 43.52782 \
-  --viewport-bbox 5.4457,43.5274,5.4468,43.5282 \
-  --viewport-zoom 19
-1dex doctor
 ```
 
 Set `ONEDEX_BASE_URL` only if you need to target another compatible environment.

@@ -32,7 +32,7 @@ class ClientTest(unittest.TestCase):
         client = OneDexClient()
         self.assertEqual(client.base_url, "https://1dex.fr")
 
-    def test_map_parcelles_uses_working_public_path(self):
+    def test_map_parcelles_uses_canonical_public_path(self):
         calls = []
 
         def opener(request, timeout):
@@ -48,12 +48,12 @@ class ClientTest(unittest.TestCase):
         request, timeout = calls[0]
         self.assertEqual(
             request.full_url,
-            "http://example.test/explore/map-layer/parcelles?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
+            "http://example.test/api/v1/map-layer/parcelles?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
         )
         self.assertEqual(request.get_method(), "GET")
         self.assertEqual(timeout, 30.0)
 
-    def test_map_layer_helpers_use_verified_public_paths(self):
+    def test_map_helpers_cover_public_layers_and_viewport(self):
         calls = []
 
         def opener(request, timeout):
@@ -69,42 +69,135 @@ class ClientTest(unittest.TestCase):
             "address": "50 rue des tanneurs aix",
             "viewport_render_mode": "features",
         })
+        client.map.labels({
+            "address": "50 rue des tanneurs aix",
+        })
         client.map.layer({
             "layer": "iris",
             "address": "50 rue des tanneurs aix",
         })
+        client.map.viewport({
+            "layers": "context,iris",
+            "address": "10 rue des cordeliers aix",
+        })
+        client.map.layer({
+            "layer": "parcelles",
+            "lon": -0.542902,
+            "lat": 47.468617,
+            "viewport_render_mode": "features",
+        })
+        client.map.viewport({
+            "layers": "context,iris",
+            "lon": -0.542902,
+            "lat": 47.468617,
+        })
 
         self.assertEqual(
             calls[0][0].full_url,
-            "http://example.test/explore/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
+            "http://example.test/api/v1/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
         )
         self.assertEqual(
             calls[1][0].full_url,
-            "http://example.test/explore/map-layer/parcelles_travaux?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
+            "http://example.test/api/v1/map-layer/parcelles_travaux?address=50+rue+des+tanneurs+aix&viewport_render_mode=features",
         )
         self.assertEqual(
             calls[2][0].full_url,
-            "http://example.test/explore/map-layer/iris?address=50+rue+des+tanneurs+aix",
+            "http://example.test/api/v1/map-layer/parcelles_labels?address=50+rue+des+tanneurs+aix",
+        )
+        self.assertEqual(
+            calls[3][0].full_url,
+            "http://example.test/api/v1/map-layer/iris?address=50+rue+des+tanneurs+aix",
+        )
+        self.assertEqual(
+            calls[4][0].full_url,
+            "http://example.test/api/v1/map-viewport?layers=context%2Ciris&address=10+rue+des+cordeliers+aix",
+        )
+        self.assertEqual(
+            calls[5][0].full_url,
+            "http://example.test/api/v1/map-layer/parcelles?lon=-0.542902&lat=47.468617&viewport_render_mode=features",
+        )
+        self.assertEqual(
+            calls[6][0].full_url,
+            "http://example.test/api/v1/map-viewport?layers=context%2Ciris&lon=-0.542902&lat=47.468617",
         )
 
-    def test_overview_address_uses_public_api_v1_path(self):
+    def test_overview_autocomplete_address_pages_and_score_routes_use_public_api_v1_paths(self):
         calls = []
 
         def opener(request, timeout):
             calls.append((request, timeout))
-            return FakeResponse({"version": "address-overview-v1", "cards": []})
+            return FakeResponse({"status": "ok", "items": []})
 
         client = OneDexClient(base_url="http://example.test", opener=opener)
         client.overview.address({
             "address": "10 rue des cordeliers aix",
             "dvf_radius_m": 600,
         })
+        client.autocomplete.address({"q": "10 rue des cordeliers aix", "limit": 5})
+        client.addressPages.state("10-rue-de-la-paix-paris-75002")
+        client.score.grid({
+            "bbox": "5.4457,43.5274,5.4468,43.5282",
+            "zoom": 15,
+            "category": "global",
+        })
+        client.score.addressSuggest({"q": "10 rue des cordeliers aix", "limit": 5})
 
         self.assertEqual(
             calls[0][0].full_url,
             "http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=600",
         )
-        self.assertEqual(calls[0][0].get_method(), "GET")
+        self.assertEqual(
+            calls[1][0].full_url,
+            "http://example.test/api/v1/autocomplete/address?q=10+rue+des+cordeliers+aix&limit=5",
+        )
+        self.assertEqual(
+            calls[2][0].full_url,
+            "http://example.test/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state",
+        )
+        self.assertEqual(
+            calls[3][0].full_url,
+            "http://example.test/api/v1/score/grid?bbox=5.4457%2C43.5274%2C5.4468%2C43.5282&zoom=15&category=global",
+        )
+        self.assertEqual(
+            calls[4][0].full_url,
+            "http://example.test/api/v1/score/address-suggest?q=10+rue+des+cordeliers+aix&limit=5",
+        )
+
+    def test_score_address_and_compare_post_json_bodies(self):
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            return FakeResponse({"version": "score-v1", "items": []})
+
+        client = OneDexClient(base_url="http://example.test", opener=opener)
+        client.score.address({"items": [{"address": "10 rue des cordeliers aix"}]})
+        client.score.compare({
+            "items": [
+                {"address": "10 rue des cordeliers aix"},
+                {"address": "50 rue des tanneurs aix"},
+            ],
+            "sortBy": "global",
+        })
+
+        self.assertEqual(calls[0][0].full_url, "http://example.test/api/v1/score/address")
+        self.assertEqual(calls[0][0].get_method(), "POST")
+        self.assertEqual(
+            json.loads(calls[0][0].data.decode("utf-8")),
+            {"items": [{"address": "10 rue des cordeliers aix"}]},
+        )
+        self.assertEqual(calls[1][0].full_url, "http://example.test/api/v1/score/compare")
+        self.assertEqual(calls[1][0].get_method(), "POST")
+        self.assertEqual(
+            json.loads(calls[1][0].data.decode("utf-8")),
+            {
+                "items": [
+                    {"address": "10 rue des cordeliers aix"},
+                    {"address": "50 rue des tanneurs aix"},
+                ],
+                "sortBy": "global",
+            },
+        )
 
     def test_unknown_public_map_layer_is_rejected_locally(self):
         client = OneDexClient()

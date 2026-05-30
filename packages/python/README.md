@@ -1,23 +1,27 @@
 # onedex
 
-Python connector for the public 1dex address overview and verified public map layers. Use `overview.address()` for the main address cards flow, then `map.*` helpers when you need public parcelles, DVF, works, IRIS, context, or labels layers from `1dex.fr`.
+Python connector for the public 1dex API surface. Use `overview.address()` for the main address cards flow, `autocomplete.address()` / `score.addressSuggest()` for address search, `score.*` for public score routes, `addressPages.state()` for page access state, and `map.*` helpers for public map-layer and viewport calls on `1dex.fr`.
 
 ```python
 from onedex import OneDexClient
 
 client = OneDexClient()
-response = client.map.parcelles({
-    "address": "50 rue des tanneurs aix",
-    "viewport_render_mode": "features",
-})
-
-dvf = client.map.dvf({
-    "address": "50 rue des tanneurs aix",
-    "viewport_render_mode": "features",
-})
-
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
     "dvf_radius_m": 600,
+})
+
+suggestions = client.autocomplete.address({
+    "q": "10 rue des cordeliers aix",
+    "limit": 5,
+})
+
+score = client.score.address({
+    "items": [{"address": "10 rue des cordeliers aix"}],
+})
+
+viewport = client.map.viewport({
+    "layers": "context,iris",
+    "address": "10 rue des cordeliers aix",
 })
 ```

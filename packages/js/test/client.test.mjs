@@ -18,7 +18,7 @@ test('defaults to the public 1dex host', () => {
   assert.equal(client.baseUrl, 'https://1dex.fr');
 });
 
-test('map.parcelles builds the working public 1dex map-layer URL', async () => {
+test('map.parcelles builds the canonical public api v1 map-layer URL', async () => {
   const calls = [];
   const client = new OneDexClient({
     baseUrl: 'http://example.test',
@@ -35,12 +35,12 @@ test('map.parcelles builds the working public 1dex map-layer URL', async () => {
 
   assert.equal(
     calls[0].url,
-    'http://example.test/explore/map-layer/parcelles?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
+    'http://example.test/api/v1/map-layer/parcelles?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
   );
   assert.equal(calls[0].init.method, 'GET');
 });
 
-test('map layer helpers build verified public DVF and travaux URLs', async () => {
+test('map namespace covers public dvf, travaux, labels, viewport, and generic layer URLs', async () => {
   const calls = [];
   const client = new OneDexClient({
     baseUrl: 'http://example.test',
@@ -52,29 +52,49 @@ test('map layer helpers build verified public DVF and travaux URLs', async () =>
 
   await client.map.dvf({ address: '50 rue des tanneurs aix', viewport_render_mode: 'features' });
   await client.map.travaux({ address: '50 rue des tanneurs aix', viewport_render_mode: 'features' });
+  await client.map.labels({ address: '50 rue des tanneurs aix' });
   await client.map.layer({ layer: 'iris', address: '50 rue des tanneurs aix' });
+  await client.map.viewport({ layers: 'context,iris', address: '10 rue des cordeliers aix' });
+  await client.map.layer({ layer: 'parcelles', lon: -0.542902, lat: 47.468617, viewport_render_mode: 'features' });
+  await client.map.viewport({ layers: 'context,iris', lon: -0.542902, lat: 47.468617 });
 
   assert.equal(
     calls[0].url,
-    'http://example.test/explore/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
+    'http://example.test/api/v1/map-layer/parcelles_dvf?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
   );
   assert.equal(
     calls[1].url,
-    'http://example.test/explore/map-layer/parcelles_travaux?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
+    'http://example.test/api/v1/map-layer/parcelles_travaux?address=50+rue+des+tanneurs+aix&viewport_render_mode=features',
   );
   assert.equal(
     calls[2].url,
-    'http://example.test/explore/map-layer/iris?address=50+rue+des+tanneurs+aix',
+    'http://example.test/api/v1/map-layer/parcelles_labels?address=50+rue+des+tanneurs+aix',
+  );
+  assert.equal(
+    calls[3].url,
+    'http://example.test/api/v1/map-layer/iris?address=50+rue+des+tanneurs+aix',
+  );
+  assert.equal(
+    calls[4].url,
+    'http://example.test/api/v1/map-viewport?address=10+rue+des+cordeliers+aix&layers=context%2Ciris',
+  );
+  assert.equal(
+    calls[5].url,
+    'http://example.test/api/v1/map-layer/parcelles?lon=-0.542902&lat=47.468617&viewport_render_mode=features',
+  );
+  assert.equal(
+    calls[6].url,
+    'http://example.test/api/v1/map-viewport?lon=-0.542902&lat=47.468617&layers=context%2Ciris',
   );
 });
 
-test('overview.address builds the public api v1 address overview URL', async () => {
+test('overview, autocomplete, addressPages, and score helpers build canonical public API URLs', async () => {
   const calls = [];
   const client = new OneDexClient({
     baseUrl: 'http://example.test',
     fetch: async (url, init) => {
       calls.push({ url, init });
-      return createJsonResponse({ version: 'address-overview-v1', cards: [] });
+      return createJsonResponse({ status: 'ok', items: [] });
     },
   });
 
@@ -82,12 +102,61 @@ test('overview.address builds the public api v1 address overview URL', async () 
     address: '10 rue des cordeliers aix',
     dvf_radius_m: 600,
   });
+  await client.autocomplete.address({ q: '10 rue des cordeliers aix', limit: 5 });
+  await client.addressPages.state('10-rue-de-la-paix-paris-75002');
+  await client.score.grid({ bbox: '5.4457,43.5274,5.4468,43.5282', zoom: 15, category: 'global' });
+  await client.score.addressSuggest({ q: '10 rue des cordeliers aix', limit: 5 });
 
   assert.equal(
     calls[0].url,
     'http://example.test/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=600',
   );
-  assert.equal(calls[0].init.method, 'GET');
+  assert.equal(
+    calls[1].url,
+    'http://example.test/api/v1/autocomplete/address?q=10+rue+des+cordeliers+aix&limit=5',
+  );
+  assert.equal(
+    calls[2].url,
+    'http://example.test/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state',
+  );
+  assert.equal(
+    calls[3].url,
+    'http://example.test/api/v1/score/grid?bbox=5.4457%2C43.5274%2C5.4468%2C43.5282&zoom=15&category=global',
+  );
+  assert.equal(
+    calls[4].url,
+    'http://example.test/api/v1/score/address-suggest?q=10+rue+des+cordeliers+aix&limit=5',
+  );
+});
+
+test('score address and compare helpers POST JSON bodies', async () => {
+  const calls = [];
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return createJsonResponse({ version: 'score-v1', items: [] });
+    },
+  });
+
+  await client.score.address({ items: [{ address: '10 rue des cordeliers aix' }] });
+  await client.score.compare({
+    items: [{ address: '10 rue des cordeliers aix' }, { address: '50 rue des tanneurs aix' }],
+    sortBy: 'global',
+  });
+
+  assert.equal(calls[0].url, 'http://example.test/api/v1/score/address');
+  assert.equal(calls[0].init.method, 'POST');
+  assert.equal(calls[0].init.body, JSON.stringify({ items: [{ address: '10 rue des cordeliers aix' }] }));
+  assert.equal(calls[1].url, 'http://example.test/api/v1/score/compare');
+  assert.equal(calls[1].init.method, 'POST');
+  assert.equal(
+    calls[1].init.body,
+    JSON.stringify({
+      items: [{ address: '10 rue des cordeliers aix' }, { address: '50 rue des tanneurs aix' }],
+      sortBy: 'global',
+    }),
+  );
 });
 
 test('unknown public map layer is rejected locally', async () => {
