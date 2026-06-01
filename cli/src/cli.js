@@ -37,6 +37,7 @@ const VALUE_FLAGS = new Set([
   'category',
   'city-code',
   'dvf-radius-m',
+  'dvf-year',
   'format',
   'input',
   'layer',
@@ -44,6 +45,7 @@ const VALUE_FLAGS = new Set([
   'layers',
   'limit',
   'lon',
+  'parcel-record-key',
   'profile',
   'slug',
   'sort-by',
@@ -193,13 +195,14 @@ class OneDexClient {
   }
 
   mapLayer(input) {
-    const { address, lon, lat, layer = 'parcelles', ...query } = input;
-    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined)) {
-      throw new TypeError('map layer input requires address or lon/lat.');
+    const { address, city_code: cityCode, lon, lat, layer = 'parcelles', ...query } = input;
+    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || !cityCode.trim())) {
+      throw new TypeError('map layer input requires address, city_code, or lon/lat.');
     }
     const layerKey = normalizeMapLayer(layer);
     const path = appendQuery(`/api/v1/map-layer/${encodeURIComponent(layerKey)}`, {
       address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
+      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
       lon,
       lat,
       ...query,
@@ -208,15 +211,16 @@ class OneDexClient {
   }
 
   mapViewport(input) {
-    const { address, lon, lat, layers, ...query } = input;
+    const { address, city_code: cityCode, lon, lat, layers, ...query } = input;
     if (typeof layers !== 'string' || !layers.trim()) {
       throw new TypeError('map viewport input requires layers.');
     }
-    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined)) {
-      throw new TypeError('map viewport input requires address or lon/lat.');
+    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || !cityCode.trim())) {
+      throw new TypeError('map viewport input requires address, city_code, or lon/lat.');
     }
     return this.request('GET', appendQuery('/api/v1/map-viewport', {
       address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
+      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
       lon,
       lat,
       layers: layers.trim(),
@@ -225,12 +229,15 @@ class OneDexClient {
   }
 
   addressOverview(input) {
-    const { address, ...query } = input;
-    if (typeof address !== 'string' || !address.trim()) {
-      throw new TypeError('address overview input requires address.');
+    const { address, city_code: cityCode, lon, lat, ...query } = input;
+    if ((typeof address !== 'string' || !address.trim()) && (typeof cityCode !== 'string' || !cityCode.trim()) && (lon === undefined || lat === undefined) && !query.parcel_record_key) {
+      throw new TypeError('address overview input requires address, city_code, lon/lat, or parcel_record_key.');
     }
     return this.request('GET', appendQuery('/api/v1/address-overview', {
-      address: address.trim(),
+      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
+      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
+      lon,
+      lat,
       ...query,
     }));
   }
@@ -282,7 +289,7 @@ function usage() {
 
 Usage:
   1dex <address> [options]
-  1dex overview <address> [options]
+  1dex overview <address|--city-code|--lon/--lat|--parcel-record-key> [options]
   1dex autocomplete <query> [options]
   1dex state <slug>
   1dex parcelles <address> [options]
@@ -290,8 +297,8 @@ Usage:
   1dex travaux <address> [options]
   1dex iris <address> [options]
   1dex labels <address> [options]
-  1dex layer <layer> <address|--lon/--lat> [options]
-  1dex viewport <address|--lon/--lat> [options]
+  1dex layer <layer> <address|--city-code|--lon/--lat> [options]
+  1dex viewport <address|--city-code|--lon/--lat> [options]
   1dex score address <address> [options]
   1dex score compare [--input <json-or-@file>] [options]
   1dex score grid --bbox <bbox> --zoom <number> [options]
@@ -302,6 +309,8 @@ Usage:
 Options:
   -a, --address <text>                 Address to resolve. Overrides positional address.
   -d, --dvf-radius-m <number>          DVF radius in meters for address overview.
+      --dvf-year <year>                DVF year filter for address overview.
+      --parcel-record-key <key>        Parcel record key for address overview.
   -l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
       --layers <csv>                   Viewport layers, e.g. context,iris.
       --slug <text>                    Address page slug.
@@ -340,6 +349,7 @@ function examples() {
 
   # Public address overview (cards, market summary, nearby context).
   1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+  1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 
   # Public address search and score suggest.
   1dex autocomplete "10 rue des cordeliers aix" --limit 5
@@ -536,9 +546,10 @@ function readSubjectText(flags, subjectParts, errorMessage = 'Missing address. U
 function buildMapLayerInput(flags, subjectParts, defaultLayer = 'parcelles') {
   const lon = readOptionalNumber(flags.lon, 'lon');
   const lat = readOptionalNumber(flags.lat, 'lat');
+  const cityCode = flags['city-code'];
   const address = String(flags.address ?? subjectParts.join(' ')).trim();
-  if (!address && (lon === undefined || lat === undefined)) {
-    throw new Error('Missing address or coordinates. Use positional text, --address <text>, or --lon/--lat.');
+  if (!address && (lon === undefined || lat === undefined) && !cityCode) {
+    throw new Error('Missing address, city code, or coordinates. Use positional text, --address <text>, --city-code <code>, or --lon/--lat.');
   }
   return {
     address: address || undefined,
@@ -553,13 +564,22 @@ function buildMapLayerInput(flags, subjectParts, defaultLayer = 'parcelles') {
 }
 
 function buildOverviewInput(flags, subjectParts) {
-  const address = readSubjectText(flags, subjectParts);
+  const lon = readOptionalNumber(flags.lon, 'lon');
+  const lat = readOptionalNumber(flags.lat, 'lat');
+  const address = String(flags.address ?? subjectParts.join(' ')).trim();
+  const cityCode = flags['city-code'];
+  const parcelRecordKey = flags['parcel-record-key'];
+  if (!address && !cityCode && (lon === undefined || lat === undefined) && !parcelRecordKey) {
+    throw new Error('Missing overview location. Use positional text, --address, --city-code, --lon/--lat, or --parcel-record-key.');
+  }
   return {
-    address,
-    city_code: flags['city-code'],
-    lon: readOptionalNumber(flags.lon, 'lon'),
-    lat: readOptionalNumber(flags.lat, 'lat'),
+    address: address || undefined,
+    city_code: cityCode,
+    lon,
+    lat,
+    parcel_record_key: parcelRecordKey,
     dvf_radius_m: readOptionalNumber(flags['dvf-radius-m'], 'dvf-radius-m') ?? 600,
+    dvf_year: readOptionalNumber(flags['dvf-year'], 'dvf-year'),
   };
 }
 
@@ -583,8 +603,9 @@ function buildViewportInput(flags, subjectParts) {
   const lon = readOptionalNumber(flags.lon, 'lon');
   const lat = readOptionalNumber(flags.lat, 'lat');
   const address = String(flags.address ?? subjectParts.join(' ')).trim();
-  if (!address && (lon === undefined || lat === undefined)) {
-    throw new Error('Missing address or coordinates. Use positional text, --address <text>, or --lon/--lat.');
+  const cityCode = flags['city-code'];
+  if (!address && (lon === undefined || lat === undefined) && !cityCode) {
+    throw new Error('Missing address, city code, or coordinates. Use positional text, --address <text>, --city-code <code>, or --lon/--lat.');
   }
   return {
     address: address || undefined,

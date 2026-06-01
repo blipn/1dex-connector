@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onedex"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python connector for the public 1dex API surface: overview, autocomplete, score, address state, and map routes."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = "MIT"
 authors = [
   { name = "1dex" }
 ]

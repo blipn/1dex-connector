@@ -126,10 +126,12 @@ curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&amp;z
           </div>
           <article class="code-sample">
             <div class="sample-head">
-              <h3>@1dex/connector</h3>
+              <h3>@1dex-fr/connector</h3>
               <button type="button" data-copy="js-quickstart">Copier</button>
             </div>
-            <pre id="js-quickstart"><code>import { OneDexClient } from "@1dex/connector";
+            <pre id="js-quickstart"><code>npm i @1dex-fr/connector
+
+import { OneDexClient } from "@1dex-fr/connector";
 
 const client = new OneDexClient();
 const overview = await client.overview.address({
@@ -158,7 +160,9 @@ console.log(overview.version, suggestions.suggestions, score.items);</code></pre
               <h3>onedex</h3>
               <button type="button" data-copy="python-quickstart">Copier</button>
             </div>
-            <pre id="python-quickstart"><code>from onedex import OneDexClient
+            <pre id="python-quickstart"><code>python -m pip install onedex
+
+from onedex import OneDexClient
 
 client = OneDexClient()
 overview = client.overview.address({

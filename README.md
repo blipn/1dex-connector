@@ -15,7 +15,7 @@ Documentation publique canonique de l'API: <https://1dex.fr/developpeurs/api>
 
 ## Packages
 
-- `packages/js`: client JavaScript/TypeScript sans dépendance runtime.
+- `packages/js`: client JavaScript/TypeScript sans dépendance runtime (`@1dex-fr/connector`).
 - `packages/python`: client Python fondé sur la bibliothèque standard.
 - `cli`: CLI Node pour les smoke tests rapides, l'aperçu d'adresse public, le score public, les suggestions et les exports JSON/CSV.
 - `docs/`: notes d'usage du connecteur qui renvoient vers la documentation canonique `1dex.fr`.
@@ -26,7 +26,7 @@ Documentation publique canonique de l'API: <https://1dex.fr/developpeurs/api>
 JavaScript:
 
 ```js
-import { OneDexClient } from "@1dex/connector";
+import { OneDexClient } from "@1dex-fr/connector";
 
 const client = new OneDexClient({
   baseUrl: "https://1dex.fr",

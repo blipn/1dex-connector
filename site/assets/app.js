@@ -252,9 +252,11 @@ if (explorer) {
       appendIfPresent(query, 'city_code', readValue('city_code'));
       appendIfPresent(query, 'lon', readValue('lon'));
       appendIfPresent(query, 'lat', readValue('lat'));
+      appendIfPresent(query, 'parcel_record_key', readValue('parcel_record_key'));
       appendIfPresent(query, 'dvf_radius_m', readValue('dvf_radius_m'));
-      if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
-        throw new Error('Adresse ou coordonnées requises.');
+      appendIfPresent(query, 'dvf_year', readValue('dvf_year'));
+      if (!query.has('address') && !query.has('city_code') && (!query.has('lon') || !query.has('lat')) && !query.has('parcel_record_key')) {
+        throw new Error('Adresse, code commune, coordonnées ou clé parcelle requis.');
       }
     } else if (operation === 'autocomplete') {
       path = '/api/v1/autocomplete/address';
@@ -278,8 +280,8 @@ if (explorer) {
       appendIfPresent(query, 'lon', readValue('lon'));
       appendIfPresent(query, 'lat', readValue('lat'));
       appendIfPresent(query, 'viewport_render_mode', readValue('viewport_render_mode'));
-      if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
-        throw new Error('Adresse ou coordonnées requises.');
+      if (!query.has('address') && !query.has('city_code') && (!query.has('lon') || !query.has('lat'))) {
+        throw new Error('Adresse, code commune ou coordonnées requis.');
       }
     } else if (operation === 'map-viewport') {
       path = '/api/v1/map-viewport';
@@ -291,8 +293,8 @@ if (explorer) {
       if (!query.has('layers')) {
         throw new Error('Calques viewport requis.');
       }
-      if (!query.has('address') && (!query.has('lon') || !query.has('lat'))) {
-        throw new Error('Adresse ou coordonnées requises.');
+      if (!query.has('address') && !query.has('city_code') && (!query.has('lon') || !query.has('lat'))) {
+        throw new Error('Adresse, code commune ou coordonnées requis.');
       }
     } else if (operation === 'score-address') {
       path = '/api/v1/score/address';
@@ -378,6 +380,8 @@ if (explorer) {
     for (const name of [
       'address',
       'city_code',
+      'parcel_record_key',
+      'dvf_year',
       'lon',
       'lat',
       'dvf_radius_m',

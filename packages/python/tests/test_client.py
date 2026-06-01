@@ -91,6 +91,8 @@ class ClientTest(unittest.TestCase):
             "lon": -0.542902,
             "lat": 47.468617,
         })
+        client.map.layer({"layer": "context", "city_code": "13001"})
+        client.map.viewport({"layers": "context,iris", "city_code": "13001"})
 
         self.assertEqual(
             calls[0][0].full_url,
@@ -110,7 +112,7 @@ class ClientTest(unittest.TestCase):
         )
         self.assertEqual(
             calls[4][0].full_url,
-            "http://example.test/api/v1/map-viewport?layers=context%2Ciris&address=10+rue+des+cordeliers+aix",
+            "http://example.test/api/v1/map-viewport?address=10+rue+des+cordeliers+aix&layers=context%2Ciris",
         )
         self.assertEqual(
             calls[5][0].full_url,
@@ -119,6 +121,14 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(
             calls[6][0].full_url,
             "http://example.test/api/v1/map-viewport?layers=context%2Ciris&lon=-0.542902&lat=47.468617",
+        )
+        self.assertEqual(
+            calls[7][0].full_url,
+            "http://example.test/api/v1/map-layer/context?city_code=13001",
+        )
+        self.assertEqual(
+            calls[8][0].full_url,
+            "http://example.test/api/v1/map-viewport?city_code=13001&layers=context%2Ciris",
         )
 
     def test_overview_autocomplete_address_pages_and_score_routes_use_public_api_v1_paths(self):

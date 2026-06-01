@@ -10,6 +10,7 @@ export interface MapParcellesInput {
   addressSlug?: string;
   address_slug?: string;
   city_code?: string;
+  cityCode?: string;
   lon?: number;
   lat?: number;
   viewport_bbox?: string;
@@ -39,6 +40,7 @@ export interface MapViewportInput {
   layers: string;
   address?: string;
   city_code?: string;
+  cityCode?: string;
   lon?: number;
   lat?: number;
   [key: string]: unknown;

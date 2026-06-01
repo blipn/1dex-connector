@@ -54,7 +54,7 @@ try {
 
   const installedCli = join(installDir, 'node_modules/@1dex-fr/1dex/src/cli.js');
   const installedSource = await readFile(installedCli, 'utf8');
-  if (!installedSource.includes('1dex overview <address>') || !installedSource.includes('1dex autocomplete <query>') || !installedSource.includes('1dex score address <address>') || !installedSource.includes('1dex parcelles <address>')) {
+  if (!installedSource.includes('1dex overview <address|--city-code|--lon/--lat|--parcel-record-key>') || !installedSource.includes('1dex autocomplete <query>') || !installedSource.includes('1dex score address <address>') || !installedSource.includes('1dex parcelles <address>')) {
     throw new Error('Installed 1dex binary is missing the expected help commands.');
   }
   if (!installedSource.includes('--format <json|csv|summary>')) {

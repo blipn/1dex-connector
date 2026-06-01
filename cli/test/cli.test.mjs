@@ -85,14 +85,34 @@ test('overview --url builds the public address overview URL', () => {
   );
 });
 
+test('overview --url supports current location parameters from the live OpenAPI', () => {
+  const result = runCli([
+    'overview',
+    '--city-code',
+    '13001',
+    '--parcel-record-key',
+    'parcel_123',
+    '--dvf-year',
+    '2024',
+    '--url',
+  ]);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(
+    result.stdout.trim(),
+    'https://1dex.fr/api/v1/address-overview?city_code=13001&parcel_record_key=parcel_123&dvf_radius_m=600&dvf_year=2024',
+  );
+});
+
 test('help exposes the broader public API command surface', () => {
   const result = runCli(['--help']);
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /1dex overview <address> \[options\]/u);
+  assert.match(result.stdout, /1dex overview <address\|--city-code\|--lon\/--lat\|--parcel-record-key> \[options\]/u);
   assert.match(result.stdout, /1dex autocomplete <query> \[options\]/u);
   assert.match(result.stdout, /1dex score address <address> \[options\]/u);
   assert.match(result.stdout, /--input <json-or-@file>/u);
+  assert.match(result.stdout, /--parcel-record-key <key>/u);
 });
 
 test('bare address command still targets the public address overview URL', () => {
@@ -157,6 +177,14 @@ test('autocomplete, state, viewport, and score grid build canonical public URLs'
   assert.equal(
     runCli(['viewport', '--layers', 'context,iris', '--lon', '-0.542902', '--lat', '47.468617', '--url']).stdout.trim(),
     'https://1dex.fr/api/v1/map-viewport?layers=context%2Ciris&lon=-0.542902&lat=47.468617',
+  );
+  assert.equal(
+    runCli(['viewport', '--layers', 'context,iris', '--city-code', '13001', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-viewport?layers=context%2Ciris&city_code=13001',
+  );
+  assert.equal(
+    runCli(['context', '--city-code', '13001', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-layer/context?city_code=13001&viewport_render_mode=features',
   );
   assert.equal(
     runCli(['score', 'grid', '--bbox', '5.4457,43.5274,5.4468,43.5282', '--zoom', '15', '--category', 'global', '--url']).stdout.trim(),

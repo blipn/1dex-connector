@@ -157,7 +157,15 @@
                 <div class="form-grid">
                   <label class="field-label" for="api-city-code" data-visible-for="address-overview,map-layer,map-viewport">
                     Code commune
-                    <input id="api-city-code" name="city_code" type="text" autocomplete="off">
+                    <input id="api-city-code" name="city_code" type="text" placeholder="13001" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-parcel-record-key" data-visible-for="address-overview">
+                    Clé parcelle
+                    <input id="api-parcel-record-key" name="parcel_record_key" type="text" placeholder="parcel_..." autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-dvf-year" data-visible-for="address-overview">
+                    Année DVF
+                    <input id="api-dvf-year" name="dvf_year" type="number" min="2014" max="2100" autocomplete="off">
                   </label>
                   <label class="field-label" for="api-lon" data-visible-for="address-overview,map-layer,map-viewport">
                     Longitude

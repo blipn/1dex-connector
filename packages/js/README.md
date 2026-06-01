@@ -1,13 +1,13 @@
-# @1dex/connector
+# @1dex-fr/connector
 
 JavaScript connector for the public 1dex API surface. Use `overview.address()` for the main address cards flow, `autocomplete.address()` / `score.addressSuggest()` for address search, `score.*` for public score routes, `addressPages.state()` for page access state, and `map.*` helpers for public map-layer and viewport calls on `1dex.fr`.
 
 ```bash
-npm i @1dex/connector
+npm i @1dex-fr/connector
 ```
 
 ```js
-import { OneDexClient } from "@1dex/connector";
+import { OneDexClient } from "@1dex-fr/connector";
 
 const client = new OneDexClient();
 

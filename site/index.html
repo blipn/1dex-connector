@@ -117,7 +117,9 @@ curl -sS -X POST "https://1dex.fr/api/v1/score/address" \
               <h3>JavaScript</h3>
               <button type="button" data-copy="js-sample">Copier</button>
             </div>
-            <pre id="js-sample"><code>import { OneDexClient } from "@1dex/connector";
+            <pre id="js-sample"><code>npm i @1dex-fr/connector
+
+import { OneDexClient } from "@1dex-fr/connector";
 
 const client = new OneDexClient();
 const suggestions = await client.autocomplete.address({
@@ -135,7 +137,9 @@ console.log(suggestions.suggestions, score.items);</code></pre>
               <h3>Python</h3>
               <button type="button" data-copy="py-sample">Copier</button>
             </div>
-<pre id="py-sample"><code>from onedex import OneDexClient
+<pre id="py-sample"><code>python -m pip install onedex
+
+from onedex import OneDexClient
 
 client = OneDexClient()
 suggestions = client.autocomplete.address({

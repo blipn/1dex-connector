@@ -8,6 +8,7 @@ on:
     paths:
       - ".github/workflows/npm-publish.yml"
       - "cli/**"
+      - "packages/js/**"
 
 permissions:
   contents: read
@@ -18,6 +19,12 @@ jobs:
     name: Publish npm packages
     runs-on: ubuntu-latest
     environment: npm
+    strategy:
+      fail-fast: false
+      matrix:
+        package_dir:
+          - cli
+          - packages/js
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,11 +42,12 @@ jobs:
       - name: Run CI checks
         run: npm run ci
 
-      - name: Read console package version
+      - name: Read package version
         id: package
+        working-directory: ${{ matrix.package_dir }}
         run: |
-          NAME="$(node -p "require('./cli/package.json').name")"
-          VERSION="$(node -p "require('./cli/package.json').version")"
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
           echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
           if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
@@ -47,15 +55,15 @@ jobs:
             echo "::notice::${NAME}@${VERSION} is already published on npm; skipping publish."
           else
             echo "exists=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::${NAME}@${VERSION} is not published yet; publishing from cli/."
+            echo "::notice::${NAME}@${VERSION} is not published yet; publishing from ${{ matrix.package_dir }}."
           fi
 
       - name: Validate publish package
         if: steps.package.outputs.exists == 'false'
         run: npm publish --dry-run --access public
-        working-directory: cli
+        working-directory: ${{ matrix.package_dir }}
 
-      - name: Publish console package
+      - name: Publish package
         if: steps.package.outputs.exists == 'false'
         run: npm publish --access public --provenance
-        working-directory: cli
+        working-directory: ${{ matrix.package_dir }}

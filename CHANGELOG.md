@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.5
+
+- Sync connector location inputs with the live `1dex.fr/api/v1` OpenAPI surface.
+- Let CLI, JavaScript, and Python map helpers use `city_code` without requiring an address or coordinates.
+- Add CLI support for `address-overview` `parcel_record_key` and `dvf_year` parameters.
+- Bump JS and Python connector package versions to `0.1.1`.
+
 ## 0.1.4
 
 - Publish the CLI address-overview default after `0.1.3` was already released with the previous parcel default.

@@ -2,9 +2,14 @@
 
 Runnable examples:
 
+- `examples/curl/address-overview.sh`
 - `examples/curl/map-parcelles.sh`
 - `examples/go/map-parcelles.go`
+- `examples/node/address-overview.mjs`
+- `examples/node/score-address.mjs`
 - `examples/node/map-parcelles.mjs`
+- `examples/python/address_overview.py`
+- `examples/python/score_address.py`
 - `examples/python/map_parcelles.py`
 
 The examples work against the public website host by default:
@@ -19,6 +24,7 @@ CLI examples:
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 1dex "10 rue des cordeliers aix"
 1dex autocomplete "10 rue des cordeliers aix" --limit 5
 1dex state "10-rue-de-la-paix-paris-75002"

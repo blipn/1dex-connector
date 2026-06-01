@@ -25,6 +25,7 @@ npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 1dex autocomplete "10 rue des cordeliers aix" --limit 5
 1dex score address "10 rue des cordeliers aix" -f summary
 1dex score compare --input '{"items":[{"address":"10 rue des cordeliers aix"},{"address":"50 rue des tanneurs aix"}],"sortBy":"global"}'
@@ -32,7 +33,7 @@ npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 1dex parcelles "50 rue des tanneurs aix" --format summary
 ```
 
-`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. The bare `1dex <address>` form keeps the same overview route for backwards compatibility. `autocomplete`, `state`, `viewport`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
+`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. It accepts the live public location parameters (`address`, `city_code`, `lon`/`lat`, `parcel_record_key`, `dvf_radius_m`, `dvf_year`); the bare `1dex <address>` form keeps the same overview route for backwards compatibility. `autocomplete`, `state`, `viewport`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
@@ -50,7 +51,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 
 ```text
 1dex <address> [options]
-1dex overview <address> [options]
+1dex overview <address|--city-code|--lon/--lat|--parcel-record-key> [options]
 1dex autocomplete <query> [options]
 1dex state <slug>
 1dex parcelles <address> [options]

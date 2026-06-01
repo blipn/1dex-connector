@@ -107,20 +107,22 @@ class _MapNamespace:
     def _layer(self, payload: Mapping[str, Any], default_layer: str = "parcelles") -> Any:
         data = dict(_ensure_mapping(payload, "map layer input"))
         address = data.pop("address", None)
+        city_code = data.pop("city_code", data.pop("cityCode", None))
         lon = data.get("lon")
         lat = data.get("lat")
         layer = data.pop("layer", data.pop("layerKey", data.pop("layer_key", default_layer)))
         layer_key = _normalize_map_layer(layer)
         if isinstance(address, str) and address.strip():
-            query = {"address": address.strip(), **data}
+            query = {"address": address.strip(), "city_code": city_code, **data}
             return self._client.request("GET", f"/api/v1/map-layer/{urllib.parse.quote(layer_key)}", query=query)
 
-        if lon is not None and lat is not None:
-            return self._client.request("GET", f"/api/v1/map-layer/{urllib.parse.quote(layer_key)}", query=data)
+        if (lon is not None and lat is not None) or (isinstance(city_code, str) and city_code.strip()):
+            query = {"city_code": city_code.strip() if isinstance(city_code, str) and city_code.strip() else None, **data}
+            return self._client.request("GET", f"/api/v1/map-layer/{urllib.parse.quote(layer_key)}", query=query)
 
         address_slug = data.pop("addressSlug", data.pop("address_slug", None))
         if not isinstance(address_slug, str) or not address_slug.strip():
-            raise ValueError("map layer input requires address, lon/lat, or address_slug.")
+            raise ValueError("map layer input requires address, city_code, lon/lat, or address_slug.")
         path = f"/adresse/{urllib.parse.quote(address_slug.strip())}/explore/map-layer/{urllib.parse.quote(layer_key)}"
         return self._client.request("GET", path, query=data)
 
@@ -150,15 +152,21 @@ class _MapNamespace:
         layers = data.get("layers")
         if not isinstance(layers, str) or not layers.strip():
             raise ValueError("map viewport input requires layers.")
-        address = data.get("address")
+        address = data.pop("address", None)
+        city_code = data.pop("city_code", data.pop("cityCode", None))
         lon = data.get("lon")
         lat = data.get("lat")
-        if (not isinstance(address, str) or not address.strip()) and (lon is None or lat is None):
-            raise ValueError("map viewport input requires address or lon/lat.")
+        if (not isinstance(address, str) or not address.strip()) and (lon is None or lat is None) and (not isinstance(city_code, str) or not city_code.strip()):
+            raise ValueError("map viewport input requires address, city_code, or lon/lat.")
+        query = {
+            "address": address.strip() if isinstance(address, str) and address.strip() else None,
+            "city_code": city_code.strip() if isinstance(city_code, str) and city_code.strip() else None,
+            **data,
+        }
         return self._client.request(
             "GET",
             "/api/v1/map-viewport",
-            query=data,
+            query=query,
         )
 
 

@@ -57,6 +57,8 @@ test('map namespace covers public dvf, travaux, labels, viewport, and generic la
   await client.map.viewport({ layers: 'context,iris', address: '10 rue des cordeliers aix' });
   await client.map.layer({ layer: 'parcelles', lon: -0.542902, lat: 47.468617, viewport_render_mode: 'features' });
   await client.map.viewport({ layers: 'context,iris', lon: -0.542902, lat: 47.468617 });
+  await client.map.layer({ layer: 'context', city_code: '13001' });
+  await client.map.viewport({ layers: 'context,iris', city_code: '13001' });
 
   assert.equal(
     calls[0].url,
@@ -85,6 +87,14 @@ test('map namespace covers public dvf, travaux, labels, viewport, and generic la
   assert.equal(
     calls[6].url,
     'http://example.test/api/v1/map-viewport?lon=-0.542902&lat=47.468617&layers=context%2Ciris',
+  );
+  assert.equal(
+    calls[7].url,
+    'http://example.test/api/v1/map-layer/context?city_code=13001',
+  );
+  assert.equal(
+    calls[8].url,
+    'http://example.test/api/v1/map-viewport?city_code=13001&layers=context%2Ciris',
   );
 });
 

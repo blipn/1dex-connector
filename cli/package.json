@@ -1,6 +1,6 @@
 {
   "name": "@1dex-fr/1dex",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI for the public 1dex API surface: overview, autocomplete, score, address state, and map routes.",
   "type": "module",
   "bin": {

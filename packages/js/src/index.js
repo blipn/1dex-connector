@@ -76,6 +76,8 @@ function toMapLayerQuery(input, defaultLayer = 'parcelles') {
     address,
     addressSlug,
     address_slug: addressSlugSnake,
+    city_code: cityCodeSnake,
+    cityCode: cityCodeCamel,
     layer,
     layerKey,
     layer_key: layerKeySnake,
@@ -85,11 +87,13 @@ function toMapLayerQuery(input, defaultLayer = 'parcelles') {
   } = input;
   const normalizedLayer = normalizeMapLayer(layer ?? layerKey ?? layerKeySnake ?? defaultLayer);
 
+  const cityCode = cityCodeSnake ?? cityCodeCamel;
   if (typeof address === 'string' && address.trim() !== '') {
     return {
       path: `/api/v1/map-layer/${encodeURIComponent(normalizedLayer)}`,
       query: {
         address: address.trim(),
+        city_code: cityCode,
         lon,
         lat,
         ...query,
@@ -97,10 +101,11 @@ function toMapLayerQuery(input, defaultLayer = 'parcelles') {
     };
   }
 
-  if (lon !== undefined && lat !== undefined) {
+  if ((lon !== undefined && lat !== undefined) || (typeof cityCode === 'string' && cityCode.trim() !== '')) {
     return {
       path: `/api/v1/map-layer/${encodeURIComponent(normalizedLayer)}`,
       query: {
+        city_code: typeof cityCode === 'string' && cityCode.trim() !== '' ? cityCode.trim() : undefined,
         lon,
         lat,
         ...query,
@@ -266,15 +271,17 @@ export class OneDexClient {
 
   mapViewport(input, options = {}) {
     assertObject(input, 'map viewport input');
-    const { address, lon, lat, layers, ...query } = input;
+    const { address, city_code: cityCodeSnake, cityCode: cityCodeCamel, lon, lat, layers, ...query } = input;
     if (typeof layers !== 'string' || layers.trim() === '') {
       throw new TypeError('map viewport input requires layers.');
     }
-    if ((typeof address !== 'string' || address.trim() === '') && (lon === undefined || lat === undefined)) {
-      throw new TypeError('map viewport input requires address or lon/lat.');
+    const cityCode = cityCodeSnake ?? cityCodeCamel;
+    if ((typeof address !== 'string' || address.trim() === '') && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || cityCode.trim() === '')) {
+      throw new TypeError('map viewport input requires address, city_code, or lon/lat.');
     }
     return this.request('GET', appendQuery('/api/v1/map-viewport', {
       address: typeof address === 'string' && address.trim() !== '' ? address.trim() : undefined,
+      city_code: typeof cityCode === 'string' && cityCode.trim() !== '' ? cityCode.trim() : undefined,
       lon,
       lat,
       layers: layers.trim(),
