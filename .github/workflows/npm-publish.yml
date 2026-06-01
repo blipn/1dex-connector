@@ -2,29 +2,31 @@ name: npm publish
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_js_connector:
+        description: "Also publish @1dex-fr/connector (requires npm trusted publisher configured for that package)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/npm-publish.yml"
       - "cli/**"
-      - "packages/js/**"
 
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  publish:
-    name: Publish npm packages
+  publish-cli:
+    name: Publish CLI package
     runs-on: ubuntu-latest
     environment: npm
-    strategy:
-      fail-fast: false
-      matrix:
-        package_dir:
-          - cli
-          - packages/js
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,7 +46,7 @@ jobs:
 
       - name: Read package version
         id: package
-        working-directory: ${{ matrix.package_dir }}
+        working-directory: cli
         run: |
           NAME="$(node -p "require('./package.json').name")"
           VERSION="$(node -p "require('./package.json').version")"
@@ -55,15 +57,63 @@ jobs:
             echo "::notice::${NAME}@${VERSION} is already published on npm; skipping publish."
           else
             echo "exists=false" >> "${GITHUB_OUTPUT}"
-            echo "::notice::${NAME}@${VERSION} is not published yet; publishing from ${{ matrix.package_dir }}."
+            echo "::notice::${NAME}@${VERSION} is not published yet; publishing from cli/."
           fi
 
       - name: Validate publish package
         if: steps.package.outputs.exists == 'false'
         run: npm publish --dry-run --access public
-        working-directory: ${{ matrix.package_dir }}
+        working-directory: cli
 
       - name: Publish package
         if: steps.package.outputs.exists == 'false'
         run: npm publish --access public --provenance
-        working-directory: ${{ matrix.package_dir }}
+        working-directory: cli
+
+  publish-js-connector:
+    name: Publish JS connector package
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_js_connector == 'true'
+    runs-on: ubuntu-latest
+    environment: npm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run CI checks
+        run: npm run ci
+
+      - name: Read package version
+        id: package
+        working-directory: packages/js
+        run: |
+          NAME="$(node -p "require('./package.json').name")"
+          VERSION="$(node -p "require('./package.json').version")"
+          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          if npm view "${NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "${GITHUB_OUTPUT}"
+            echo "::notice::${NAME}@${VERSION} is already published on npm; skipping publish."
+          else
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+            echo "::notice::${NAME}@${VERSION} is not published yet; publishing from packages/js/."
+          fi
+
+      - name: Validate publish package
+        if: steps.package.outputs.exists == 'false'
+        run: npm publish --dry-run --access public
+        working-directory: packages/js
+
+      - name: Publish package
+        if: steps.package.outputs.exists == 'false'
+        run: npm publish --access public --provenance
+        working-directory: packages/js
