@@ -11,7 +11,6 @@ const specText = await response.text();
 const requiredPaths = [
   '/address-overview',
   '/autocomplete/address',
-  '/address-pages/{slug}/state',
   '/map-layer/{layer_key}',
   '/map-viewport',
   '/score/address',
@@ -23,6 +22,20 @@ const requiredPaths = [
 for (const path of requiredPaths) {
   if (!specText.includes(path)) {
     throw new Error(`Live OpenAPI is missing expected public path: ${path}`);
+  }
+}
+
+// Runtime-supported helper kept for page-state consumers. It is intentionally
+// not required in the live OpenAPI until 1dex promotes this page helper as a
+// documented public contract. Keep a live route smoke so the connector wrapper
+// does not silently drift while the OpenAPI stays focused on canonical API docs.
+const runtimeOnlyChecks = [
+  'https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state',
+];
+for (const url of runtimeOnlyChecks) {
+  const runtimeResponse = await fetch(url, { headers: { accept: 'application/json' } });
+  if (!runtimeResponse.ok) {
+    throw new Error(`Runtime-supported connector route failed: ${url} HTTP ${runtimeResponse.status}`);
   }
 }
 
@@ -54,7 +67,7 @@ const connectorFragments = [
 
 for (const fragment of connectorFragments) {
   if (!corpus.includes(fragment)) {
-    throw new Error(`Connector/docs corpus is missing live OpenAPI fragment: ${fragment}`);
+    throw new Error(`Connector/docs corpus is missing required public API/helper fragment: ${fragment}`);
   }
 }
 

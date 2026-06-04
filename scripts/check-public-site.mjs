@@ -17,6 +17,7 @@ const requiredFragments = [
   'https://1dex.fr/',
   'https://1dex.fr/developpeurs/api',
   'https://1dex.fr/api/v1/openapi.yaml',
+  'https://1dex.fr/api/v1/docs',
   'https://github.com/blipn/1dex-connector',
   'https://1dex.fr/api/v1',
   '@1dex-fr/connector',
@@ -49,6 +50,8 @@ const requiredApiFragments = [
   'id="api-doc-link"',
   'id="api-explorer"',
   'Outil d’habilitation d’accès',
+  'https://1dex.fr/api/v1/docs',
+  'https://1dex.fr/developpeurs/api#donnees',
   './assets/favicon.svg',
 ];
 
@@ -151,6 +154,8 @@ const forbiddenPatterns = [
   /https:\/\/api\.1dex\.fr/i,
   /(^|[^i])\/v1\//i,
   /your-1dex-api-host/i,
+  /developpeurs\/api\/technique/i,
+  /developpeurs\/api\/metier/i,
   /internal address api/i,
   /postgresql:\/\//i,
   /postgres:postgres/i,

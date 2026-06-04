@@ -2,7 +2,7 @@
 
 Le contrat public canonique des erreurs est documenté sur `1dex.fr`:
 
-<https://1dex.fr/developpeurs/api/technique>
+<https://1dex.fr/developpeurs/api#reference>
 
 Comportement du connecteur:
 

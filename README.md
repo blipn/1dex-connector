@@ -74,9 +74,9 @@ npm i -g @1dex-fr/1dex
 - Racine API: <https://1dex.fr/api/v1>
 - Racine API bêta: <https://beta.1dex.fr/api/v1>
 - Documentation machine: <https://1dex.fr/api/v1/openapi.yaml>
-- Documentation technique: <https://1dex.fr/developpeurs/api/technique>
+- Référence Swagger: <https://1dex.fr/api/v1/docs>
 - Outil d’habilitation d’accès: <https://1dex.fr/contact>
-- Documentation métier: <https://1dex.fr/developpeurs/api/metier>
+- Documentation métier: <https://1dex.fr/developpeurs/api#donnees>
 - Limites d’appels: <https://1dex.fr/developpeurs/api/quotas>
 
 Le site GitHub Pages pointe volontairement vers ces documents runtime au lieu de dupliquer les points d'entrée, les quotas ou la documentation métier.
