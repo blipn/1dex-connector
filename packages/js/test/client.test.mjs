@@ -253,6 +253,18 @@ test('unknown public map layer is rejected locally', async () => {
   );
 });
 
+test('map layer validation mentions city_code as a valid locator', async () => {
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse({ status: 'success' }),
+  });
+
+  assert.throws(
+    () => client.map.layer({ layer: 'context' }),
+    /address, city_code, lon\/lat, or addressSlug/u,
+  );
+});
+
 test('non-2xx responses raise OneDexApiError with response metadata', async () => {
   const client = new OneDexClient({
     baseUrl: 'http://example.test',

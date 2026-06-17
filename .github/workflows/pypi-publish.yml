@@ -33,6 +33,41 @@ jobs:
       - name: Install build tools
         run: python -m pip install --upgrade build
 
+      - name: Read package version
+        id: package
+        run: |
+          NAME="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])")"
+          VERSION="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
+          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Ensure package version is unpublished
+        env:
+          PACKAGE_NAME: ${{ steps.package.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+
+          name = os.environ["PACKAGE_NAME"]
+          version = os.environ["PACKAGE_VERSION"]
+          url = f"https://pypi.org/pypi/{name}/{version}/json"
+          try:
+              with urllib.request.urlopen(url, timeout=15):
+                  pass
+          except urllib.error.HTTPError as exc:
+              if exc.code == 404:
+                  print(f"{name} {version} is not published yet.")
+                  sys.exit(0)
+              raise
+
+          print(f"{name} {version} already exists on PyPI; bump packages/python/pyproject.toml before publishing.")
+          sys.exit(1)
+          PY
+
       - name: Build package
         run: python -m build
 
@@ -40,4 +75,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/python/dist
-          skip-existing: true

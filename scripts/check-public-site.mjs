@@ -75,6 +75,10 @@ const requiredQuickstartFragments = [
   'import { OneDexClient } from "@1dex-fr/connector";',
   'python -m pip install 1dex-connector',
   'from onedex import OneDexClient',
+  'api_professional_required',
+  'insufficient_credits',
+  'unlock_request',
+  'details_url',
   './api.html',
   './documentation-api.html',
 ];

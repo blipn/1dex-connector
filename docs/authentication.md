@@ -19,5 +19,6 @@ Erreurs d'acces a prevoir:
 - `403 api_subscription_required`: compte sans abonnement actif.
 - `403 api_professional_required`: compte abonne mais non professionnel.
 - `402 address_unlock_required`: l'adresse doit d'abord etre debloquee avant lecture complete.
+- `402 insufficient_credits`: aucun credit adresse disponible pour le deblocage demande.
 
 `GET /api/v1/account/usage` est le point de controle a appeler avant un lot pro: il renvoie les fenetres de quota API, les credits adresse restants, les grants actifs, les consommations recentes et l'etat d'abonnement.

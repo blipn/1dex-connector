@@ -190,7 +190,7 @@ function toMapLayerQuery(input, defaultLayer = 'parcelles') {
 
   const slug = addressSlug ?? addressSlugSnake;
   if (typeof slug !== 'string' || slug.trim() === '') {
-    throw new TypeError('map layer input requires address, lon/lat, or addressSlug.');
+    throw new TypeError('map layer input requires address, city_code, lon/lat, or addressSlug.');
   }
   return {
     path: `/adresse/${encodeURIComponent(slug.trim())}/explore/map-layer/${encodeURIComponent(normalizedLayer)}`,

@@ -13,7 +13,8 @@
     "test": "node --test packages/js/test/*.test.mjs cli/test/*.test.mjs",
     "test:python": "node ./scripts/run-python-tests.mjs",
     "test:all": "npm test && npm run test:python",
-    "ci": "npm run build:docs && npm run check:site && npm run check:openapi && npm run test:all && npm run check:package-cli"
+    "check:package-python": "node ./scripts/check-python-package.mjs",
+    "ci": "npm run build:docs && npm run check:site && npm run check:openapi && npm run test:all && npm run check:package-cli && npm run check:package-python"
   },
   "engines": {
     "node": ">=22"

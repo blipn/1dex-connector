@@ -6,9 +6,11 @@ Runnable examples:
 - `examples/curl/map-parcelles.sh`
 - `examples/go/map-parcelles.go`
 - `examples/node/address-overview.mjs`
+- `examples/node/address-details.mjs`
 - `examples/node/score-address.mjs`
 - `examples/node/map-parcelles.mjs`
 - `examples/python/address_overview.py`
+- `examples/python/address_details.py`
 - `examples/python/score_address.py`
 - `examples/python/map_parcelles.py`
 
@@ -50,3 +52,13 @@ CLI examples:
 ```
 
 `1dex <address>` and `1dex overview <address>` both call the public address overview route. The other commands map directly to the canonical `/api/v1` public endpoints.
+
+Subscriber examples:
+
+```bash
+export ONEDEX_API_KEY=<your-professional-api-key>
+node examples/node/address-details.mjs "10 rue des cordeliers aix"
+python examples/python/address_details.py "10 rue des cordeliers aix"
+```
+
+If the address is locked, those examples print the returned unlock payload and stop. Set `ONEDEX_UNLOCK=1` only when you intentionally want to consume one address credit when needed.
