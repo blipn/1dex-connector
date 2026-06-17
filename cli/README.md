@@ -1,6 +1,6 @@
 # 1dex
 
-Command-line client for the public 1dex connector.
+Command-line client for the public and professional 1dex connector.
 
 The CLI covers the public address overview, subscriber address details and unlocks, account usage, autocomplete, commune search, score endpoints, public previews, address-page state, and verified public map-layer / viewport / focus routes on `1dex.fr`. Use `overview` when you want the address cards flow; `details` / `unlock` for subscriber address flows; `autocomplete`, `communes`, or `score suggest` for search; `score` for scoring and compare flows; `state` / `preview` for public page metadata; and the map commands when you need parcelles, DVF, works, IRIS, context, labels, focus, or multi-layer viewports. The bare form `1dex <address>` remains the compatibility shortcut for the public address overview.
 
@@ -43,16 +43,24 @@ npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 
 ## Auth, purchase, and detailed reads
 
-Public commands such as `overview`, `autocomplete`, `score`, and `map` do not require an API key within public quotas. Complete address details require an active professional 1dex subscription. Purchase and checkout happen on `1dex.fr`; after the professional account is active, create an API key at <https://1dex.fr/compte/api> and pass it with `--api-key` or `ONEDEX_API_KEY`.
+Public commands such as `overview`, `autocomplete`, `score`, `preview`, `communes`, and `map` do not require an API key within public quotas. Complete address details and unlock flows require an active professional 1dex subscription. Purchase and checkout happen on `1dex.fr`; once the professional account is active, create an API key at <https://1dex.fr/compte/api> and pass it with `--api-key` or `ONEDEX_API_KEY`.
 
 Recommended subscriber flow:
 
-1. Check access and remaining credits with `1dex usage --api-key "$ONEDEX_API_KEY" -f summary`.
+1. Check subscription state, quota windows, credits, active grants, and recent consumptions with `1dex usage --api-key "$ONEDEX_API_KEY" -f summary`.
 2. Try `1dex details "<address>" --fields summary,rail --api-key "$ONEDEX_API_KEY"`.
 3. If the API returns `address_unlock_required`, run `1dex unlock --normalized-address-key <key>` when `normalized_address_key` is returned, or `1dex unlock --input '<unlock_request-json>'` when the API returns an `unlock_request` payload.
 4. Read the address again through the returned `details_url`.
 
-`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. It accepts the live public location parameters (`address`, `city_code`, `lon`/`lat`, `parcel_record_key`, `dvf_radius_m`, `dvf_year`); the bare `1dex <address>` form keeps the same overview route for backwards compatibility. `details`, `unlock`, and `usage` use subscriber API keys from `--api-key` or `ONEDEX_API_KEY`. When using `--normalized-address-key`, pass it alone; do not combine it with address text, `--parcel-record-key`, or `--lon`/`--lat`. `autocomplete`, `communes`, `preview`, `state`, `viewport`, `focus`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
+Common professional API errors:
+
+- `invalid_api_key`: the API key is missing, invalid, or revoked.
+- `api_subscription_required`: the account needs an active subscription.
+- `api_professional_required`: the endpoint requires a professional plan.
+- `address_unlock_required`: the detailed address must be unlocked before reading.
+- `insufficient_credits`: the account has no remaining address credits for the requested unlock.
+
+`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. It accepts the live public location parameters (`address`, `city_code`, `lon`/`lat`, `parcel_record_key`, `dvf_radius_m`, `dvf_year`); the bare `1dex <address>` form keeps the same overview route for backwards compatibility. `details`, `unlock`, and `usage` use subscriber API keys from `--api-key` or `ONEDEX_API_KEY`. When using `--normalized-address-key`, pass it alone; do not combine it with address text, `--parcel-record-key`, or `--lon`/`--lat`. Use `1dex unlock --input '<unlock_request-json>'` when `address-details` returns an `unlock_request` object instead of a stable key. `usage` returns API quota windows, address credit pools, active grants, recent consumptions, and subscription state; use it before batch jobs to avoid spending requests blindly. `autocomplete`, `communes`, `preview`, `state`, `viewport`, `focus`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300

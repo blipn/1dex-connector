@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7
+
+- Unify PyPI and npm package READMEs for public reads, professional auth, purchase, detailed reads, unlock flow, `details_url`, account usage, and access errors.
+- Bump CLI package to `0.1.7` so npm republishes the unified CLI README.
+- Bump JS and Python connector packages to `0.1.3` so package pages expose the same subscriber API guidance.
+
 ## 0.1.6
 
 - Sync connector helpers with `1dex-data-v2/main` public API v1 routes.

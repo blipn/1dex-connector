@@ -42,3 +42,5 @@ Flux recommande:
 2. Appeler `address.details({ ..., fields })`.
 3. Si l'API renvoie `address_unlock_required`, poster `normalized_address_key` seul quand `unlock_locator_kind=normalized_address_key`, sinon poster `unlock_request`.
 4. Appeler le `details_url` renvoye par `address.unlock(...)`.
+
+Erreurs d'acces a prevoir: `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.

@@ -50,7 +50,7 @@ Si `GET /address-details` répond `402 address_unlock_required`, lire `unlock_lo
 
 Après `POST /address-unlocks`, appeler le `details_url` retourné. Ne mélangez pas `normalized_address_key` avec `address`, `lon`/`lat` ou `parcel_record_key`.
 
-`GET /account/usage` renvoie les fenetres de quota API, les credits adresse disponibles, les grants actifs, les consommations recentes et l'abonnement. Les erreurs d'acces usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required` et `address_unlock_required`.
+`GET /account/usage` renvoie les fenetres de quota API, les credits adresse disponibles, les grants actifs, les consommations recentes et l'abonnement. Les erreurs d'acces usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.
 
 ## Aperçu public
 
