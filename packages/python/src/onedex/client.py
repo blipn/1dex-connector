@@ -127,6 +127,11 @@ def _request_id_from_body(body: Any) -> str | None:
     return None
 
 
+def _network_error_message(exc: BaseException) -> str:
+    reason = getattr(exc, "reason", None)
+    return str(reason or exc)
+
+
 def _normalize_map_layer(layer: Any) -> str:
     normalized = str(layer or "").strip()
     layer_key = PUBLIC_MAP_LAYER_ALIASES.get(normalized, normalized)
@@ -463,6 +468,11 @@ class OneDexClient:
                 body=body_value,
                 request_id=_request_id_from_body(body_value),
                 headers=dict(exc.headers.items()),
+            ) from exc
+        except (urllib.error.URLError, OSError) as exc:
+            raise OneDexApiError(
+                f"Unable to reach 1dex API: {_network_error_message(exc)}",
+                status=0,
             ) from exc
 
     def address_overview(self, payload: Mapping[str, Any]) -> Any:

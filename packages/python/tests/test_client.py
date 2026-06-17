@@ -313,6 +313,18 @@ class ClientTest(unittest.TestCase):
         self.assertEqual(context.exception.request_id, "req_error")
         self.assertEqual(str(context.exception), "Bad query.")
 
+    def test_network_error_raises_api_error_with_status_zero(self):
+        def opener(request, timeout):
+            raise urllib.error.URLError("network down")
+
+        client = OneDexClient(base_url="http://example.test", opener=opener)
+
+        with self.assertRaises(OneDexApiError) as context:
+            client.map.parcelles({"address": "x"})
+
+        self.assertEqual(context.exception.status, 0)
+        self.assertEqual(str(context.exception), "Unable to reach 1dex API: network down")
+
 
 if __name__ == "__main__":
     unittest.main()

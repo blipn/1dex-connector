@@ -7,11 +7,11 @@ Les liens canoniques d'accès et d'habilitation sont maintenus sur `1dex.fr`:
 - Référence Swagger: <https://1dex.fr/api/v1/docs>
 - Documentation développeurs: <https://1dex.fr/developpeurs/api>
 
-Les clients JS, Python et CLI ajoutent `Authorization: Bearer <api-key>` lorsque `apiKey`, `api_key`, `--api-key` ou `ONEDEX_API_KEY` est fourni. Les lectures publiques restent possibles sans clé dans les quotas publics; les routes subscriber comme `address-details`, `address-unlocks` et `account/usage` nécessitent une clé valide et les droits d'accès associés.
+Les clients JS, Python et CLI ajoutent `Authorization: Bearer <api-key>` lorsque `apiKey`, `api_key`, `--api-key` ou `ONEDEX_API_KEY` est fourni. Les lectures publiques restent possibles sans clé dans les quotas publics; les endpoints pro abonnés comme `address-details`, `address-unlocks` et `account/usage` nécessitent une clé valide et les droits d'accès associés.
 
 ## Comptes professionnels abonnes
 
-Pendant la phase de lancement, les endpoints subscriber sont reserves aux comptes professionnels avec abonnement actif. Le runtime accepte aussi l'en-tete `X-1dex-api-key`, mais les connecteurs envoient par defaut `Authorization: Bearer <cle>`.
+Pendant la phase de lancement, les endpoints pro abonnés sont réservés aux comptes professionnels avec abonnement actif. Le runtime accepte aussi l'en-tête `X-1dex-api-key`, mais les connecteurs envoient par défaut `Authorization: Bearer <cle>`.
 
 Erreurs d'acces a prevoir:
 

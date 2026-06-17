@@ -136,6 +136,7 @@ try {
       'assert "public and professional 1dex API surface" in metadata',
       'assert "Auth, purchase, and detailed reads" in metadata',
       'assert "insufficient_credits" in metadata',
+      'assert any(name.endswith("/LICENSE") and "dist-info/licenses" in name for name in archive.namelist())',
     ].join('; '),
     wheelPath,
     project.name,

@@ -209,6 +209,31 @@ function readRequestId(body, headers) {
   return headers.get('x-request-id') ?? null;
 }
 
+function combineSignals(timeoutSignal, externalSignal) {
+  if (!externalSignal) {
+    return { signal: timeoutSignal, cleanup: () => {} };
+  }
+  if (typeof AbortSignal.any === 'function') {
+    return { signal: AbortSignal.any([externalSignal, timeoutSignal]), cleanup: () => {} };
+  }
+
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  externalSignal.addEventListener('abort', abort, { once: true });
+  timeoutSignal.addEventListener('abort', abort, { once: true });
+  return {
+    signal: controller.signal,
+    cleanup: () => {
+      externalSignal.removeEventListener('abort', abort);
+      timeoutSignal.removeEventListener('abort', abort);
+    },
+  };
+}
+
+function networkErrorMessage(error) {
+  return error instanceof Error && error.message ? error.message : String(error);
+}
+
 async function readJsonResponse(response) {
   const text = await response.text();
   if (!text) {
@@ -305,6 +330,7 @@ export class OneDexClient {
     const timer = timeoutMs > 0
       ? setTimeout(() => controller.abort(), timeoutMs)
       : undefined;
+    const requestSignal = combineSignals(controller.signal, options.signal);
 
     let response;
     try {
@@ -312,14 +338,16 @@ export class OneDexClient {
         method,
         headers,
         body,
-        signal: options.signal ?? controller.signal,
+        signal: requestSignal.signal,
       });
     } catch (error) {
       if (error?.name === 'AbortError') {
-        throw new OneDexApiError('1dex API request timed out.', { status: 0 });
+        const abortedByCaller = options.signal?.aborted && !controller.signal.aborted;
+        throw new OneDexApiError(abortedByCaller ? '1dex API request aborted.' : '1dex API request timed out.', { status: 0 });
       }
-      throw error;
+      throw new OneDexApiError(`Unable to reach 1dex API: ${networkErrorMessage(error)}`, { status: 0 });
     } finally {
+      requestSignal.cleanup();
       if (timer) {
         clearTimeout(timer);
       }

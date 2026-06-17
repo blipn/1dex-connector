@@ -7,6 +7,7 @@ const apiPage = await readFile(join(root, 'dist/site/api.html'), 'utf8');
 const documentationApiPage = await readFile(join(root, 'dist/site/documentation-api.html'), 'utf8');
 const quickstartPage = await readFile(join(root, 'dist/site/quickstart.html'), 'utf8');
 const appJs = await readFile(join(root, 'dist/site/assets/app.js'), 'utf8');
+const sitemap = await readFile(join(root, 'dist/site/sitemap.xml'), 'utf8');
 const requiredFragments = [
   '<title>1dex Connector - Clients API</title>',
   'name="description"',
@@ -48,6 +49,7 @@ const requiredApiFragments = [
   '<option value="map-viewport">Viewport multi-calques</option>',
   '<option value="map-focus-public-location">Focus coordonnées</option>',
   'name="normalized_address_key"',
+  'name="unlock_request"',
   'name="parcel_record_key"',
   'name="dvf_year"',
   'id="api-doc-link"',
@@ -79,6 +81,9 @@ const requiredQuickstartFragments = [
   'insufficient_credits',
   'unlock_request',
   'details_url',
+  'client.account.usage()',
+  'usage.credits.total_remaining',
+  'usage["credits"]["total_remaining"]',
   './api.html',
   './documentation-api.html',
 ];
@@ -119,9 +124,12 @@ const requiredAppFragments = [
   'focusPublicLocation: \'./api.html?operation=map-focus-public-location&lon=5.446766&lat=43.529667\'',
   'operation === \'address-page-state\'',
   'operation === \'address-details\'',
+  'operation === \'address-unlock\'',
   'operation === \'map-viewport\'',
   'Adresse, code commune ou coordonnées requis.',
   'parcel_record_key',
+  'const unlockRequest = readValue(\'unlock_request\')',
+  'JSON.parse(unlockRequest)',
   'dvf_year',
   'pageParams.get(\'operation\')',
   'window.addEventListener(\'hashchange\', scheduleHashScroll)',
@@ -141,6 +149,23 @@ if (siteIndex.includes('./docs/quickstart.md')) {
 
 if (siteIndex.includes('redoc@next') || apiPage.includes('redoc@next') || documentationApiPage.includes('redoc@next')) {
   throw new Error('Public site should pin a stable Redoc bundle, not redoc@next.');
+}
+
+for (const page of [siteIndex, apiPage, documentationApiPage, quickstartPage]) {
+  const canonical = page.match(/<link rel="canonical" href="([^"]+)">/)?.[1];
+  if (canonical && !sitemap.includes(`<loc>${canonical}</loc>`)) {
+    throw new Error(`Canonical URL is missing from sitemap: ${canonical}`);
+  }
+}
+
+const publishedOpenApi = await readFile(join(root, 'dist/site/openapi/1dex-public-api.yaml'), 'utf8').catch((error) => {
+  if (error?.code === 'ENOENT') {
+    return null;
+  }
+  throw error;
+});
+if (publishedOpenApi && /paths:\s*\{\}/u.test(publishedOpenApi)) {
+  throw new Error('Public site must not publish an empty OpenAPI YAML; link to the live 1dex OpenAPI instead.');
 }
 
 async function listPublicFiles(entries) {
@@ -164,7 +189,7 @@ async function listPublicFiles(entries) {
   return files;
 }
 
-const publicFiles = await listPublicFiles(['README.md', 'docs', 'site', 'openapi']);
+const publicFiles = await listPublicFiles(['dist/site']);
 
 const forbiddenPatterns = [
   /overflow-wrap:\s*anywhere/i,

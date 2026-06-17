@@ -90,6 +90,7 @@ except OneDexApiError as error:
     else:
         details = client.address.details({
             "normalized_address_key": unlock["normalized_address_key"],
+            "fields": ["summary", "rail"],
         })
 ```
 
@@ -114,4 +115,4 @@ The client exposes helpers for the current `/api/v1` routes:
 - `client.score.address(...)`, `client.score.compare(...)`, `client.score.grid(...)`, `client.score.addressSuggest(...)`
 - `client.preview.byPath(...)`
 - `client.addressPages.state(...)`
-- `client.map.layer(...)`, `client.map.viewport(...)`, `client.map.focusAddress(...)`, `client.map.focusPublicLocation(...)`, `client.map.focusParcelle(...)`, `client.map.focusParcelles(...)`, `client.map.focusFeature(...)`
+- `client.map.layer(...)`, `client.map.viewport(...)`, `client.map.focus.address(...)`, `client.map.focus.public_location(...)`, `client.map.focus.publicLocation(...)`, `client.map.focus.parcelle(...)`, `client.map.focus.parcelles(...)`, `client.map.focus.feature(...)`

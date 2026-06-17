@@ -26,7 +26,7 @@ curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordelier
 curl "https://1dex.fr/api/v1/address-overview?city_code=13001&parcel_record_key=parcel_123&dvf_year=2024"
 ```
 
-## Détails subscriber et déblocage
+## Détails pro abonnés et déblocage
 
 Ces routes necessitent une cle API d'un compte professionnel avec abonnement actif. Elles donnent acces aux familles completes de l'adresse debloquee et au suivi de quota/credits du compte.
 
@@ -83,7 +83,7 @@ curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&zoom=
 
 ## JavaScript
 
-Le package JS couvre les routes publiques d'aperçu, détails subscriber, autocomplete, score, état de page adresse, calques carte, focus carte, aperçu public et viewport:
+Le package JS couvre les routes publiques d'aperçu, détails pro abonnés, autocomplete, score, état de page adresse, calques carte, focus carte, aperçu public et viewport:
 
 ```bash
 npm i @1dex-fr/connector

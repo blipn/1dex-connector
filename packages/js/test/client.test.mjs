@@ -285,3 +285,52 @@ test('non-2xx responses raise OneDexApiError with response metadata', async () =
     },
   );
 });
+
+test('network failures raise OneDexApiError with status 0', async () => {
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => {
+      throw new TypeError('network down');
+    },
+  });
+
+  await assert.rejects(
+    () => client.map.parcelles({ address: 'x' }),
+    (error) => {
+      assert.ok(error instanceof OneDexApiError);
+      assert.equal(error.status, 0);
+      assert.match(error.message, /Unable to reach 1dex API: network down/u);
+      return true;
+    },
+  );
+});
+
+test('timeout remains active when a caller signal is provided', async () => {
+  const external = new AbortController();
+  let requestSignal;
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    timeoutMs: 1,
+    fetch: async (_url, init) => {
+      requestSignal = init.signal;
+      return new Promise((_resolve, reject) => {
+        init.signal.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        }, { once: true });
+      });
+    },
+  });
+
+  await assert.rejects(
+    () => client.request('GET', '/slow', { signal: external.signal }),
+    (error) => {
+      assert.ok(error instanceof OneDexApiError);
+      assert.equal(error.status, 0);
+      assert.equal(error.message, '1dex API request timed out.');
+      return true;
+    },
+  );
+  assert.notEqual(requestSignal, external.signal);
+});

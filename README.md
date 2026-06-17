@@ -5,7 +5,7 @@
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-0b7a53)](https://blipn.github.io/1dex-connector/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-111827.svg)](LICENSE)
 
-Connecteurs clients pour consommer l'API publique 1dex: aperçu d'adresse, détails subscriber, déblocage d'adresse, usage compte, autocomplete, aperçu public, recherche commune, score public et routes cartographiques publiques vérifiées.
+Connecteurs clients pour consommer l'API publique 1dex: aperçu d'adresse, détails pro abonnés, déblocage d'adresse, usage compte, autocomplete, aperçu public, recherche commune, score public et routes cartographiques publiques vérifiées.
 
 Ce dépôt contient le client JavaScript, le client Python, la CLI et des exemples d'intégration. Il reste une couche de consommation: il ne porte pas le contrat public de l'API, la documentation métier, les quotas, les imports de sources, le schéma de base de données, les fichiers bruts ni le code privé du runtime.
 
@@ -39,7 +39,7 @@ Erreurs d'acces a prevoir: `invalid_api_key`, `api_subscription_required`, `api_
 
 - `packages/js`: client JavaScript/TypeScript sans dépendance runtime (`@1dex-fr/connector`).
 - `packages/python`: client Python fondé sur la bibliothèque standard.
-- `cli`: CLI Node pour les smoke tests rapides, l'aperçu d'adresse public, les détails subscriber, le score public, les suggestions et les exports JSON/CSV.
+- `cli`: CLI Node pour les smoke tests rapides, l'aperçu d'adresse public, les détails pro abonnés, le score public, les suggestions et les exports JSON/CSV.
 - `docs/`: notes d'usage du connecteur qui renvoient vers la documentation canonique `1dex.fr`.
 - `examples/`: petits exemples curl, Node, Python et Go.
 

@@ -56,8 +56,8 @@
         <section class="api-section api-intro docs-intro" data-reveal>
           <p class="api-kicker">Démarrage</p>
           <h1>Appeler l'API publique 1dex</h1>
-          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous couvrent l'aperçu, les détails subscriber, les suggestions, le score public et les routes cartographiques canoniques.</p>
-          <p>Les routes subscriber sont reservees aux comptes professionnels avec abonnement actif. Utilisez <code>account/usage</code> pour suivre quotas API, credits adresse, grants actifs, consommations recentes et abonnement.</p>
+          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous couvrent l'aperçu, les détails pro abonnés, les suggestions, le score public et les routes cartographiques canoniques.</p>
+          <p>Les endpoints pro abonnés sont réservés aux comptes professionnels avec abonnement actif. Utilisez <code>account/usage</code> pour suivre quotas API, crédits adresse, grants actifs, consommations récentes et abonnement.</p>
           <p>Erreurs d'acces a prevoir: <code>invalid_api_key</code>, <code>api_subscription_required</code>, <code>api_professional_required</code>, <code>address_unlock_required</code> et <code>insufficient_credits</code>.</p>
           <div class="console-actions docs-actions">
             <a class="primary-action" href="./api.html">Tester dans la console</a>
@@ -83,7 +83,7 @@ curl "https://1dex.fr/api/v1/communes/search?q=aix&amp;limit=5"</code></pre>
 
             <article class="code-sample">
               <div class="sample-head">
-                <h3>Détails subscriber</h3>
+                <h3>Détails pro abonnés</h3>
                 <button type="button" data-copy="curl-address-details">Copier</button>
               </div>
               <pre id="curl-address-details"><code>curl "https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&amp;fields=summary,rail" \
@@ -145,7 +145,7 @@ curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&amp;z
           <div class="api-section-head">
             <p class="api-kicker">JavaScript</p>
             <h2>Client npm</h2>
-            <p>Le package JS couvre les routes publiques d'aperçu, détails subscriber, autocomplete, score, état de page adresse, aperçu public, calques carte, focus carte et viewport.</p>
+            <p>Le package JS couvre les routes publiques d'aperçu, détails pro abonnés, autocomplete, score, état de page adresse, aperçu public, calques carte, focus carte et viewport.</p>
           </div>
           <article class="code-sample">
             <div class="sample-head">
@@ -174,8 +174,9 @@ const details = await client.address.details({
   address: "10 rue des cordeliers aix",
   fields: ["summary", "rail"],
 });
+const usage = await client.account.usage();
 
-console.log(overview.version, suggestions.suggestions, score.items, details.fields);</code></pre>
+console.log(overview.version, suggestions.suggestions, score.items, details.fields, usage.credits.total_remaining);</code></pre>
           </article>
         </section>
 
@@ -211,8 +212,9 @@ details = client.address.details({
     "address": "10 rue des cordeliers aix",
     "fields": ["summary", "rail"],
 })
+usage = client.account.usage()
 
-print(overview["version"], suggestions["suggestions"], score["items"], details["fields"])</code></pre>
+print(overview["version"], suggestions["suggestions"], score["items"], details["fields"], usage["credits"]["total_remaining"])</code></pre>
           </article>
         </section>
       </section>

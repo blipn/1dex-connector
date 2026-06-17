@@ -303,9 +303,20 @@ if (explorer) {
     } else if (operation === 'address-unlock') {
       path = '/api/v1/address-unlocks';
       method = 'POST';
-      body = {};
-      for (const key of ['address', 'city_code', 'lon', 'lat', 'parcel_record_key', 'normalized_address_key']) {
-        appendIfPresent(body, key, readValue(key));
+      const unlockRequest = readValue('unlock_request');
+      const normalizedAddressKey = readValue('normalized_address_key');
+      if (unlockRequest) {
+        body = JSON.parse(unlockRequest);
+        if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+          throw new Error('unlock_request JSON object required.');
+        }
+      } else if (normalizedAddressKey) {
+        body = { normalized_address_key: normalizedAddressKey };
+      } else {
+        body = {};
+        for (const key of ['address', 'city_code', 'lon', 'lat', 'parcel_record_key']) {
+          appendIfPresent(body, key, readValue(key));
+        }
       }
       if (!body.address && !body.normalized_address_key && !body.parcel_record_key && (!body.lon || !body.lat)) {
         throw new Error('Address, normalized key, parcel key, or coordinates required.');
@@ -513,6 +524,7 @@ if (explorer) {
       'profile',
       'sortBy',
       'score_items',
+      'unlock_request',
       'api_key',
     ]) {
       const value = pageParams.get(name);

@@ -17,7 +17,6 @@ on:
     paths:
       - ".github/workflows/npm-publish.yml"
       - "cli/**"
-      - "packages/js/**"
 
 permissions:
   contents: read
@@ -52,17 +51,13 @@ jobs:
           fi
           FILES="$(git diff --name-only "${BASE}" "${{ github.sha }}" || git diff --name-only HEAD^ HEAD)"
 
-          if grep -Eq '(^cli/|^\.github/workflows/npm-publish\.yml$)' <<< "${FILES}"; then
+          if grep -Eq '^cli/' <<< "${FILES}"; then
             echo "cli=true" >> "${GITHUB_OUTPUT}"
           else
             echo "cli=false" >> "${GITHUB_OUTPUT}"
           fi
 
-          if grep -Eq '(^packages/js/|^\.github/workflows/npm-publish\.yml$)' <<< "${FILES}"; then
-            echo "js=true" >> "${GITHUB_OUTPUT}"
-          else
-            echo "js=false" >> "${GITHUB_OUTPUT}"
-          fi
+          echo "js=false" >> "${GITHUB_OUTPUT}"
 
   publish-cli:
     name: Publish CLI package
@@ -86,7 +81,7 @@ jobs:
 
       - name: Set up npm trusted publishing support
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11.13.0
           npm --version
 
       - name: Run CI checks
@@ -140,7 +135,7 @@ jobs:
 
       - name: Set up npm trusted publishing support
         run: |
-          npm install -g npm@latest
+          npm install -g npm@11.13.0
           npm --version
 
       - name: Run CI checks

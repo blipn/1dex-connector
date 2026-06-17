@@ -15,7 +15,6 @@ await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
 
 await copyIfPresent('site', '.');
-await copyIfPresent('openapi', 'openapi');
 await copyIfPresent('docs', 'docs');
 await copyIfPresent('examples', 'examples');
 
