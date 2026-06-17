@@ -28,6 +28,8 @@ curl "https://1dex.fr/api/v1/address-overview?city_code=13001&parcel_record_key=
 
 ## Détails subscriber et déblocage
 
+Ces routes necessitent une cle API d'un compte professionnel avec abonnement actif. Elles donnent acces aux familles completes de l'adresse debloquee et au suivi de quota/credits du compte.
+
 ```bash
 curl "https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&fields=summary,rail" \
   -H "Authorization: Bearer $ONEDEX_API_KEY"
@@ -47,6 +49,8 @@ Si `GET /address-details` répond `402 address_unlock_required`, lire `unlock_lo
 - `unlock_request`: envoyer l'objet `unlock_request` retourné.
 
 Après `POST /address-unlocks`, appeler le `details_url` retourné. Ne mélangez pas `normalized_address_key` avec `address`, `lon`/`lat` ou `parcel_record_key`.
+
+`GET /account/usage` renvoie les fenetres de quota API, les credits adresse disponibles, les grants actifs, les consommations recentes et l'abonnement. Les erreurs d'acces usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required` et `address_unlock_required`.
 
 ## Aperçu public
 
@@ -106,8 +110,9 @@ const details = await client.address.details({
   address: "10 rue des cordeliers aix",
   fields: ["summary", "rail"],
 });
+const usage = await client.account.usage();
 
-console.log(overview.version, suggestions.suggestions, score.items, details.fields);
+console.log(overview.version, suggestions.suggestions, score.items, details.fields, usage.credits.total_remaining);
 ```
 
 ## Python
@@ -137,6 +142,7 @@ details = client.address.details({
     "address": "10 rue des cordeliers aix",
     "fields": ["summary", "rail"],
 })
+usage = client.account.usage()
 
-print(overview["version"], suggestions["suggestions"], score["items"], details["fields"])
+print(overview["version"], suggestions["suggestions"], score["items"], details["fields"], usage["credits"]["total_remaining"])
 ```

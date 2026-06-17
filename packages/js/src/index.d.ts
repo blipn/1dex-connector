@@ -76,6 +76,174 @@ export interface AddressDetailsInput extends AddressLocatorInput {
 
 export type AddressUnlockInput = AddressLocatorInput;
 
+export type AddressDetailsField =
+  | 'summary'
+  | 'rail'
+  | 'mobile'
+  | 'tabs'
+  | 'map_layers'
+  | 'parcel_dvf'
+  | 'sources'
+  | 'source_outcomes';
+
+export type AddressUnlockLocatorKind = 'normalized_address_key' | 'resolved_locator' | 'unavailable';
+export type AddressUnlockFollowUpLocatorKind = 'normalized_address_key' | 'unlock_request' | 'unavailable';
+export type AddressUnlockStatus = 'already_active' | 'unlocked' | 'insufficient_credits';
+export type AddressUnlockPreviewStatus = 'already_active' | 'available' | 'insufficient_credits';
+export type AddressCreditSourceKind = 'free_credit' | 'subscription_credit' | 'pack_credit' | 'report_order' | 'legacy_migration';
+
+export interface AddressAccessGrant {
+  address_access_grant_id: string;
+  normalized_address_key: string;
+  source_kind: AddressCreditSourceKind;
+  source_label: string;
+  starts_at: string;
+  expires_at: string;
+  order_id: string | null;
+  unlock_credit_pool_id: string | null;
+  resolved_label: string | null;
+  canonical_slug: string | null;
+  [key: string]: unknown;
+}
+
+export interface AddressUnlockPreview {
+  status: AddressUnlockPreviewStatus;
+  credits_required: 0 | 1;
+  remaining_credits: number | null;
+  source_kind: AddressCreditSourceKind | null;
+  source_label: string | null;
+  access_expires_at: string | null;
+  active_grant: AddressAccessGrant | null;
+  [key: string]: unknown;
+}
+
+export interface AddressUnlockResult {
+  normalized_address_key: string;
+  status: AddressUnlockStatus;
+  grant: AddressAccessGrant | null;
+  [key: string]: unknown;
+}
+
+export interface AddressDetailsResponse {
+  version: 'address-details-v1';
+  fields: AddressDetailsField[];
+  query: Record<string, unknown>;
+  resolved: Record<string, unknown>;
+  degraded: Record<string, unknown>;
+  summaryCards?: Record<string, unknown>[];
+  utilityRailCards?: Record<string, unknown>[];
+  mobilePriorityCards?: Record<string, unknown>[];
+  tabs?: Record<string, unknown>[];
+  mapLayers?: Record<string, unknown>[];
+  parcelDvfHistory?: Record<string, unknown> | null;
+  directSources?: Record<string, unknown>;
+  aggregateSources?: Record<string, unknown>;
+  sourceOutcomes?: Record<string, unknown>[];
+  [key: string]: unknown;
+}
+
+export interface AddressUnlockResponse {
+  version: 'address-unlock-v1';
+  normalized_address_key: string;
+  resolved: Record<string, unknown> | null;
+  result: AddressUnlockResult | null;
+  details_url: string | null;
+  details_locator_kind: AddressUnlockLocatorKind;
+  [key: string]: unknown;
+}
+
+export interface AddressUnlockRequiredBody {
+  error: 'address_unlock_required';
+  message: string;
+  normalized_address_key: string | null;
+  unlock_locator_kind: AddressUnlockFollowUpLocatorKind;
+  unlock_request?: AddressUnlockInput;
+  unlock_preview: AddressUnlockPreview;
+  [key: string]: unknown;
+}
+
+export interface UsageWindow {
+  limit: number;
+  used: number;
+  remaining: number;
+}
+
+export interface UsagePointSnapshot {
+  scope: string;
+  label: string;
+  minute: UsageWindow;
+  hour: UsageWindow;
+  day: UsageWindow;
+  [key: string]: unknown;
+}
+
+export interface UnlockCreditPool {
+  unlock_credit_pool_id: string;
+  pool_kind: 'free_intro_pack' | 'subscription_cycle' | 'exploration_pack' | 'agency_bonus' | string;
+  status: 'active' | 'expired' | 'revoked' | string;
+  total_credits: number;
+  remaining_credits: number;
+  starts_at: string;
+  expires_at: string;
+  order_id: string | null;
+  subscription_charge_id: string | null;
+  source_label: string;
+  [key: string]: unknown;
+}
+
+export interface ReportCreditPool {
+  report_credit_pool_id: string;
+  status: 'active' | 'expired' | 'revoked' | string;
+  total_credits: number;
+  remaining_credits: number;
+  starts_at: string;
+  expires_at: string;
+  source_kind: 'admin_grant' | string;
+  source_label: string;
+  [key: string]: unknown;
+}
+
+export interface AddressCreditConsumption {
+  unlock_credit_consumption_id: string;
+  normalized_address_key: string;
+  consumed_at: string;
+  source_label: string;
+  resolved_label: string | null;
+  canonical_slug: string | null;
+  [key: string]: unknown;
+}
+
+export interface AddressAccessSubscription {
+  subscription_id: string;
+  plan_key: string;
+  offer_key: string | null;
+  status: 'incomplete' | 'active' | 'past_due' | 'canceled' | 'ended' | 'unpaid' | string;
+  is_gift: boolean;
+  current_period_start: string;
+  current_period_end: string;
+  cancel_at_period_end: boolean;
+  canceled_at: string | null;
+  ended_at: string | null;
+  current_credit_pool: UnlockCreditPool | null;
+  next_reset_at: string | null;
+  [key: string]: unknown;
+}
+
+export interface AccountUsageResponse {
+  version: 'account-usage-v1';
+  api_points: UsagePointSnapshot[];
+  credits: {
+    total_remaining: number;
+    pools: UnlockCreditPool[];
+    report_pools: ReportCreditPool[];
+    active_grants: AddressAccessGrant[];
+    recent_consumptions: AddressCreditConsumption[];
+    [key: string]: unknown;
+  };
+  subscription: AddressAccessSubscription | null;
+  [key: string]: unknown;
+}
+
 export interface CommuneSearchInput {
   q: string;
   limit?: number;
@@ -198,12 +366,12 @@ export class OneDexClient {
   };
 
   readonly address: {
-    details(input: AddressDetailsInput, options?: OneDexRequestOptions): Promise<unknown>;
-    unlock(input: AddressUnlockInput, options?: OneDexRequestOptions): Promise<unknown>;
+    details(input: AddressDetailsInput, options?: OneDexRequestOptions): Promise<AddressDetailsResponse>;
+    unlock(input: AddressUnlockInput, options?: OneDexRequestOptions): Promise<AddressUnlockResponse>;
   };
 
   readonly account: {
-    usage(options?: OneDexRequestOptions): Promise<unknown>;
+    usage(options?: OneDexRequestOptions): Promise<AccountUsageResponse>;
   };
 
   readonly communes: {
@@ -246,9 +414,9 @@ export class OneDexClient {
   request<T = unknown>(method: string, path: string, options?: OneDexRequestOptions): Promise<T>;
   autocompleteAddress(input: AutocompleteAddressInput, options?: OneDexRequestOptions): Promise<unknown>;
   addressPageState(slug: string, options?: OneDexRequestOptions): Promise<unknown>;
-  addressDetails(input: AddressDetailsInput, options?: OneDexRequestOptions): Promise<unknown>;
-  addressUnlock(input: AddressUnlockInput, options?: OneDexRequestOptions): Promise<unknown>;
-  accountUsage(options?: OneDexRequestOptions): Promise<unknown>;
+  addressDetails(input: AddressDetailsInput, options?: OneDexRequestOptions): Promise<AddressDetailsResponse>;
+  addressUnlock(input: AddressUnlockInput, options?: OneDexRequestOptions): Promise<AddressUnlockResponse>;
+  accountUsage(options?: OneDexRequestOptions): Promise<AccountUsageResponse>;
   communeSearch(input: CommuneSearchInput, options?: OneDexRequestOptions): Promise<unknown>;
   mapParcelles(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;
   mapLayer(input: MapLayerInput, options?: OneDexRequestOptions): Promise<unknown>;

@@ -57,6 +57,7 @@
           <p class="api-kicker">Démarrage</p>
           <h1>Appeler l'API publique 1dex</h1>
           <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous couvrent l'aperçu, les détails subscriber, les suggestions, le score public et les routes cartographiques canoniques.</p>
+          <p>Les routes subscriber sont reservees aux comptes professionnels avec abonnement actif. Utilisez <code>account/usage</code> pour suivre quotas API, credits adresse, grants actifs, consommations recentes et abonnement.</p>
           <div class="console-actions docs-actions">
             <a class="primary-action" href="./api.html">Tester dans la console</a>
             <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
@@ -94,6 +95,7 @@ curl -X POST "https://1dex.fr/api/v1/address-unlocks" \
 
 curl "https://1dex.fr/api/v1/account/usage" \
   -H "Authorization: Bearer $ONEDEX_API_KEY"</code></pre>
+              <p>Si <code>address-details</code> renvoie <code>address_unlock_required</code>, postez <code>normalized_address_key</code> seul ou l'objet <code>unlock_request</code>, puis appelez le <code>details_url</code> retourne.</p>
             </article>
 
             <article class="code-sample">

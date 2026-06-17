@@ -13,6 +13,28 @@ Documentation connecteur: <https://blipn.github.io/1dex-connector/>
 
 Documentation publique canonique de l'API: <https://1dex.fr/developpeurs/api>
 
+## Auth, achat et lecture detaillee
+
+Les lectures publiques (`overview`, `autocomplete`, `score`, `map.*`) fonctionnent sans cle API dans les quotas publics. Les lectures completes d'adresse sont reservees aux comptes professionnels avec abonnement actif.
+
+Le connecteur ne gere pas l'achat ni le checkout: l'abonnement, les packs et la creation de compte se font sur `1dex.fr`. Une fois le compte professionnel actif, creez une cle API sur <https://1dex.fr/compte/api>, puis passez-la au connecteur avec `apiKey`, `api_key`, `--api-key` ou `ONEDEX_API_KEY`. Les clients envoient la cle en `Authorization: Bearer <cle>`.
+
+Flux recommande pour une integration pro:
+
+1. Verifier l'acces et les credits avec `account.usage()` (`GET /api/v1/account/usage`).
+2. Tenter la lecture complete avec `address.details({ address, fields })` (`GET /api/v1/address-details`).
+3. Si l'API renvoie `402 address_unlock_required`, lire `unlock_locator_kind`.
+4. Appeler `address.unlock(...)` (`POST /api/v1/address-unlocks`) avec `normalized_address_key` seul quand il est fourni, sinon avec l'objet `unlock_request`.
+5. Relire l'adresse via le `details_url` renvoye par `address.unlock`.
+
+Ce que couvrent les helpers pro:
+
+- `address.details`: familles completes d'une adresse debloquee (`summary`, `rail`, `mobile`, `tabs`, `map_layers`, `parcel_dvf`, `sources`, `source_outcomes` ou `all`).
+- `address.unlock`: consommation d'un credit adresse si necessaire, statut `already_active`, `unlocked` ou `insufficient_credits`, puis `details_url`.
+- `account.usage`: quotas API minute/heure/jour, credits restants, pools de credits, grants actifs, consommations recentes et abonnement courant.
+
+Erreurs d'acces a prevoir: `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required`, et `insufficient_credits` quand aucun credit adresse n'est disponible.
+
 ## Packages
 
 - `packages/js`: client JavaScript/TypeScript sans dépendance runtime (`@1dex-fr/connector`).

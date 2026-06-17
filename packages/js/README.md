@@ -6,6 +6,17 @@ JavaScript connector for the public 1dex API surface. Use `overview.address()` f
 npm i @1dex-fr/connector
 ```
 
+## Auth, purchase, and detailed reads
+
+Public reads such as `overview`, `autocomplete`, `score`, and `map` do not require an API key within public quotas. Complete address details require an active professional 1dex subscription. Purchase and checkout happen on `1dex.fr`; after the professional account is active, create an API key at <https://1dex.fr/compte/api> and pass it as `apiKey` or `ONEDEX_API_KEY`.
+
+Recommended subscriber flow:
+
+1. Check access and remaining credits with `client.account.usage()`.
+2. Try `client.address.details({ address, fields: ["summary", "rail"] })`.
+3. If the API throws `address_unlock_required`, call `client.address.unlock(...)` with the returned `normalized_address_key` alone, or with `unlock_request` when provided.
+4. Read the address again through the returned `details_url`.
+
 ```js
 import { OneDexClient } from "@1dex-fr/connector";
 
@@ -36,14 +47,18 @@ const details = await client.address.details({
   address: "10 rue des cordeliers aix",
   fields: ["summary", "rail"],
 });
+const usage = await client.account.usage();
 
 console.log(overview.cards);
 console.log(suggestions.suggestions);
 console.log(score.items);
 console.log(Object.keys(viewport.layers));
 console.log(details.fields);
+console.log(usage.credits.total_remaining);
 ```
 
 If `address.details()` returns `address_unlock_required`, post the non-null `normalized_address_key` alone to `address.unlock()`, or post the returned `unlock_request` object when `unlock_locator_kind` is `unlock_request`.
+
+Subscriber helpers require an active professional API key. `account.usage()` returns API quota windows, address credit pools, active grants, recent consumptions, and subscription state; use it before batch jobs to avoid spending requests blindly.
 
 For command-line usage, install `@1dex-fr/1dex`.

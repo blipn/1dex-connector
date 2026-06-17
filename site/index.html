@@ -91,7 +91,7 @@
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Démarrage</p>
           <h2 id="quickstart-title">Lire, débloquer et scorer une adresse.</h2>
-          <p>Le connecteur expose des helpers pour les routes publiques documentées sur <code>1dex.fr</code>.</p>
+          <p>Le connecteur expose des helpers pour les routes publiques documentées sur <code>1dex.fr</code>, dont les détails, déblocages et quotas réservés aux comptes professionnels abonnés.</p>
         </div>
         <div class="code-columns">
           <article class="code-sample" data-reveal>
@@ -139,8 +139,9 @@ const details = await client.address.details({
   address: "10 rue des cordeliers aix",
   fields: ["summary", "rail"],
 });
+const usage = await client.account.usage();
 
-console.log(suggestions.suggestions, score.items, details.fields);</code></pre>
+console.log(suggestions.suggestions, score.items, details.fields, usage.credits.total_remaining);</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -165,8 +166,9 @@ details = client.address.details({
     "address": "10 rue des cordeliers aix",
     "fields": ["summary", "rail"],
 })
+usage = client.account.usage()
 
-print(suggestions["suggestions"], score["items"], details["fields"])</code></pre>
+print(suggestions["suggestions"], score["items"], details["fields"], usage["credits"]["total_remaining"])</code></pre>
           </article>
         </div>
       </section>

@@ -7,6 +7,7 @@
 - Add `apiKey` / `api_key` / `--api-key` / `ONEDEX_API_KEY` support for subscriber API calls.
 - Reject mixed subscriber locators when `normalized_address_key` is combined with address, parcel, or coordinate inputs.
 - Publish the Python distribution as `1dex-connector` while keeping the `onedex` import package.
+- Add TypeScript response types and clearer docs for professional subscriber details, unlocks, credits, grants, and usage quotas.
 - Refresh docs and static examples to point API key access to `https://1dex.fr/compte/api` and keep OpenAPI ownership on `1dex.fr`.
 - Bump CLI to `0.1.6` and JS/Python connector packages to `0.1.2`.
 
