@@ -472,7 +472,7 @@ Usage:
   1dex <address> [options]
   1dex overview <address|--city-code|--lon/--lat|--parcel-record-key> [options]
   1dex details <address|--normalized-address-key|--parcel-record-key|--lon/--lat> --fields <csv> [options]
-  1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat> [options]
+  1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--input> [options]
   1dex usage [options]
   1dex autocomplete <query> [options]
   1dex communes <query> [options]
@@ -518,7 +518,7 @@ Options:
       --category <name>                Score grid category: global, market, daily_life, environment, vigilance, potential, price_m2.
       --profile <name>                 Optional score profile.
       --sort-by <name>                 Score compare sort key: global, market, daily_life, environment, vigilance, potential.
-      --input <json-or-@file>          JSON body for score address/compare batch calls.
+      --input <json-or-@file>          JSON body for score address/compare batches or address unlock payloads.
   -r, --viewport-render-mode <mode>    Response render mode. Verified value: features.
   -b, --viewport-bbox <bbox>           Map bbox: minLon,minLat,maxLon,maxLat.
   -z, --viewport-zoom <number>         Map zoom level.
@@ -554,6 +554,7 @@ function examples() {
   # Subscriber address details and unlock flow.
   1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
   1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
+  1dex unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --api-key "$ONEDEX_API_KEY"
   1dex usage --api-key "$ONEDEX_API_KEY" -f summary
 
   # Public address search and score suggest.
@@ -825,6 +826,28 @@ function buildAddressDetailsInput(flags, subjectParts) {
 }
 
 function buildAddressUnlockInput(flags, subjectParts) {
+  const fromInput = readJsonInput(flags.input);
+  if (flags.input !== undefined) {
+    if (typeof fromInput !== 'object' || fromInput === null || Array.isArray(fromInput)) {
+      throw new Error('Address unlock payload must be a JSON object.');
+    }
+    const hasLocatorFlag = Boolean(
+      String(flags.address ?? subjectParts.join(' ')).trim()
+      || flags['city-code']
+      || flags.lon !== undefined
+      || flags.lat !== undefined
+      || flags['parcel-record-key']
+      || flags['normalized-address-key'],
+    );
+    if (hasLocatorFlag) {
+      throw new Error('Address unlock --input cannot be combined with address, city_code, normalized_address_key, parcel_record_key, or lon/lat.');
+    }
+    assertNormalizedAddressKeyIsAlone(fromInput, 'address unlock payload');
+    if (!hasAddressLocator(fromInput)) {
+      throw new Error('Address unlock payload requires address, normalized_address_key, parcel_record_key, or lon/lat.');
+    }
+    return fromInput;
+  }
   return buildAddressLocatorInput(flags, subjectParts, 'address unlock locator');
 }
 

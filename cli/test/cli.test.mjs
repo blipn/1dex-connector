@@ -256,6 +256,15 @@ test('subscriber commands reject mixed normalized key and resolved locators', ()
   ]);
   assert.equal(unlock.status, 1);
   assert.match(unlock.stderr, /normalized_address_key alone/u);
+
+  const unlockInput = runCli([
+    'unlock',
+    '10 rue des cordeliers aix',
+    '--input',
+    '{"address":"50 rue des tanneurs aix"}',
+  ]);
+  assert.equal(unlockInput.status, 1);
+  assert.match(unlockInput.stderr, /--input cannot be combined/u);
 });
 
 test('overview still supports CSV output for address-overview cards', async () => {
@@ -338,6 +347,41 @@ test('address unlock posts JSON and forwards subscriber API key', async () => {
         'details_url=/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
       ].join('\n'),
     );
+  });
+});
+
+test('address unlock accepts returned unlock_request JSON input', async () => {
+  await withJsonServer((request, response) => {
+    assert.equal(request.url, '/api/v1/address-unlocks');
+    assert.equal(request.method, 'POST');
+    let body = '';
+    request.setEncoding('utf8');
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
+    request.on('end', () => {
+      assert.deepEqual(JSON.parse(body), {
+        address: '10 rue des cordeliers aix',
+        city_code: '13001',
+      });
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({
+        version: 'address-unlock-v1',
+        normalized_address_key: 'addr_123',
+        result: { status: 'unlocked' },
+        details_url: '/api/v1/address-details?address=10+rue+des+cordeliers+aix&city_code=13001&fields=summary',
+      }));
+    });
+  }, async (baseUrl) => {
+    const result = await runCliAsync([
+      'unlock',
+      '--input',
+      '{"address":"10 rue des cordeliers aix","city_code":"13001"}',
+      '--base-url',
+      baseUrl,
+    ]);
+
+    assert.equal(result.status, 0, result.stderr);
   });
 });
 

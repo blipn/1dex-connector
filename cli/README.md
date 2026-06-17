@@ -29,6 +29,7 @@ npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
 1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
+1dex unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --api-key "$ONEDEX_API_KEY"
 1dex usage --api-key "$ONEDEX_API_KEY" -f summary
 1dex autocomplete "10 rue des cordeliers aix" --limit 5
 1dex communes aix --limit 5
@@ -48,7 +49,7 @@ Recommended subscriber flow:
 
 1. Check access and remaining credits with `1dex usage --api-key "$ONEDEX_API_KEY" -f summary`.
 2. Try `1dex details "<address>" --fields summary,rail --api-key "$ONEDEX_API_KEY"`.
-3. If the API returns `address_unlock_required`, run `1dex unlock` with the returned `normalized_address_key` alone, or with the returned `unlock_request` payload.
+3. If the API returns `address_unlock_required`, run `1dex unlock --normalized-address-key <key>` when `normalized_address_key` is returned, or `1dex unlock --input '<unlock_request-json>'` when the API returns an `unlock_request` payload.
 4. Read the address again through the returned `details_url`.
 
 `1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. It accepts the live public location parameters (`address`, `city_code`, `lon`/`lat`, `parcel_record_key`, `dvf_radius_m`, `dvf_year`); the bare `1dex <address>` form keeps the same overview route for backwards compatibility. `details`, `unlock`, and `usage` use subscriber API keys from `--api-key` or `ONEDEX_API_KEY`. When using `--normalized-address-key`, pass it alone; do not combine it with address text, `--parcel-record-key`, or `--lon`/`--lat`. `autocomplete`, `communes`, `preview`, `state`, `viewport`, `focus`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
@@ -73,7 +74,7 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 1dex <address> [options]
 1dex overview <address|--city-code|--lon/--lat|--parcel-record-key> [options]
 1dex details <address|--normalized-address-key|--parcel-record-key|--lon/--lat> --fields <csv> [options]
-1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat> [options]
+1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--input> [options]
 1dex usage [options]
 1dex autocomplete <query> [options]
 1dex communes <query> [options]
