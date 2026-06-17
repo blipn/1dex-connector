@@ -90,7 +90,7 @@
       <section id="quickstart" class="section section-light" aria-labelledby="quickstart-title">
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Démarrage</p>
-          <h2 id="quickstart-title">Lire, suggérer et scorer une adresse.</h2>
+          <h2 id="quickstart-title">Lire, débloquer et scorer une adresse.</h2>
           <p>Le connecteur expose des helpers pour les routes publiques documentées sur <code>1dex.fr</code>.</p>
         </div>
         <div class="code-columns">
@@ -101,6 +101,7 @@
             </div>
             <pre id="npm-sample"><code>npm i -g @1dex-fr/1dex
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
+1dex details "10 rue des cordeliers aix" --fields summary,rail --api-key "$ONEDEX_API_KEY"
 1dex score address "10 rue des cordeliers aix" -f summary</code></pre>
           </article>
           <article class="code-sample" data-reveal>
@@ -109,6 +110,8 @@
               <button type="button" data-copy="curl-sample">Copier</button>
             </div>
             <pre id="curl-sample"><code>curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"
+curl -sS "https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&amp;fields=summary,rail" \
+  -H "Authorization: Bearer $ONEDEX_API_KEY"
 curl -sS -X POST "https://1dex.fr/api/v1/score/address" \
   -H "Content-Type: application/json" \
   -d '{"items":[{"address":"10 rue des cordeliers aix"}]}'</code></pre>
@@ -122,7 +125,9 @@ curl -sS -X POST "https://1dex.fr/api/v1/score/address" \
 
 import { OneDexClient } from "@1dex-fr/connector";
 
-const client = new OneDexClient();
+const client = new OneDexClient({
+  apiKey: process.env.ONEDEX_API_KEY,
+});
 const suggestions = await client.autocomplete.address({
   q: "10 rue des cordeliers aix",
   limit: 5,
@@ -130,8 +135,12 @@ const suggestions = await client.autocomplete.address({
 const score = await client.score.address({
   items: [{ address: "10 rue des cordeliers aix" }],
 });
+const details = await client.address.details({
+  address: "10 rue des cordeliers aix",
+  fields: ["summary", "rail"],
+});
 
-console.log(suggestions.suggestions, score.items);</code></pre>
+console.log(suggestions.suggestions, score.items, details.fields);</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -140,9 +149,11 @@ console.log(suggestions.suggestions, score.items);</code></pre>
             </div>
 <pre id="py-sample"><code>python -m pip install onedex
 
+import os
+
 from onedex import OneDexClient
 
-client = OneDexClient()
+client = OneDexClient(api_key=os.getenv("ONEDEX_API_KEY"))
 suggestions = client.autocomplete.address({
     "q": "10 rue des cordeliers aix",
     "limit": 5,
@@ -150,8 +161,12 @@ suggestions = client.autocomplete.address({
 score = client.score.address({
     "items": [{"address": "10 rue des cordeliers aix"}],
 })
+details = client.address.details({
+    "address": "10 rue des cordeliers aix",
+    "fields": ["summary", "rail"],
+})
 
-print(suggestions["suggestions"], score["items"])</code></pre>
+print(suggestions["suggestions"], score["items"], details["fields"])</code></pre>
           </article>
         </div>
       </section>

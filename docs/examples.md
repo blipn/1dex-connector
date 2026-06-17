@@ -25,8 +25,13 @@ CLI examples:
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
+1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
+1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
+1dex usage --api-key "$ONEDEX_API_KEY" -f summary
 1dex "10 rue des cordeliers aix"
 1dex autocomplete "10 rue des cordeliers aix" --limit 5
+1dex communes aix --limit 5
+1dex preview /ville/aix-en-provence-13001 --url
 1dex state "10-rue-de-la-paix-paris-75002"
 1dex score address "10 rue des cordeliers aix" -f summary
 1dex score compare --input '{"items":[{"address":"10 rue des cordeliers aix"},{"address":"50 rue des tanneurs aix"}],"sortBy":"global"}'
@@ -37,6 +42,8 @@ CLI examples:
 1dex dvf "50 rue des tanneurs aix" -f summary
 1dex travaux "50 rue des tanneurs aix" -f summary
 1dex layer iris "50 rue des tanneurs aix" -f summary
+1dex focus parcelle 13001000AB0022 --url
+1dex focus public-location --lon 5.446766 --lat 43.529667 -f summary
 1dex parcelles "50 rue des tanneurs aix" --url
 1dex examples
 1dex doctor

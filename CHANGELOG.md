@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.6
+
+- Sync connector helpers with `1dex-data-v2/main` public API v1 routes.
+- Add JS, Python, CLI, and site console support for `address-details`, `address-unlocks`, `account/usage`, `public-preview`, `communes/search`, and `map-focus/*`.
+- Add `apiKey` / `api_key` / `--api-key` / `ONEDEX_API_KEY` support for subscriber API calls.
+- Reject mixed subscriber locators when `normalized_address_key` is combined with address, parcel, or coordinate inputs.
+- Refresh docs and static examples to point API key access to `https://1dex.fr/compte/api` and keep OpenAPI ownership on `1dex.fr`.
+- Bump CLI to `0.1.6` and JS/Python connector packages to `0.1.2`.
+
 ## 0.1.5
 
 - Sync connector location inputs with the live `1dex.fr/api/v1` OpenAPI surface.

@@ -53,6 +53,64 @@ def _ensure_mapping(value: Any, name: str) -> Mapping[str, Any]:
     return value
 
 
+def _ensure_non_empty_string(value: Any, name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{name} must be a non-empty string.")
+    return value.strip()
+
+
+def _has_coordinates(payload: Mapping[str, Any]) -> bool:
+    return payload.get("lon") is not None and payload.get("lat") is not None
+
+
+def _has_address_locator(payload: Mapping[str, Any]) -> bool:
+    return (
+        (isinstance(payload.get("address"), str) and payload["address"].strip())
+        or (isinstance(payload.get("normalized_address_key"), str) and payload["normalized_address_key"].strip())
+        or (isinstance(payload.get("parcel_record_key"), str) and payload["parcel_record_key"].strip())
+        or _has_coordinates(payload)
+    )
+
+
+def _has_normalized_address_key(payload: Mapping[str, Any]) -> bool:
+    return isinstance(payload.get("normalized_address_key"), str) and payload["normalized_address_key"].strip()
+
+
+def _has_resolved_address_locator(payload: Mapping[str, Any]) -> bool:
+    return (
+        (isinstance(payload.get("address"), str) and payload["address"].strip())
+        or (isinstance(payload.get("parcel_record_key"), str) and payload["parcel_record_key"].strip())
+        or _has_coordinates(payload)
+    )
+
+
+def _ensure_normalized_address_key_is_alone(payload: Mapping[str, Any], name: str) -> None:
+    if _has_normalized_address_key(payload) and (_has_resolved_address_locator(payload) or payload.get("city_code")):
+        raise ValueError(
+            f"{name} must use normalized_address_key alone, without address, city_code, parcel_record_key, or lon/lat."
+        )
+
+
+def _normalize_address_locator_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    data = dict(payload)
+    city_code = data.pop("cityCode", data.get("city_code"))
+    parcel_record_key = data.pop("parcelRecordKey", data.get("parcel_record_key"))
+    normalized_address_key = data.pop("normalizedAddressKey", data.get("normalized_address_key"))
+    data["city_code"] = city_code
+    data["parcel_record_key"] = parcel_record_key
+    data["normalized_address_key"] = normalized_address_key
+    return data
+
+
+def _csv_list(value: Any, name: str) -> str:
+    if isinstance(value, (list, tuple)):
+        items = [str(item).strip() for item in value if str(item).strip()]
+        if not items:
+            raise ValueError(f"{name} must not be empty.")
+        return ",".join(items)
+    return _ensure_non_empty_string(value, name)
+
+
 def _read_json_response(response: Any) -> Any:
     raw = response.read()
     if not raw:
@@ -100,9 +158,68 @@ class _AddressPagesNamespace:
         return self._client.request("GET", f"/api/v1/address-pages/{urllib.parse.quote(slug.strip())}/state")
 
 
+class _AddressNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def details(self, payload: Mapping[str, Any]) -> Any:
+        data = _normalize_address_locator_payload(_ensure_mapping(payload, "address details input"))
+        fields = _csv_list(data.pop("fields", None), "address details fields")
+        _ensure_normalized_address_key_is_alone(data, "address details input")
+        if not _has_address_locator(data):
+            raise ValueError("address details input requires address, normalized_address_key, parcel_record_key, or lon/lat.")
+        data["fields"] = fields
+        return self._client.request("GET", "/api/v1/address-details", query=data)
+
+    def unlock(self, payload: Mapping[str, Any]) -> Any:
+        data = _normalize_address_locator_payload(_ensure_mapping(payload, "address unlock input"))
+        _ensure_normalized_address_key_is_alone(data, "address unlock input")
+        if not _has_address_locator(data):
+            raise ValueError("address unlock input requires address, normalized_address_key, parcel_record_key, or lon/lat.")
+        return self._client.request("POST", "/api/v1/address-unlocks", body=data)
+
+
+class _AccountNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def usage(self) -> Any:
+        return self._client.request("GET", "/api/v1/account/usage")
+
+
+class _CommunesNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def search(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "commune search input"))
+        data["q"] = _ensure_non_empty_string(data.get("q"), "commune search q")
+        return self._client.request("GET", "/api/v1/communes/search", query=data)
+
+
+class _PreviewNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def by_path(self, path_or_payload: str | Mapping[str, Any]) -> Any:
+        if isinstance(path_or_payload, str):
+            path = path_or_payload
+        else:
+            path = _ensure_mapping(path_or_payload, "public preview input").get("path")
+        return self._client.request(
+            "GET",
+            "/api/v1/public-preview",
+            query={"path": _ensure_non_empty_string(path, "public preview path")},
+        )
+
+    def byPath(self, path_or_payload: str | Mapping[str, Any]) -> Any:  # noqa: N802
+        return self.by_path(path_or_payload)
+
+
 class _MapNamespace:
     def __init__(self, client: "OneDexClient") -> None:
         self._client = client
+        self.focus = _MapFocusNamespace(client)
 
     def _layer(self, payload: Mapping[str, Any], default_layer: str = "parcelles") -> Any:
         data = dict(_ensure_mapping(payload, "map layer input"))
@@ -170,6 +287,65 @@ class _MapNamespace:
         )
 
 
+class _MapFocusNamespace:
+    def __init__(self, client: "OneDexClient") -> None:
+        self._client = client
+
+    def parcelle(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "map focus parcelle input"))
+        record_key = data.get("record_key", data.get("recordKey"))
+        return self._client.request(
+            "GET",
+            "/api/v1/map-focus/parcelle",
+            query={"record_key": _ensure_non_empty_string(record_key, "map focus parcelle record_key")},
+        )
+
+    def parcelles(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "map focus parcelles input"))
+        record_keys = data.get("record_keys", data.get("recordKeys"))
+        return self._client.request(
+            "GET",
+            "/api/v1/map-focus/parcelles",
+            query={"record_keys": _csv_list(record_keys, "map focus parcelles record_keys")},
+        )
+
+    def address(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "map focus address input"))
+        address = data.pop("address", None)
+        city_code = data.pop("city_code", data.pop("cityCode", None))
+        return self._client.request(
+            "GET",
+            "/api/v1/map-focus/address",
+            query={
+                "address": _ensure_non_empty_string(address, "map focus address"),
+                "city_code": city_code,
+                **data,
+            },
+        )
+
+    def public_location(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "map focus public location input"))
+        if data.get("lon") is None or data.get("lat") is None:
+            raise ValueError("map focus public location input requires lon and lat.")
+        return self._client.request("GET", "/api/v1/map-focus/public-location", query=data)
+
+    def publicLocation(self, payload: Mapping[str, Any]) -> Any:  # noqa: N802
+        return self.public_location(payload)
+
+    def feature(self, payload: Mapping[str, Any]) -> Any:
+        data = dict(_ensure_mapping(payload, "map focus feature input"))
+        layer_key = data.get("layer_key", data.get("layerKey", data.get("layer")))
+        feature_key = data.get("feature_key", data.get("featureKey"))
+        return self._client.request(
+            "GET",
+            "/api/v1/map-focus/feature",
+            query={
+                "layer_key": _ensure_non_empty_string(layer_key, "map focus feature layer_key"),
+                "feature_key": _ensure_non_empty_string(feature_key, "map focus feature feature_key"),
+            },
+        )
+
+
 class _OverviewNamespace:
     def __init__(self, client: "OneDexClient") -> None:
         self._client = client
@@ -203,19 +379,27 @@ class OneDexClient:
         self,
         *,
         base_url: str | None = None,
+        api_key: str | None = None,
         headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
         opener: Any = None,
     ) -> None:
         self.base_url = _normalize_base_url(base_url)
-        self.headers = dict(headers or {})
+        self.headers = {}
+        if api_key and api_key.strip():
+            self.headers["Authorization"] = f"Bearer {api_key.strip()}"
+        self.headers.update(dict(headers or {}))
         self.timeout = timeout
         self._opener = opener or urllib.request.urlopen
         self.autocomplete = _AutocompleteNamespace(self)
         self.address_pages = _AddressPagesNamespace(self)
         self.addressPages = self.address_pages  # noqa: N815
+        self.address = _AddressNamespace(self)
+        self.account = _AccountNamespace(self)
+        self.communes = _CommunesNamespace(self)
         self.map = _MapNamespace(self)
         self.overview = _OverviewNamespace(self)
+        self.preview = _PreviewNamespace(self)
         self.score = _ScoreNamespace(self)
 
     def request(
@@ -244,7 +428,12 @@ class OneDexClient:
         data = None
         if body is not None:
             request_headers.setdefault("Content-Type", "application/json")
-            data = json.dumps(body).encode("utf-8")
+            filtered_body = {
+                key: value
+                for key, value in body.items()
+                if value is not None and value != ""
+            }
+            data = json.dumps(filtered_body).encode("utf-8")
 
         request = urllib.request.Request(
             url,

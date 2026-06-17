@@ -60,10 +60,20 @@
                 Point d'entrée
                 <select id="api-operation" name="operation">
                   <option value="address-overview">Aperçu adresse</option>
+                  <option value="address-details">Détails adresse</option>
+                  <option value="address-unlock">Déblocage adresse</option>
+                  <option value="account-usage">Usage compte</option>
                   <option value="autocomplete">Autocomplete adresse</option>
+                  <option value="communes">Recherche commune</option>
+                  <option value="public-preview">Aperçu public</option>
                   <option value="address-page-state">État page adresse</option>
                   <option value="map-layer">Calque carte</option>
                   <option value="map-viewport">Viewport multi-calques</option>
+                  <option value="map-focus-parcelle">Focus parcelle</option>
+                  <option value="map-focus-parcelles">Focus parcelles</option>
+                  <option value="map-focus-address">Focus adresse</option>
+                  <option value="map-focus-public-location">Focus coordonnées</option>
+                  <option value="map-focus-feature">Focus feature</option>
                   <option value="score-address">Score adresse</option>
                   <option value="score-compare">Score compare</option>
                   <option value="score-grid">Score grille</option>
@@ -78,9 +88,14 @@
                 </select>
               </label>
 
-              <label class="field-label" for="api-address" data-visible-for="address-overview,autocomplete,map-layer,map-viewport,score-address,score-suggest">
+              <label class="field-label" for="api-address" data-visible-for="address-overview,address-details,address-unlock,autocomplete,communes,map-layer,map-viewport,map-focus-address,score-address,score-suggest">
                 Adresse
                 <input id="api-address" name="address" type="text" value="10 rue des cordeliers aix" autocomplete="street-address">
+              </label>
+
+              <label class="field-label" for="api-path" data-visible-for="public-preview">
+                Chemin public
+                <input id="api-path" name="path" type="text" value="/ville/aix-en-provence-13001" autocomplete="off">
               </label>
 
               <label class="field-label" for="api-slug" data-visible-for="address-page-state">
@@ -88,8 +103,8 @@
                 <input id="api-slug" name="slug" type="text" value="10-rue-de-la-paix-paris-75002" autocomplete="off">
               </label>
 
-              <div class="form-grid" data-visible-for="map-layer,map-viewport">
-                <label class="field-label" for="api-layer" data-visible-for="map-layer">
+              <div class="form-grid" data-visible-for="map-layer,map-viewport,map-focus-feature">
+                <label class="field-label" for="api-layer" data-visible-for="map-layer,map-focus-feature">
                   Calque
                   <select id="api-layer" name="layer">
                     <option value="context">Contexte</option>
@@ -115,12 +130,17 @@
               </div>
 
               <div class="form-grid">
-                <label class="field-label" for="api-dvf-radius" data-visible-for="address-overview">
+                <label class="field-label" for="api-fields" data-visible-for="address-details">
+                  Champs détails
+                  <input id="api-fields" name="fields" type="text" value="summary,rail" autocomplete="off">
+                </label>
+
+                <label class="field-label" for="api-dvf-radius" data-visible-for="address-overview,address-details">
                   Rayon DVF
                   <input id="api-dvf-radius" name="dvf_radius_m" type="number" min="1" value="600" autocomplete="off">
                 </label>
 
-                <label class="field-label" for="api-limit" data-visible-for="autocomplete,score-suggest">
+                <label class="field-label" for="api-limit" data-visible-for="autocomplete,communes,score-suggest">
                   Limite
                   <input id="api-limit" name="limit" type="number" min="1" max="8" value="5" autocomplete="off">
                 </label>
@@ -155,23 +175,39 @@
               <details class="advanced-fields">
                 <summary>Paramètres avancés</summary>
                 <div class="form-grid">
-                  <label class="field-label" for="api-city-code" data-visible-for="address-overview,map-layer,map-viewport">
+                  <label class="field-label" for="api-city-code" data-visible-for="address-overview,address-details,address-unlock,map-layer,map-viewport,map-focus-address">
                     Code commune
                     <input id="api-city-code" name="city_code" type="text" placeholder="13001" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-parcel-record-key" data-visible-for="address-overview">
+                  <label class="field-label" for="api-normalized-address-key" data-visible-for="address-details,address-unlock">
+                    Clé adresse normalisée
+                    <input id="api-normalized-address-key" name="normalized_address_key" type="text" placeholder="addr_..." autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-parcel-record-key" data-visible-for="address-overview,address-details,address-unlock">
                     Clé parcelle
                     <input id="api-parcel-record-key" name="parcel_record_key" type="text" placeholder="parcel_..." autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-dvf-year" data-visible-for="address-overview">
+                  <label class="field-label" for="api-dvf-year" data-visible-for="address-overview,address-details">
                     Année DVF
                     <input id="api-dvf-year" name="dvf_year" type="number" min="2014" max="2100" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-lon" data-visible-for="address-overview,map-layer,map-viewport">
+                  <label class="field-label" for="api-record-key" data-visible-for="map-focus-parcelle">
+                    Record key
+                    <input id="api-record-key" name="record_key" type="text" value="13001000AB0022" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-record-keys" data-visible-for="map-focus-parcelles">
+                    Record keys
+                    <input id="api-record-keys" name="record_keys" type="text" value="13001000AB0022,13001000AB0023" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-feature-key" data-visible-for="map-focus-feature">
+                    Feature key
+                    <input id="api-feature-key" name="feature_key" type="text" value="13001000AB0022" autocomplete="off">
+                  </label>
+                  <label class="field-label" for="api-lon" data-visible-for="address-overview,address-details,address-unlock,map-layer,map-viewport,map-focus-public-location">
                     Longitude
                     <input id="api-lon" name="lon" type="number" step="any" autocomplete="off">
                   </label>
-                  <label class="field-label" for="api-lat" data-visible-for="address-overview,map-layer,map-viewport">
+                  <label class="field-label" for="api-lat" data-visible-for="address-overview,address-details,address-unlock,map-layer,map-viewport,map-focus-public-location">
                     Latitude
                     <input id="api-lat" name="lat" type="number" step="any" autocomplete="off">
                   </label>
@@ -239,7 +275,7 @@
             <p><strong>Lien racine de l'API.</strong> <a href="https://1dex.fr/api/v1" rel="noopener">https://1dex.fr/api/v1</a></p>
             <p><strong>Documentation machine.</strong> <a href="https://1dex.fr/api/v1/openapi.yaml" rel="noopener">https://1dex.fr/api/v1/openapi.yaml</a></p>
             <p><strong>Référence Swagger.</strong> <a href="https://1dex.fr/api/v1/docs" rel="noopener">https://1dex.fr/api/v1/docs</a></p>
-            <p><strong>Outil d’habilitation d’accès.</strong> <a href="https://1dex.fr/contact" rel="noopener">https://1dex.fr/contact</a></p>
+            <p><strong>Accès aux clés API.</strong> <a href="https://1dex.fr/compte/api" rel="noopener">https://1dex.fr/compte/api</a></p>
             <p><strong>Documentation métier.</strong> <a href="https://1dex.fr/developpeurs/api#donnees" rel="noopener">https://1dex.fr/developpeurs/api#donnees</a></p>
             <p><strong>Limites d’appels.</strong> <a href="https://1dex.fr/developpeurs/api/quotas" rel="noopener">https://1dex.fr/developpeurs/api/quotas</a></p>
           </div>

@@ -32,21 +32,29 @@ const FLAG_ALIASES = Object.freeze({
 });
 const VALUE_FLAGS = new Set([
   'address',
+  'api-key',
   'base-url',
   'bbox',
   'category',
   'city-code',
   'dvf-radius-m',
   'dvf-year',
+  'feature-key',
+  'fields',
   'format',
   'input',
   'layer',
+  'layer-key',
   'lat',
   'layers',
   'limit',
   'lon',
+  'normalized-address-key',
   'parcel-record-key',
+  'path',
   'profile',
+  'record-key',
+  'record-keys',
   'slug',
   'sort-by',
   'timeout-ms',
@@ -91,6 +99,70 @@ function appendQuery(path, query) {
   return serialized ? `${path}?${serialized}` : path;
 }
 
+function hasCoordinates(input) {
+  return input.lon !== undefined && input.lon !== null && input.lat !== undefined && input.lat !== null;
+}
+
+function hasAddressLocator(input) {
+  return Boolean(
+    (typeof input.address === 'string' && input.address.trim())
+    || (typeof input.normalized_address_key === 'string' && input.normalized_address_key.trim())
+    || (typeof input.parcel_record_key === 'string' && input.parcel_record_key.trim())
+    || hasCoordinates(input),
+  );
+}
+
+function hasNormalizedAddressKey(input) {
+  return typeof input.normalized_address_key === 'string' && input.normalized_address_key.trim();
+}
+
+function hasResolvedAddressLocator(input) {
+  return Boolean(
+    (typeof input.address === 'string' && input.address.trim())
+    || (typeof input.parcel_record_key === 'string' && input.parcel_record_key.trim())
+    || hasCoordinates(input),
+  );
+}
+
+function assertNormalizedAddressKeyIsAlone(input, name) {
+  if (hasNormalizedAddressKey(input) && (hasResolvedAddressLocator(input) || input.city_code)) {
+    throw new Error(`${name} must use normalized_address_key alone, without address, city_code, parcel_record_key, or lon/lat.`);
+  }
+}
+
+function normalizeCsvList(value, name) {
+  if (Array.isArray(value)) {
+    const items = value.map((item) => String(item).trim()).filter(Boolean);
+    if (items.length === 0) {
+      throw new Error(`${name} must not be empty.`);
+    }
+    return items.join(',');
+  }
+  const text = String(value ?? '').trim();
+  if (!text) {
+    throw new Error(`${name} must not be empty.`);
+  }
+  return text;
+}
+
+function normalizeAddressLocator(input) {
+  const {
+    cityCode,
+    city_code: cityCodeSnake,
+    normalizedAddressKey,
+    normalized_address_key: normalizedAddressKeySnake,
+    parcelRecordKey,
+    parcel_record_key: parcelRecordKeySnake,
+    ...query
+  } = input;
+  return {
+    ...query,
+    city_code: cityCodeSnake ?? cityCode,
+    normalized_address_key: normalizedAddressKeySnake ?? normalizedAddressKey,
+    parcel_record_key: parcelRecordKeySnake ?? parcelRecordKey,
+  };
+}
+
 async function readJsonResponse(response) {
   const text = await response.text();
   if (!text) {
@@ -112,6 +184,10 @@ class OneDexClient {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this.fetch = options.fetch ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.defaultHeaders = {};
+    if (options.apiKey) {
+      this.defaultHeaders.authorization = `Bearer ${options.apiKey}`;
+    }
 
     if (typeof this.fetch !== 'function') {
       throw new TypeError('A fetch implementation is required.');
@@ -123,6 +199,16 @@ class OneDexClient {
     this.addressPages = Object.freeze({
       state: (slug) => this.addressPageState(slug),
     });
+    this.address = Object.freeze({
+      details: (input) => this.addressDetails(input),
+      unlock: (input) => this.addressUnlock(input),
+    });
+    this.account = Object.freeze({
+      usage: () => this.accountUsage(),
+    });
+    this.communes = Object.freeze({
+      search: (input) => this.communeSearch(input),
+    });
     this.map = Object.freeze({
       parcelles: (input) => this.mapParcelles(input),
       dvf: (input) => this.mapLayer({ ...input, layer: 'parcelles_dvf' }),
@@ -132,9 +218,19 @@ class OneDexClient {
       labels: (input) => this.mapLayer({ ...input, layer: 'parcelles_labels' }),
       layer: (input) => this.mapLayer(input),
       viewport: (input) => this.mapViewport(input),
+      focus: Object.freeze({
+        parcelle: (input) => this.mapFocusParcelle(input),
+        parcelles: (input) => this.mapFocusParcelles(input),
+        address: (input) => this.mapFocusAddress(input),
+        publicLocation: (input) => this.mapFocusPublicLocation(input),
+        feature: (input) => this.mapFocusFeature(input),
+      }),
     });
     this.overview = Object.freeze({
       address: (input) => this.addressOverview(input),
+    });
+    this.preview = Object.freeze({
+      byPath: (input) => this.publicPreview(input),
     });
     this.score = Object.freeze({
       address: (input) => this.scoreAddress(input),
@@ -150,7 +246,7 @@ class OneDexClient {
       ? setTimeout(() => controller.abort(), this.timeoutMs)
       : undefined;
 
-    const headers = { accept: 'application/json' };
+    const headers = { accept: 'application/json', ...this.defaultHeaders };
     let body;
     if (options.body !== undefined) {
       headers['content-type'] = 'application/json';
@@ -260,6 +356,91 @@ class OneDexClient {
     return this.request('GET', `/api/v1/address-pages/${encodeURIComponent(slug.trim())}/state`);
   }
 
+  addressDetails(input) {
+    const { fields, ...locatorInput } = input;
+    const query = normalizeAddressLocator(locatorInput);
+    assertNormalizedAddressKeyIsAlone(query, 'address details input');
+    if (!hasAddressLocator(query)) {
+      throw new TypeError('address details input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
+    }
+    return this.request('GET', appendQuery('/api/v1/address-details', {
+      ...query,
+      fields: normalizeCsvList(fields, 'address details fields'),
+    }));
+  }
+
+  addressUnlock(input) {
+    const body = normalizeAddressLocator(input);
+    assertNormalizedAddressKeyIsAlone(body, 'address unlock input');
+    if (!hasAddressLocator(body)) {
+      throw new TypeError('address unlock input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
+    }
+    return this.request('POST', '/api/v1/address-unlocks', { body });
+  }
+
+  accountUsage() {
+    return this.request('GET', '/api/v1/account/usage');
+  }
+
+  communeSearch(input) {
+    const { q, ...query } = input;
+    if (typeof q !== 'string' || !q.trim()) {
+      throw new TypeError('commune search input requires q.');
+    }
+    return this.request('GET', appendQuery('/api/v1/communes/search', { q: q.trim(), ...query }));
+  }
+
+  publicPreview(input) {
+    const path = typeof input === 'string' ? input : input?.path;
+    if (typeof path !== 'string' || !path.trim()) {
+      throw new TypeError('public preview input requires path.');
+    }
+    return this.request('GET', appendQuery('/api/v1/public-preview', { path: path.trim() }));
+  }
+
+  mapFocusParcelle(input) {
+    const recordKey = input.record_key ?? input.recordKey;
+    return this.request('GET', appendQuery('/api/v1/map-focus/parcelle', {
+      record_key: normalizeCsvList(recordKey, 'record-key'),
+    }));
+  }
+
+  mapFocusParcelles(input) {
+    const recordKeys = input.record_keys ?? input.recordKeys;
+    return this.request('GET', appendQuery('/api/v1/map-focus/parcelles', {
+      record_keys: normalizeCsvList(recordKeys, 'record-keys'),
+    }));
+  }
+
+  mapFocusAddress(input) {
+    const { address, city_code: cityCode, ...query } = input;
+    if (typeof address !== 'string' || !address.trim()) {
+      throw new TypeError('map focus address input requires address.');
+    }
+    return this.request('GET', appendQuery('/api/v1/map-focus/address', {
+      address: address.trim(),
+      city_code: cityCode,
+      ...query,
+    }));
+  }
+
+  mapFocusPublicLocation(input) {
+    const { lon, lat, ...query } = input;
+    if (lon === undefined || lat === undefined) {
+      throw new TypeError('map focus public-location input requires lon and lat.');
+    }
+    return this.request('GET', appendQuery('/api/v1/map-focus/public-location', { lon, lat, ...query }));
+  }
+
+  mapFocusFeature(input) {
+    const layerKey = input.layer_key ?? input.layerKey ?? input.layer;
+    const featureKey = input.feature_key ?? input.featureKey;
+    return this.request('GET', appendQuery('/api/v1/map-focus/feature', {
+      layer_key: normalizeCsvList(layerKey, 'layer-key'),
+      feature_key: normalizeCsvList(featureKey, 'feature-key'),
+    }));
+  }
+
   scoreAddress(input) {
     return this.request('POST', '/api/v1/score/address', { body: input });
   }
@@ -290,7 +471,12 @@ function usage() {
 Usage:
   1dex <address> [options]
   1dex overview <address|--city-code|--lon/--lat|--parcel-record-key> [options]
+  1dex details <address|--normalized-address-key|--parcel-record-key|--lon/--lat> --fields <csv> [options]
+  1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat> [options]
+  1dex usage [options]
   1dex autocomplete <query> [options]
+  1dex communes <query> [options]
+  1dex preview <path> [options]
   1dex state <slug>
   1dex parcelles <address> [options]
   1dex dvf <address> [options]
@@ -299,6 +485,11 @@ Usage:
   1dex labels <address> [options]
   1dex layer <layer> <address|--city-code|--lon/--lat> [options]
   1dex viewport <address|--city-code|--lon/--lat> [options]
+  1dex focus parcelle <record-key> [options]
+  1dex focus parcelles <record-keys> [options]
+  1dex focus address <address> [options]
+  1dex focus public-location --lon <number> --lat <number> [options]
+  1dex focus feature --layer-key <layer> --feature-key <key> [options]
   1dex score address <address> [options]
   1dex score compare [--input <json-or-@file>] [options]
   1dex score grid --bbox <bbox> --zoom <number> [options]
@@ -311,6 +502,13 @@ Options:
   -d, --dvf-radius-m <number>          DVF radius in meters for address overview.
       --dvf-year <year>                DVF year filter for address overview.
       --parcel-record-key <key>        Parcel record key for address overview.
+      --normalized-address-key <key>   Stable key returned by address-details or address-unlocks.
+      --fields <csv>                   Address details fields, or all.
+      --record-key <key>               Parcel focus record key.
+      --record-keys <csv>              Parcel focus record keys.
+      --path <path>                    Public preview path.
+      --layer-key <key>                Map focus feature layer key.
+      --feature-key <key>              Map focus feature key.
   -l, --layer <layer>                  Public layer: parcelles, dvf, travaux, iris, context, labels.
       --layers <csv>                   Viewport layers, e.g. context,iris.
       --slug <text>                    Address page slug.
@@ -328,6 +526,7 @@ Options:
       --lon <number>                   Longitude if already known.
       --lat <number>                   Latitude if already known.
       --base-url <url>                 Override API base URL.
+      --api-key <key>                  Subscriber API key. Defaults to ONEDEX_API_KEY.
       --timeout-ms <number>            Request timeout in milliseconds. Default: 30000.
   -f, --format <json|csv|summary>      Output format. Default: json.
   -u, --url                            Print the generated URL and exit.
@@ -336,6 +535,7 @@ Options:
 
 Environment:
   ONEDEX_BASE_URL (defaults to https://1dex.fr)
+  ONEDEX_API_KEY adds Authorization: Bearer for subscriber endpoints
   ONEDEX_NO_UPDATE_CHECK=1 disables the npm version update notice
 `;
 }
@@ -351,13 +551,21 @@ function examples() {
   1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
   1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 
+  # Subscriber address details and unlock flow.
+  1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
+  1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
+  1dex usage --api-key "$ONEDEX_API_KEY" -f summary
+
   # Public address search and score suggest.
   1dex autocomplete "10 rue des cordeliers aix" --limit 5
   1dex score suggest "10 rue des cordeliers aix" --limit 5
+  1dex communes aix --limit 5
 
-  # Public page-state, score grid, and viewport helpers.
+  # Public preview, page-state, score grid, and viewport helpers.
+  1dex preview /ville/aix-en-provence-13001 --url
   1dex state "10-rue-de-la-paix-paris-75002"
   1dex viewport "${DEFAULT_SAMPLE_ADDRESS}" --layers context,iris -f summary
+  1dex focus public-location --lon 5.446766 --lat 43.529667 -f summary
   1dex score grid --bbox 5.4457,43.5274,5.4468,43.5282 --zoom 15 --category global -f summary
 
   # Public score helper for one address.
@@ -512,6 +720,7 @@ function isOptionToken(value) {
 function createClient(flags) {
   return new OneDexClient({
     baseUrl: flags['base-url'] ?? process.env.ONEDEX_BASE_URL,
+    apiKey: flags['api-key'] ?? process.env.ONEDEX_API_KEY,
     timeoutMs: readOptionalNumber(flags['timeout-ms'], 'timeout-ms') ?? 30_000,
   });
 }
@@ -583,12 +792,63 @@ function buildOverviewInput(flags, subjectParts) {
   };
 }
 
+function buildAddressLocatorInput(flags, subjectParts, label = 'address input') {
+  const lon = readOptionalNumber(flags.lon, 'lon');
+  const lat = readOptionalNumber(flags.lat, 'lat');
+  const address = String(flags.address ?? subjectParts.join(' ')).trim();
+  const input = {
+    address: address || undefined,
+    city_code: flags['city-code'],
+    lon,
+    lat,
+    parcel_record_key: flags['parcel-record-key'],
+    normalized_address_key: flags['normalized-address-key'],
+  };
+  assertNormalizedAddressKeyIsAlone(input, label);
+  if (!hasAddressLocator(input)) {
+    throw new Error(`Missing ${label}. Use positional text, --normalized-address-key, --parcel-record-key, or --lon/--lat.`);
+  }
+  return input;
+}
+
+function buildAddressDetailsInput(flags, subjectParts) {
+  const fields = String(flags.fields ?? '').trim();
+  if (!fields) {
+    throw new Error('Missing fields. Use --fields <summary,rail,tabs|all>.');
+  }
+  return {
+    ...buildAddressLocatorInput(flags, subjectParts, 'address details locator'),
+    fields,
+    dvf_radius_m: readOptionalNumber(flags['dvf-radius-m'], 'dvf-radius-m'),
+    dvf_year: readOptionalNumber(flags['dvf-year'], 'dvf-year'),
+  };
+}
+
+function buildAddressUnlockInput(flags, subjectParts) {
+  return buildAddressLocatorInput(flags, subjectParts, 'address unlock locator');
+}
+
 function buildAutocompleteInput(flags, subjectParts) {
   const q = readSubjectText(flags, subjectParts, 'Missing query. Use positional text or --address <text>.');
   return {
     q,
     limit: readOptionalNumber(flags.limit, 'limit') ?? 5,
   };
+}
+
+function buildCommuneSearchInput(flags, subjectParts) {
+  return {
+    q: readSubjectText(flags, subjectParts, 'Missing commune query. Use positional text or --address <text>.'),
+    limit: readOptionalNumber(flags.limit, 'limit') ?? 5,
+  };
+}
+
+function buildPreviewInput(flags, subjectParts) {
+  const path = String(flags.path ?? subjectParts.join(' ')).trim();
+  if (!path) {
+    throw new Error('Missing preview path. Use positional path or --path <path>.');
+  }
+  return { path };
 }
 
 function buildStateInput(flags, subjectParts) {
@@ -614,6 +874,47 @@ function buildViewportInput(flags, subjectParts) {
     lon,
     lat,
   };
+}
+
+function buildMapFocusInput(flags, subjectParts, mode) {
+  if (mode === 'parcelle') {
+    const recordKey = String(flags['record-key'] ?? subjectParts.join(' ')).trim();
+    if (!recordKey) {
+      throw new Error('Missing focus record key. Use positional text or --record-key <key>.');
+    }
+    return { record_key: recordKey };
+  }
+  if (mode === 'parcelles') {
+    const recordKeys = String(flags['record-keys'] ?? subjectParts.join(',')).trim();
+    if (!recordKeys) {
+      throw new Error('Missing focus record keys. Use positional CSV or --record-keys <csv>.');
+    }
+    return { record_keys: recordKeys };
+  }
+  if (mode === 'address') {
+    return {
+      address: readSubjectText(flags, subjectParts, 'Missing focus address. Use positional text or --address <text>.'),
+      city_code: flags['city-code'],
+    };
+  }
+  if (mode === 'public-location') {
+    const lon = readOptionalNumber(flags.lon, 'lon');
+    const lat = readOptionalNumber(flags.lat, 'lat');
+    if (lon === undefined || lat === undefined) {
+      throw new Error('Missing focus coordinates. Use --lon and --lat.');
+    }
+    return { lon, lat };
+  }
+  if (mode === 'feature') {
+    const hasLayerFlag = flags['layer-key'] !== undefined || flags.layer !== undefined;
+    const layerKey = String(flags['layer-key'] ?? flags.layer ?? subjectParts[0] ?? '').trim();
+    const featureKey = String(flags['feature-key'] ?? subjectParts.slice(hasLayerFlag ? 0 : 1).join(' ')).trim();
+    if (!layerKey || !featureKey) {
+      throw new Error('Missing focus feature. Use --layer-key and --feature-key.');
+    }
+    return { layer_key: layerKey, feature_key: featureKey };
+  }
+  throw new Error(`Unknown map focus mode: ${mode || '(empty)'}.`);
 }
 
 function buildScoreGridInput(flags) {
@@ -675,11 +976,16 @@ function resolveCommand(positional) {
 
   if (resource && ![
     'address-page-state',
+    'address-details',
+    'address-unlocks',
     'autocomplete',
+    'communes',
     'context',
+    'details',
     'doctor',
     'dvf',
     'examples',
+    'focus',
     'help',
     'iris',
     'labels',
@@ -687,12 +993,19 @@ function resolveCommand(positional) {
     'map',
     'overview',
     'parcelles',
+    'preview',
     'score',
     'state',
     'travaux',
+    'unlock',
+    'usage',
     'viewport',
   ].includes(resource)) {
     return { name: 'overview', subjectParts: positional };
+  }
+
+  if (resource === 'map' && action === 'focus') {
+    return { name: 'map-focus', mode: subjectParts[0], subjectParts: subjectParts.slice(1) };
   }
 
   if (resource === 'map' && action) {
@@ -726,6 +1039,49 @@ function resolveCommand(positional) {
     return {
       name: 'autocomplete',
       subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'communes') {
+    return {
+      name: 'communes',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'preview') {
+    return {
+      name: 'preview',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'details' || resource === 'address-details') {
+    return {
+      name: 'address-details',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'unlock' || resource === 'address-unlocks') {
+    return {
+      name: 'address-unlock',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'usage') {
+    return {
+      name: 'account-usage',
+      subjectParts: [action, ...subjectParts].filter((part) => part !== undefined),
+    };
+  }
+
+  if (resource === 'focus') {
+    return {
+      name: 'map-focus',
+      mode: action,
+      subjectParts,
     };
   }
 
@@ -775,9 +1131,24 @@ function buildOverviewUrl(flags, input) {
   return `${baseUrl}${appendQuery('/api/v1/address-overview', input)}`;
 }
 
+function buildAddressDetailsUrl(flags, input) {
+  const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+  return `${baseUrl}${appendQuery('/api/v1/address-details', input)}`;
+}
+
 function buildAutocompleteUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
   return `${baseUrl}${appendQuery('/api/v1/autocomplete/address', input)}`;
+}
+
+function buildCommuneSearchUrl(flags, input) {
+  const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+  return `${baseUrl}${appendQuery('/api/v1/communes/search', input)}`;
+}
+
+function buildPreviewUrl(flags, input) {
+  const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+  return `${baseUrl}${appendQuery('/api/v1/public-preview', input)}`;
 }
 
 function buildStateUrl(flags, slug) {
@@ -798,6 +1169,11 @@ function buildScoreGridUrl(flags, input) {
 function buildScoreSuggestUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
   return `${baseUrl}${appendQuery('/api/v1/score/address-suggest', input)}`;
+}
+
+function buildMapFocusUrl(flags, mode, input) {
+  const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+  return `${baseUrl}${appendQuery(`/api/v1/map-focus/${encodeURIComponent(mode)}`, input)}`;
 }
 
 function buildEndpointUrl(flags, path) {
@@ -822,7 +1198,11 @@ function isMapViewportResponse(response) {
 }
 
 function isMapLayerResponse(response) {
-  return typeof response?.layerKey === 'string';
+  return typeof response?.layerKey === 'string' && (
+    response.data !== undefined
+    || response.summary !== undefined
+    || response.label !== undefined
+  );
 }
 
 function isAutocompleteLikeResponse(response) {
@@ -843,6 +1223,35 @@ function isScoreGridResponse(response) {
 
 function isAddressPageStateResponse(response) {
   return response?.page && response?.access && response?.report;
+}
+
+function isAddressDetailsResponse(response) {
+  return response?.version === 'address-details-v1';
+}
+
+function isAddressUnlockResponse(response) {
+  return response?.version === 'address-unlock-v1';
+}
+
+function isAccountUsageResponse(response) {
+  return response?.version === 'account-usage-v1';
+}
+
+function isPublicPreviewResponse(response) {
+  return response?.version === 'public-preview-v1';
+}
+
+function isCommuneSearchResponse(response) {
+  return Array.isArray(response?.matches);
+}
+
+function isMapFocusResponse(response) {
+  return response && typeof response === 'object' && (
+    response.quickView
+    || response.quickViews
+    || response.resolvedAddress
+    || response.feature
+  );
 }
 
 function printCsv(response) {
@@ -960,6 +1369,18 @@ function printCsv(response) {
       response?.access?.access_level,
       response?.report?.report_state,
     ].map(toCsvValue).join(','));
+    return;
+  }
+
+  if (isCommuneSearchResponse(response)) {
+    console.log(['cityCode', 'cityLabel', 'href'].join(','));
+    for (const match of response.matches) {
+      console.log([
+        match?.cityCode,
+        match?.cityLabel,
+        match?.href,
+      ].map(toCsvValue).join(','));
+    }
     return;
   }
 
@@ -1082,6 +1503,69 @@ function printSummary(response) {
     return;
   }
 
+  if (isAddressDetailsResponse(response)) {
+    console.log([
+      `version=${response?.version ?? ''}`,
+      `fields=${(response?.fields ?? []).join(',')}`,
+      `resolved=${response?.resolved?.address ?? response?.resolved?.cityLabel ?? ''}`,
+      `degraded=${response?.degraded?.status ?? ''}`,
+    ].join('\n'));
+    return;
+  }
+
+  if (isAddressUnlockResponse(response)) {
+    console.log([
+      `version=${response?.version ?? ''}`,
+      `normalized_address_key=${response?.normalized_address_key ?? ''}`,
+      `status=${response?.result?.status ?? ''}`,
+      `details_url=${response?.details_url ?? ''}`,
+    ].join('\n'));
+    return;
+  }
+
+  if (isAccountUsageResponse(response)) {
+    const creditRemaining = response?.credits?.total_remaining;
+    console.log([
+      `version=${response?.version ?? ''}`,
+      `api_windows=${response?.api_points?.length ?? 0}`,
+      `credits_remaining=${creditRemaining ?? ''}`,
+      `subscription=${response?.subscription?.status ?? 'none'}`,
+    ].join('\n'));
+    return;
+  }
+
+  if (isPublicPreviewResponse(response)) {
+    console.log([
+      `version=${response?.version ?? ''}`,
+      `kind=${response?.kind ?? ''}`,
+      `title=${response?.title ?? ''}`,
+      `canonicalPath=${response?.canonicalPath ?? ''}`,
+    ].join('\n'));
+    return;
+  }
+
+  if (isCommuneSearchResponse(response)) {
+    const lines = [
+      `status=${response?.status ?? ''}`,
+      `matches=${response.matches.length}`,
+    ];
+    for (const match of response.matches) {
+      lines.push([match?.cityCode, match?.cityLabel, match?.href].filter(Boolean).join(' | '));
+    }
+    console.log(lines.join('\n'));
+    return;
+  }
+
+  if (isMapFocusResponse(response)) {
+    console.log([
+      `status=${response?.status ?? ''}`,
+      `quickViews=${response?.quickViews?.length ?? (response?.quickView ? 1 : 0)}`,
+      `layerKey=${response?.layerKey ?? ''}`,
+      `feature=${response?.feature?.id ?? ''}`,
+    ].join('\n'));
+    return;
+  }
+
   console.log(JSON.stringify(response, null, 2));
 }
 
@@ -1124,7 +1608,7 @@ function printCliHint(error) {
   if (!(error instanceof Error)) {
     return;
   }
-  if (/Unknown command|Unknown option|Missing address|Missing address or coordinates|Missing query|Missing slug|Missing bbox|Missing zoom|Missing value|Unsupported format|Unsupported public map layer|must be a number|Score payload requires items|Invalid JSON/u.test(error.message)) {
+  if (/Unknown command|Unknown option|Missing address|Missing .*locator|Missing commune query|Missing preview path|Missing focus|Missing fields|Missing slug|Missing bbox|Missing zoom|Missing value|Unsupported format|Unsupported public map layer|must be a number|Score payload requires items|Invalid JSON/u.test(error.message)) {
     console.error('Hint: run "1dex --help" or "1dex examples".');
   }
 }
@@ -1175,6 +1659,26 @@ async function main() {
       return;
     }
     response = await client.overview.address(input);
+  } else if (command.name === 'address-details') {
+    const input = buildAddressDetailsInput(flags, command.subjectParts);
+    if (flags.url) {
+      console.log(buildAddressDetailsUrl(flags, input));
+      return;
+    }
+    response = await client.address.details(input);
+  } else if (command.name === 'address-unlock') {
+    const input = buildAddressUnlockInput(flags, command.subjectParts);
+    if (flags.url) {
+      console.log(buildEndpointUrl(flags, '/api/v1/address-unlocks'));
+      return;
+    }
+    response = await client.address.unlock(input);
+  } else if (command.name === 'account-usage') {
+    if (flags.url) {
+      console.log(buildEndpointUrl(flags, '/api/v1/account/usage'));
+      return;
+    }
+    response = await client.account.usage();
   } else if (command.name === 'autocomplete') {
     const input = buildAutocompleteInput(flags, command.subjectParts);
     if (flags.url) {
@@ -1182,6 +1686,20 @@ async function main() {
       return;
     }
     response = await client.autocomplete.address(input);
+  } else if (command.name === 'communes') {
+    const input = buildCommuneSearchInput(flags, command.subjectParts);
+    if (flags.url) {
+      console.log(buildCommuneSearchUrl(flags, input));
+      return;
+    }
+    response = await client.communes.search(input);
+  } else if (command.name === 'preview') {
+    const input = buildPreviewInput(flags, command.subjectParts);
+    if (flags.url) {
+      console.log(buildPreviewUrl(flags, input));
+      return;
+    }
+    response = await client.preview.byPath(input);
   } else if (command.name === 'state') {
     const slug = buildStateInput(flags, command.subjectParts);
     if (flags.url) {
@@ -1196,6 +1714,26 @@ async function main() {
       return;
     }
     response = await client.map.viewport(input);
+  } else if (command.name === 'map-focus') {
+    const mode = command.mode;
+    const input = buildMapFocusInput(flags, command.subjectParts, mode);
+    if (flags.url) {
+      console.log(buildMapFocusUrl(flags, mode, input));
+      return;
+    }
+    if (mode === 'parcelle') {
+      response = await client.map.focus.parcelle(input);
+    } else if (mode === 'parcelles') {
+      response = await client.map.focus.parcelles(input);
+    } else if (mode === 'address') {
+      response = await client.map.focus.address(input);
+    } else if (mode === 'public-location') {
+      response = await client.map.focus.publicLocation(input);
+    } else if (mode === 'feature') {
+      response = await client.map.focus.feature(input);
+    } else {
+      throw new Error(`Unknown map focus mode: ${mode || '(empty)'}.`);
+    }
   } else if (command.name === 'score-grid') {
     const input = buildScoreGridInput(flags);
     if (flags.url) {

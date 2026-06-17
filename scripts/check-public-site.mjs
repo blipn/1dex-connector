@@ -1,6 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
 
 const root = process.cwd();
 const siteIndex = await readFile(join(root, 'dist/site/index.html'), 'utf8');
@@ -44,12 +43,16 @@ const requiredApiFragments = [
   'Console de test',
   'Documentation API',
   '<option value="address-page-state">État page adresse</option>',
+  '<option value="address-details">Détails adresse</option>',
+  '<option value="account-usage">Usage compte</option>',
   '<option value="map-viewport">Viewport multi-calques</option>',
+  '<option value="map-focus-public-location">Focus coordonnées</option>',
+  'name="normalized_address_key"',
   'name="parcel_record_key"',
   'name="dvf_year"',
   'id="api-doc-link"',
   'id="api-explorer"',
-  'Outil d’habilitation d’accès',
+  'Accès aux clés API',
   'https://1dex.fr/api/v1/docs',
   'https://1dex.fr/developpeurs/api#donnees',
   './assets/favicon.svg',
@@ -66,6 +69,8 @@ const requiredQuickstartFragments = [
   'https://blipn.github.io/1dex-connector/quickstart.html',
   'https://github.com/blipn/1dex-connector/blob/main/docs/quickstart.md',
   'curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"',
+  'https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&amp;fields=summary,rail',
+  'https://1dex.fr/api/v1/communes/search?q=aix&amp;limit=5',
   'npm i @1dex-fr/connector',
   'import { OneDexClient } from "@1dex-fr/connector";',
   'python -m pip install onedex',
@@ -105,8 +110,11 @@ const requiredAppFragments = [
   'hideHostname: true',
   'operationConsoleLinks',
   'addOperationTestLinks',
+  'getAddressDetails: \'./api.html?operation=address-details&fields=summary,rail\'',
   'getMapViewport: \'./api.html?operation=map-viewport&layers=context,iris\'',
+  'focusPublicLocation: \'./api.html?operation=map-focus-public-location&lon=5.446766&lat=43.529667\'',
   'operation === \'address-page-state\'',
+  'operation === \'address-details\'',
   'operation === \'map-viewport\'',
   'Adresse, code commune ou coordonnées requis.',
   'parcel_record_key',
@@ -127,26 +135,32 @@ if (siteIndex.includes('./docs/quickstart.md')) {
   throw new Error('Public site should link to quickstart.html or GitHub, not raw Pages Markdown.');
 }
 
-if (apiPage.includes('public-preview') || quickstartPage.includes('public-preview') || documentationApiPage.includes('public-preview')) {
-  throw new Error('Connector public pages should expose address overview, not the legacy public-preview endpoint.');
-}
-
 if (siteIndex.includes('redoc@next') || apiPage.includes('redoc@next') || documentationApiPage.includes('redoc@next')) {
   throw new Error('Public site should pin a stable Redoc bundle, not redoc@next.');
 }
 
-const publicFiles = spawnSync(
-  'find',
-  ['README.md', 'docs', 'site', 'openapi', '-type', 'f'],
-  {
-    cwd: root,
-    encoding: 'utf8',
-  },
-);
-
-if (publicFiles.status !== 0) {
-  throw new Error(publicFiles.stderr || 'Unable to list public files.');
+async function listPublicFiles(entries) {
+  const files = [];
+  for (const entry of entries) {
+    const absolutePath = join(root, entry);
+    const stats = await readdir(absolutePath, { withFileTypes: true }).catch(() => null);
+    if (!stats) {
+      files.push(entry);
+      continue;
+    }
+    for (const stat of stats) {
+      const relativePath = join(entry, stat.name);
+      if (stat.isDirectory()) {
+        files.push(...await listPublicFiles([relativePath]));
+      } else if (stat.isFile()) {
+        files.push(relativePath);
+      }
+    }
+  }
+  return files;
 }
+
+const publicFiles = await listPublicFiles(['README.md', 'docs', 'site', 'openapi']);
 
 const forbiddenPatterns = [
   /overflow-wrap:\s*anywhere/i,
@@ -164,7 +178,7 @@ const forbiddenPatterns = [
   /(^|[\s`"'/])\.env([\s`"'.:/]|$)/i,
 ];
 
-for (const relativePath of publicFiles.stdout.split('\n').filter(Boolean)) {
+for (const relativePath of publicFiles) {
   const content = await readFile(join(root, relativePath), 'utf8');
   for (const pattern of forbiddenPatterns) {
     if (pattern.test(content)) {

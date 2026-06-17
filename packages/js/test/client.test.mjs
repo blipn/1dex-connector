@@ -169,6 +169,78 @@ test('score address and compare helpers POST JSON bodies', async () => {
   );
 });
 
+test('subscriber, preview, commune, and map focus helpers use canonical public API routes', async () => {
+  const calls = [];
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    apiKey: 'test-key',
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return createJsonResponse({ status: 'ok' });
+    },
+  });
+
+  await client.address.details({
+    normalizedAddressKey: 'addr_123',
+    fields: ['summary', 'rail'],
+  });
+  await client.address.unlock({ address: '10 rue des cordeliers aix' });
+  await client.account.usage();
+  await client.preview.byPath('/ville/aix-en-provence-13001');
+  await client.communes.search({ q: 'aix', limit: 3 });
+  await client.map.focus.parcelle({ recordKey: '13001000AB0022' });
+  await client.map.focus.parcelles({ recordKeys: ['13001000AB0022', '13001000AB0023'] });
+  await client.map.focus.address({ address: '10 rue des cordeliers aix' });
+  await client.map.focus.publicLocation({ lon: 5.446766, lat: 43.529667 });
+  await client.map.focus.feature({ layerKey: 'parcelles', featureKey: '13001000AB0022' });
+
+  assert.equal(
+    calls[0].url,
+    'http://example.test/api/v1/address-details?normalized_address_key=addr_123&fields=summary%2Crail',
+  );
+  assert.equal(calls[0].init.headers.authorization, 'Bearer test-key');
+  assert.equal(calls[1].url, 'http://example.test/api/v1/address-unlocks');
+  assert.equal(calls[1].init.method, 'POST');
+  assert.equal(calls[1].init.body, JSON.stringify({ address: '10 rue des cordeliers aix' }));
+  assert.equal(calls[2].url, 'http://example.test/api/v1/account/usage');
+  assert.equal(calls[3].url, 'http://example.test/api/v1/public-preview?path=%2Fville%2Faix-en-provence-13001');
+  assert.equal(calls[4].url, 'http://example.test/api/v1/communes/search?q=aix&limit=3');
+  assert.equal(calls[5].url, 'http://example.test/api/v1/map-focus/parcelle?record_key=13001000AB0022');
+  assert.equal(
+    calls[6].url,
+    'http://example.test/api/v1/map-focus/parcelles?record_keys=13001000AB0022%2C13001000AB0023',
+  );
+  assert.equal(calls[7].url, 'http://example.test/api/v1/map-focus/address?address=10+rue+des+cordeliers+aix');
+  assert.equal(calls[8].url, 'http://example.test/api/v1/map-focus/public-location?lon=5.446766&lat=43.529667');
+  assert.equal(
+    calls[9].url,
+    'http://example.test/api/v1/map-focus/feature?layer_key=parcelles&feature_key=13001000AB0022',
+  );
+});
+
+test('subscriber address helpers reject mixed normalized key and resolved locators locally', () => {
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse({ status: 'ok' }),
+  });
+
+  assert.throws(
+    () => client.address.details({
+      normalizedAddressKey: 'addr_123',
+      address: '10 rue des cordeliers aix',
+      fields: 'summary',
+    }),
+    /normalizedAddressKey alone/u,
+  );
+  assert.throws(
+    () => client.address.unlock({
+      normalizedAddressKey: 'addr_123',
+      parcelRecordKey: '13001000AB0022',
+    }),
+    /normalizedAddressKey alone/u,
+  );
+});
+
 test('unknown public map layer is rejected locally', async () => {
   const client = new OneDexClient({
     baseUrl: 'http://example.test',

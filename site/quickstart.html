@@ -56,7 +56,7 @@
         <section class="api-section api-intro docs-intro" data-reveal>
           <p class="api-kicker">Démarrage</p>
           <h1>Appeler l'API publique 1dex</h1>
-          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous couvrent l'aperçu, les suggestions, le score public et les routes cartographiques canoniques.</p>
+          <p class="api-lead">La racine publique est <code>https://1dex.fr/api/v1</code>. Les exemples ci-dessous couvrent l'aperçu, les détails subscriber, les suggestions, le score public et les routes cartographiques canoniques.</p>
           <div class="console-actions docs-actions">
             <a class="primary-action" href="./api.html">Tester dans la console</a>
             <a class="secondary-action" href="./documentation-api.html">Documentation API</a>
@@ -75,7 +75,25 @@
                 <h3>Autocomplete adresse</h3>
                 <button type="button" data-copy="curl-autocomplete">Copier</button>
               </div>
-              <pre id="curl-autocomplete"><code>curl "https://1dex.fr/api/v1/autocomplete/address?q=10+rue+de+la+paix&amp;limit=5"</code></pre>
+              <pre id="curl-autocomplete"><code>curl "https://1dex.fr/api/v1/autocomplete/address?q=10+rue+de+la+paix&amp;limit=5"
+curl "https://1dex.fr/api/v1/communes/search?q=aix&amp;limit=5"</code></pre>
+            </article>
+
+            <article class="code-sample">
+              <div class="sample-head">
+                <h3>Détails subscriber</h3>
+                <button type="button" data-copy="curl-address-details">Copier</button>
+              </div>
+              <pre id="curl-address-details"><code>curl "https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&amp;fields=summary,rail" \
+  -H "Authorization: Bearer $ONEDEX_API_KEY"
+
+curl -X POST "https://1dex.fr/api/v1/address-unlocks" \
+  -H "Authorization: Bearer $ONEDEX_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"address":"10 rue des cordeliers aix"}'
+
+curl "https://1dex.fr/api/v1/account/usage" \
+  -H "Authorization: Bearer $ONEDEX_API_KEY"</code></pre>
             </article>
 
             <article class="code-sample">
@@ -83,7 +101,8 @@
                 <h3>Etat d'une page adresse</h3>
                 <button type="button" data-copy="curl-address-state">Copier</button>
               </div>
-              <pre id="curl-address-state"><code>curl "https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state"</code></pre>
+              <pre id="curl-address-state"><code>curl "https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state"
+curl "https://1dex.fr/api/v1/public-preview?path=/ville/aix-en-provence-13001"</code></pre>
             </article>
 
             <article class="code-sample">
@@ -100,7 +119,8 @@
                 <button type="button" data-copy="curl-map-layer">Copier</button>
               </div>
               <pre id="curl-map-layer"><code>curl "https://1dex.fr/api/v1/map-layer/parcelles?address=50%20rue%20des%20tanneurs%20aix&amp;viewport_render_mode=features"
-curl "https://1dex.fr/api/v1/map-viewport?layers=context,iris&amp;address=10%20rue%20des%20cordeliers%20aix"</code></pre>
+curl "https://1dex.fr/api/v1/map-viewport?layers=context,iris&amp;address=10%20rue%20des%20cordeliers%20aix"
+curl "https://1dex.fr/api/v1/map-focus/public-location?lon=5.446766&amp;lat=43.529667"</code></pre>
             </article>
 
             <article class="code-sample">
@@ -122,7 +142,7 @@ curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&amp;z
           <div class="api-section-head">
             <p class="api-kicker">JavaScript</p>
             <h2>Client npm</h2>
-            <p>Le package JS couvre les routes publiques d'aperçu, autocomplete, score, état de page adresse, calques carte et viewport.</p>
+            <p>Le package JS couvre les routes publiques d'aperçu, détails subscriber, autocomplete, score, état de page adresse, aperçu public, calques carte, focus carte et viewport.</p>
           </div>
           <article class="code-sample">
             <div class="sample-head">
@@ -133,7 +153,9 @@ curl "https://1dex.fr/api/v1/score/grid?bbox=5.4457,43.5274,5.4468,43.5282&amp;z
 
 import { OneDexClient } from "@1dex-fr/connector";
 
-const client = new OneDexClient();
+const client = new OneDexClient({
+  apiKey: process.env.ONEDEX_API_KEY,
+});
 const overview = await client.overview.address({
   address: "10 rue des cordeliers aix",
   dvf_radius_m: 600,
@@ -145,8 +167,12 @@ const suggestions = await client.autocomplete.address({
 const score = await client.score.address({
   items: [{ address: "10 rue des cordeliers aix" }],
 });
+const details = await client.address.details({
+  address: "10 rue des cordeliers aix",
+  fields: ["summary", "rail"],
+});
 
-console.log(overview.version, suggestions.suggestions, score.items);</code></pre>
+console.log(overview.version, suggestions.suggestions, score.items, details.fields);</code></pre>
           </article>
         </section>
 
@@ -162,9 +188,11 @@ console.log(overview.version, suggestions.suggestions, score.items);</code></pre
             </div>
             <pre id="python-quickstart"><code>python -m pip install onedex
 
+import os
+
 from onedex import OneDexClient
 
-client = OneDexClient()
+client = OneDexClient(api_key=os.getenv("ONEDEX_API_KEY"))
 overview = client.overview.address({
     "address": "10 rue des cordeliers aix",
     "dvf_radius_m": 600,
@@ -176,8 +204,12 @@ suggestions = client.autocomplete.address({
 score = client.score.address({
     "items": [{"address": "10 rue des cordeliers aix"}],
 })
+details = client.address.details({
+    "address": "10 rue des cordeliers aix",
+    "fields": ["summary", "rail"],
+})
 
-print(overview["version"], suggestions["suggestions"], score["items"])</code></pre>
+print(overview["version"], suggestions["suggestions"], score["items"], details["fields"])</code></pre>
           </article>
         </section>
       </section>

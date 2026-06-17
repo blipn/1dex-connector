@@ -1,7 +1,7 @@
 {
   "name": "@1dex-fr/connector",
-  "version": "0.1.1",
-  "description": "JavaScript connector for the public 1dex API surface: overview, autocomplete, score, address state, and map routes.",
+  "version": "0.1.2",
+  "description": "JavaScript connector for the public 1dex API surface: overview, subscriber address details, autocomplete, score, preview, account usage, and map routes.",
   "type": "module",
   "exports": {
     ".": {

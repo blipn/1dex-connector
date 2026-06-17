@@ -192,6 +192,72 @@ test('autocomplete, state, viewport, and score grid build canonical public URLs'
   );
 });
 
+test('new public and subscriber commands build canonical URLs', () => {
+  assert.equal(
+    runCli(['details', '--normalized-address-key', 'addr_123', '--fields', 'summary,rail', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/address-details?normalized_address_key=addr_123&fields=summary%2Crail',
+  );
+  assert.equal(
+    runCli(['unlock', '10 rue des cordeliers aix', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/address-unlocks',
+  );
+  assert.equal(
+    runCli(['usage', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/account/usage',
+  );
+  assert.equal(
+    runCli(['communes', 'aix', '--limit', '3', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/communes/search?q=aix&limit=3',
+  );
+  assert.equal(
+    runCli(['preview', '/ville/aix-en-provence-13001', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/public-preview?path=%2Fville%2Faix-en-provence-13001',
+  );
+  assert.equal(
+    runCli(['focus', 'parcelle', '13001000AB0022', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-focus/parcelle?record_key=13001000AB0022',
+  );
+  assert.equal(
+    runCli(['focus', 'parcelles', '13001000AB0022,13001000AB0023', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-focus/parcelles?record_keys=13001000AB0022%2C13001000AB0023',
+  );
+  assert.equal(
+    runCli(['focus', 'address', '10 rue des cordeliers aix', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-focus/address?address=10+rue+des+cordeliers+aix',
+  );
+  assert.equal(
+    runCli(['focus', 'public-location', '--lon', '5.446766', '--lat', '43.529667', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-focus/public-location?lon=5.446766&lat=43.529667',
+  );
+  assert.equal(
+    runCli(['focus', 'feature', '--layer-key', 'parcelles', '--feature-key', '13001000AB0022', '--url']).stdout.trim(),
+    'https://1dex.fr/api/v1/map-focus/feature?layer_key=parcelles&feature_key=13001000AB0022',
+  );
+});
+
+test('subscriber commands reject mixed normalized key and resolved locators', () => {
+  const details = runCli([
+    'details',
+    '10 rue des cordeliers aix',
+    '--normalized-address-key',
+    'addr_123',
+    '--fields',
+    'summary',
+  ]);
+  assert.equal(details.status, 1);
+  assert.match(details.stderr, /normalized_address_key alone/u);
+
+  const unlock = runCli([
+    'unlock',
+    '--normalized-address-key',
+    'addr_123',
+    '--parcel-record-key',
+    '13001000AB0022',
+  ]);
+  assert.equal(unlock.status, 1);
+  assert.match(unlock.stderr, /normalized_address_key alone/u);
+});
+
 test('overview still supports CSV output for address-overview cards', async () => {
   await withJsonServer((request, response) => {
     assert.equal(request.url, '/api/v1/address-overview?address=10+rue+des+cordeliers+aix&dvf_radius_m=600');
@@ -225,6 +291,51 @@ test('overview still supports CSV output for address-overview cards', async () =
       [
         'eyebrow,label,value,detail,tabKey,sectionKey',
         'Marché,Prix moyen,5 200 €/m²,Transactions récentes,market,pricing',
+      ].join('\n'),
+    );
+  });
+});
+
+test('address unlock posts JSON and forwards subscriber API key', async () => {
+  await withJsonServer((request, response) => {
+    assert.equal(request.url, '/api/v1/address-unlocks');
+    assert.equal(request.method, 'POST');
+    assert.equal(request.headers.authorization, 'Bearer test-key');
+    let body = '';
+    request.setEncoding('utf8');
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
+    request.on('end', () => {
+      assert.deepEqual(JSON.parse(body), { address: '10 rue des cordeliers aix' });
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({
+        version: 'address-unlock-v1',
+        normalized_address_key: 'addr_123',
+        result: { status: 'unlocked' },
+        details_url: '/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
+      }));
+    });
+  }, async (baseUrl) => {
+    const result = await runCliAsync([
+      'unlock',
+      '10 rue des cordeliers aix',
+      '--api-key',
+      'test-key',
+      '--format',
+      'summary',
+      '--base-url',
+      baseUrl,
+    ]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(
+      result.stdout.trim(),
+      [
+        'version=address-unlock-v1',
+        'normalized_address_key=addr_123',
+        'status=unlocked',
+        'details_url=/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
       ].join('\n'),
     );
   });

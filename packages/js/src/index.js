@@ -49,6 +49,81 @@ function assertObject(value, name) {
   }
 }
 
+function assertNonEmptyString(value, name) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new TypeError(`${name} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+
+function hasCoordinates(query) {
+  return query.lon !== undefined && query.lon !== null && query.lat !== undefined && query.lat !== null;
+}
+
+function hasAddressLocator(query) {
+  return (
+    (typeof query.address === 'string' && query.address.trim() !== '')
+    || (typeof query.normalized_address_key === 'string' && query.normalized_address_key.trim() !== '')
+    || (typeof query.parcel_record_key === 'string' && query.parcel_record_key.trim() !== '')
+    || hasCoordinates(query)
+  );
+}
+
+function hasNormalizedAddressKey(query) {
+  return typeof query.normalized_address_key === 'string' && query.normalized_address_key.trim() !== '';
+}
+
+function hasResolvedAddressLocator(query) {
+  return (
+    (typeof query.address === 'string' && query.address.trim() !== '')
+    || (typeof query.parcel_record_key === 'string' && query.parcel_record_key.trim() !== '')
+    || hasCoordinates(query)
+  );
+}
+
+function assertNormalizedAddressKeyIsAlone(query, name) {
+  if (hasNormalizedAddressKey(query) && (hasResolvedAddressLocator(query) || query.city_code)) {
+    throw new TypeError(`${name} must use normalizedAddressKey alone, without address, cityCode, parcelRecordKey, or lon/lat.`);
+  }
+}
+
+function normalizeAddressLocator(input) {
+  const {
+    cityCode,
+    city_code: cityCodeSnake,
+    normalizedAddressKey,
+    normalized_address_key: normalizedAddressKeySnake,
+    parcelRecordKey,
+    parcel_record_key: parcelRecordKeySnake,
+    ...query
+  } = input;
+
+  return {
+    ...query,
+    city_code: cityCodeSnake ?? cityCode,
+    normalized_address_key: normalizedAddressKeySnake ?? normalizedAddressKey,
+    parcel_record_key: parcelRecordKeySnake ?? parcelRecordKey,
+  };
+}
+
+function normalizeCsvList(value, name) {
+  if (Array.isArray(value)) {
+    const items = value.map((item) => String(item).trim()).filter(Boolean);
+    if (items.length === 0) {
+      throw new TypeError(`${name} must not be empty.`);
+    }
+    return items.join(',');
+  }
+  return assertNonEmptyString(value, name);
+}
+
+function normalizeApiKeyHeader(apiKey) {
+  if (apiKey === undefined || apiKey === null || String(apiKey).trim() === '') {
+    return {};
+  }
+  return { authorization: `Bearer ${String(apiKey).trim()}` };
+}
+
 function appendQuery(path, query) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
@@ -155,7 +230,10 @@ export class OneDexClient {
   constructor(options = {}) {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this.fetch = options.fetch ?? globalThis.fetch;
-    this.defaultHeaders = normalizeHeaders(options.headers);
+    this.defaultHeaders = {
+      ...normalizeApiKeyHeader(options.apiKey),
+      ...normalizeHeaders(options.headers),
+    };
     this.timeoutMs = options.timeoutMs ?? 30_000;
 
     if (typeof this.fetch !== 'function') {
@@ -168,6 +246,16 @@ export class OneDexClient {
     this.addressPages = Object.freeze({
       state: (slug, requestOptions) => this.addressPageState(slug, requestOptions),
     });
+    this.address = Object.freeze({
+      details: (input, requestOptions) => this.addressDetails(input, requestOptions),
+      unlock: (input, requestOptions) => this.addressUnlock(input, requestOptions),
+    });
+    this.account = Object.freeze({
+      usage: (requestOptions) => this.accountUsage(requestOptions),
+    });
+    this.communes = Object.freeze({
+      search: (input, requestOptions) => this.communeSearch(input, requestOptions),
+    });
     this.map = Object.freeze({
       parcelles: (input, requestOptions) => this.mapParcelles(input, requestOptions),
       dvf: (input, requestOptions) => this.mapLayer({ ...input, layer: 'parcelles_dvf' }, requestOptions),
@@ -177,9 +265,19 @@ export class OneDexClient {
       labels: (input, requestOptions) => this.mapLayer({ ...input, layer: 'parcelles_labels' }, requestOptions),
       layer: (input, requestOptions) => this.mapLayer(input, requestOptions),
       viewport: (input, requestOptions) => this.mapViewport(input, requestOptions),
+      focus: Object.freeze({
+        parcelle: (input, requestOptions) => this.mapFocusParcelle(input, requestOptions),
+        parcelles: (input, requestOptions) => this.mapFocusParcelles(input, requestOptions),
+        address: (input, requestOptions) => this.mapFocusAddress(input, requestOptions),
+        publicLocation: (input, requestOptions) => this.mapFocusPublicLocation(input, requestOptions),
+        feature: (input, requestOptions) => this.mapFocusFeature(input, requestOptions),
+      }),
     });
     this.overview = Object.freeze({
       address: (input, requestOptions) => this.addressOverview(input, requestOptions),
+    });
+    this.preview = Object.freeze({
+      byPath: (input, requestOptions) => this.publicPreview(input, requestOptions),
     });
     this.score = Object.freeze({
       address: (input, requestOptions) => this.scoreAddress(input, requestOptions),
@@ -259,6 +357,44 @@ export class OneDexClient {
     return this.request('GET', `/api/v1/address-pages/${encodeURIComponent(slug.trim())}/state`, options);
   }
 
+  addressDetails(input, options = {}) {
+    assertObject(input, 'address details input');
+    const { fields, ...locatorInput } = input;
+    const query = normalizeAddressLocator(locatorInput);
+    const normalizedFields = normalizeCsvList(fields, 'address details fields');
+    assertNormalizedAddressKeyIsAlone(query, 'address details input');
+    if (!hasAddressLocator(query)) {
+      throw new TypeError('address details input requires address, normalizedAddressKey, parcelRecordKey, or lon/lat.');
+    }
+    return this.request('GET', appendQuery('/api/v1/address-details', {
+      ...query,
+      fields: normalizedFields,
+    }), options);
+  }
+
+  addressUnlock(input, options = {}) {
+    assertObject(input, 'address unlock input');
+    const body = normalizeAddressLocator(input);
+    assertNormalizedAddressKeyIsAlone(body, 'address unlock input');
+    if (!hasAddressLocator(body)) {
+      throw new TypeError('address unlock input requires address, normalizedAddressKey, parcelRecordKey, or lon/lat.');
+    }
+    return this.request('POST', '/api/v1/address-unlocks', { ...options, body });
+  }
+
+  accountUsage(options = {}) {
+    return this.request('GET', '/api/v1/account/usage', options);
+  }
+
+  communeSearch(input, options = {}) {
+    assertObject(input, 'commune search input');
+    const { q, ...query } = input;
+    return this.request('GET', appendQuery('/api/v1/communes/search', {
+      q: assertNonEmptyString(q, 'commune search q'),
+      ...query,
+    }), options);
+  }
+
   mapParcelles(input, options = {}) {
     const { path, query } = toMapLayerQuery(input, 'parcelles');
     return this.request('GET', appendQuery(path, query), options);
@@ -289,9 +425,65 @@ export class OneDexClient {
     }), options);
   }
 
+  mapFocusParcelle(input, options = {}) {
+    assertObject(input, 'map focus parcelle input');
+    const recordKey = input.record_key ?? input.recordKey;
+    return this.request('GET', appendQuery('/api/v1/map-focus/parcelle', {
+      record_key: assertNonEmptyString(recordKey, 'map focus parcelle record_key'),
+    }), options);
+  }
+
+  mapFocusParcelles(input, options = {}) {
+    assertObject(input, 'map focus parcelles input');
+    const recordKeys = input.record_keys ?? input.recordKeys;
+    return this.request('GET', appendQuery('/api/v1/map-focus/parcelles', {
+      record_keys: normalizeCsvList(recordKeys, 'map focus parcelles record_keys'),
+    }), options);
+  }
+
+  mapFocusAddress(input, options = {}) {
+    assertObject(input, 'map focus address input');
+    const { address, city_code: cityCodeSnake, cityCode: cityCodeCamel, ...query } = input;
+    return this.request('GET', appendQuery('/api/v1/map-focus/address', {
+      address: assertNonEmptyString(address, 'map focus address'),
+      city_code: cityCodeSnake ?? cityCodeCamel,
+      ...query,
+    }), options);
+  }
+
+  mapFocusPublicLocation(input, options = {}) {
+    assertObject(input, 'map focus public location input');
+    const { lon, lat, ...query } = input;
+    if (lon === undefined || lon === null || lat === undefined || lat === null) {
+      throw new TypeError('map focus public location input requires lon and lat.');
+    }
+    return this.request('GET', appendQuery('/api/v1/map-focus/public-location', {
+      lon,
+      lat,
+      ...query,
+    }), options);
+  }
+
+  mapFocusFeature(input, options = {}) {
+    assertObject(input, 'map focus feature input');
+    const layerKey = input.layer_key ?? input.layerKey ?? input.layer;
+    const featureKey = input.feature_key ?? input.featureKey;
+    return this.request('GET', appendQuery('/api/v1/map-focus/feature', {
+      layer_key: assertNonEmptyString(layerKey, 'map focus feature layer_key'),
+      feature_key: assertNonEmptyString(featureKey, 'map focus feature feature_key'),
+    }), options);
+  }
+
   addressOverview(input, options = {}) {
     assertObject(input, 'address overview input');
     return this.request('GET', appendQuery('/api/v1/address-overview', input), options);
+  }
+
+  publicPreview(input, options = {}) {
+    const path = typeof input === 'string' ? input : input?.path;
+    return this.request('GET', appendQuery('/api/v1/public-preview', {
+      path: assertNonEmptyString(path, 'public preview path'),
+    }), options);
   }
 
   scoreAddress(input, options = {}) {

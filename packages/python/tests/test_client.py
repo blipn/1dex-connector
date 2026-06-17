@@ -209,6 +209,79 @@ class ClientTest(unittest.TestCase):
             },
         )
 
+    def test_subscriber_preview_commune_and_map_focus_helpers_use_public_api_routes(self):
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            return FakeResponse({"status": "ok"})
+
+        client = OneDexClient(base_url="http://example.test", api_key="test-key", opener=opener)
+        client.address.details({
+            "normalizedAddressKey": "addr_123",
+            "fields": ["summary", "rail"],
+        })
+        client.address.unlock({"address": "10 rue des cordeliers aix"})
+        client.account.usage()
+        client.preview.byPath("/ville/aix-en-provence-13001")
+        client.communes.search({"q": "aix", "limit": 3})
+        client.map.focus.parcelle({"recordKey": "13001000AB0022"})
+        client.map.focus.parcelles({"recordKeys": ["13001000AB0022", "13001000AB0023"]})
+        client.map.focus.address({"address": "10 rue des cordeliers aix"})
+        client.map.focus.publicLocation({"lon": 5.446766, "lat": 43.529667})
+        client.map.focus.feature({"layerKey": "parcelles", "featureKey": "13001000AB0022"})
+
+        self.assertEqual(
+            calls[0][0].full_url,
+            "http://example.test/api/v1/address-details?normalized_address_key=addr_123&fields=summary%2Crail",
+        )
+        self.assertEqual(calls[0][0].headers["Authorization"], "Bearer test-key")
+        self.assertEqual(calls[1][0].full_url, "http://example.test/api/v1/address-unlocks")
+        self.assertEqual(calls[1][0].get_method(), "POST")
+        self.assertEqual(
+            json.loads(calls[1][0].data.decode("utf-8")),
+            {"address": "10 rue des cordeliers aix"},
+        )
+        self.assertEqual(calls[2][0].full_url, "http://example.test/api/v1/account/usage")
+        self.assertEqual(
+            calls[3][0].full_url,
+            "http://example.test/api/v1/public-preview?path=%2Fville%2Faix-en-provence-13001",
+        )
+        self.assertEqual(calls[4][0].full_url, "http://example.test/api/v1/communes/search?q=aix&limit=3")
+        self.assertEqual(calls[5][0].full_url, "http://example.test/api/v1/map-focus/parcelle?record_key=13001000AB0022")
+        self.assertEqual(
+            calls[6][0].full_url,
+            "http://example.test/api/v1/map-focus/parcelles?record_keys=13001000AB0022%2C13001000AB0023",
+        )
+        self.assertEqual(
+            calls[7][0].full_url,
+            "http://example.test/api/v1/map-focus/address?address=10+rue+des+cordeliers+aix",
+        )
+        self.assertEqual(
+            calls[8][0].full_url,
+            "http://example.test/api/v1/map-focus/public-location?lon=5.446766&lat=43.529667",
+        )
+        self.assertEqual(
+            calls[9][0].full_url,
+            "http://example.test/api/v1/map-focus/feature?layer_key=parcelles&feature_key=13001000AB0022",
+        )
+
+    def test_subscriber_address_helpers_reject_mixed_normalized_key_and_resolved_locators(self):
+        client = OneDexClient(base_url="http://example.test")
+
+        with self.assertRaisesRegex(ValueError, "normalized_address_key alone"):
+            client.address.details({
+                "normalizedAddressKey": "addr_123",
+                "address": "10 rue des cordeliers aix",
+                "fields": "summary",
+            })
+
+        with self.assertRaisesRegex(ValueError, "normalized_address_key alone"):
+            client.address.unlock({
+                "normalizedAddressKey": "addr_123",
+                "parcelRecordKey": "13001000AB0022",
+            })
+
     def test_unknown_public_map_layer_is_rejected_locally(self):
         client = OneDexClient()
 

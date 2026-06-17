@@ -58,14 +58,24 @@ function readClickedTargetId(target) {
 
 const operationConsoleLinks = {
   getAddressOverview: './api.html?operation=address-overview',
+  getAddressDetails: './api.html?operation=address-details&fields=summary,rail',
+  unlockAddress: './api.html?operation=address-unlock',
+  getAccountUsage: './api.html?operation=account-usage',
   autocompleteAddress: './api.html?operation=autocomplete',
+  searchCommunes: './api.html?operation=communes&address=aix&limit=5',
+  getPublicPreviewByPath: './api.html?operation=public-preview&path=/ville/aix-en-provence-13001',
   getAddressPageState: './api.html?operation=address-page-state',
   getMapLayer: './api.html?operation=map-layer&layer=parcelles',
   getMapViewport: './api.html?operation=map-viewport&layers=context,iris',
-  scoreAddress: './api.html?operation=score-address',
-  scoreCompare: './api.html?operation=score-compare',
-  scoreGrid: './api.html?operation=score-grid&bbox=5.4457,43.5274,5.4468,43.5282&zoom=15&category=global',
-  scoreAddressSuggest: './api.html?operation=score-suggest&address=10%20rue%20des%20cordeliers%20aix&limit=5',
+  focusMapAddress: './api.html?operation=map-focus-address',
+  focusPublicLocation: './api.html?operation=map-focus-public-location&lon=5.446766&lat=43.529667',
+  focusParcel: './api.html?operation=map-focus-parcelle&record_key=13001000AB0022',
+  focusParcels: './api.html?operation=map-focus-parcelles&record_keys=13001000AB0022,13001000AB0023',
+  focusMapFeature: './api.html?operation=map-focus-feature&layer=parcelles&feature_key=13001000AB0022',
+  scoreAddresses: './api.html?operation=score-address',
+  compareScoredAddresses: './api.html?operation=score-compare',
+  getScoreGrid: './api.html?operation=score-grid&bbox=5.4457,43.5274,5.4468,43.5282&zoom=15&category=global',
+  suggestScoreAddresses: './api.html?operation=score-suggest&address=10%20rue%20des%20cordeliers%20aix&limit=5',
 };
 
 function addOperationTestLinks() {
@@ -231,8 +241,32 @@ if (explorer) {
 
   function appendIfPresent(query, key, value) {
     if (value !== '') {
-      query.set(key, value);
+      if (typeof query.set === 'function') {
+        query.set(key, value);
+      } else {
+        query[key] = value;
+      }
     }
+  }
+
+  function appendAddressLocator(query) {
+    const normalizedAddressKey = readValue('normalized_address_key');
+    if (normalizedAddressKey) {
+      appendIfPresent(query, 'normalized_address_key', normalizedAddressKey);
+      return;
+    }
+    appendIfPresent(query, 'address', readValue('address'));
+    appendIfPresent(query, 'city_code', readValue('city_code'));
+    appendIfPresent(query, 'lon', readValue('lon'));
+    appendIfPresent(query, 'lat', readValue('lat'));
+    appendIfPresent(query, 'parcel_record_key', readValue('parcel_record_key'));
+  }
+
+  function hasAddressLocator(query) {
+    return query.has('address')
+      || query.has('normalized_address_key')
+      || query.has('parcel_record_key')
+      || (query.has('lon') && query.has('lat'));
   }
 
   function buildRequest() {
@@ -248,16 +282,36 @@ if (explorer) {
     let body = null;
 
     if (operation === 'address-overview') {
-      appendIfPresent(query, 'address', readValue('address'));
-      appendIfPresent(query, 'city_code', readValue('city_code'));
-      appendIfPresent(query, 'lon', readValue('lon'));
-      appendIfPresent(query, 'lat', readValue('lat'));
-      appendIfPresent(query, 'parcel_record_key', readValue('parcel_record_key'));
+      appendAddressLocator(query);
       appendIfPresent(query, 'dvf_radius_m', readValue('dvf_radius_m'));
       appendIfPresent(query, 'dvf_year', readValue('dvf_year'));
       if (!query.has('address') && !query.has('city_code') && (!query.has('lon') || !query.has('lat')) && !query.has('parcel_record_key')) {
         throw new Error('Adresse, code commune, coordonnées ou clé parcelle requis.');
       }
+    } else if (operation === 'address-details') {
+      path = '/api/v1/address-details';
+      appendAddressLocator(query);
+      appendIfPresent(query, 'fields', readValue('fields'));
+      appendIfPresent(query, 'dvf_radius_m', readValue('dvf_radius_m'));
+      appendIfPresent(query, 'dvf_year', readValue('dvf_year'));
+      if (!hasAddressLocator(query)) {
+        throw new Error('Address, normalized key, parcel key, or coordinates required.');
+      }
+      if (!query.has('fields')) {
+        throw new Error('Address details fields required.');
+      }
+    } else if (operation === 'address-unlock') {
+      path = '/api/v1/address-unlocks';
+      method = 'POST';
+      body = {};
+      for (const key of ['address', 'city_code', 'lon', 'lat', 'parcel_record_key', 'normalized_address_key']) {
+        appendIfPresent(body, key, readValue(key));
+      }
+      if (!body.address && !body.normalized_address_key && !body.parcel_record_key && (!body.lon || !body.lat)) {
+        throw new Error('Address, normalized key, parcel key, or coordinates required.');
+      }
+    } else if (operation === 'account-usage') {
+      path = '/api/v1/account/usage';
     } else if (operation === 'autocomplete') {
       path = '/api/v1/autocomplete/address';
       const q = readValue('address');
@@ -266,6 +320,20 @@ if (explorer) {
       }
       query.set('q', q);
       appendIfPresent(query, 'limit', readValue('limit'));
+    } else if (operation === 'communes') {
+      path = '/api/v1/communes/search';
+      const q = readValue('address');
+      if (q.length < 2) {
+        throw new Error('Commune query required.');
+      }
+      query.set('q', q);
+      appendIfPresent(query, 'limit', readValue('limit'));
+    } else if (operation === 'public-preview') {
+      path = '/api/v1/public-preview';
+      appendIfPresent(query, 'path', readValue('path'));
+      if (!query.has('path')) {
+        throw new Error('Public preview path required.');
+      }
     } else if (operation === 'address-page-state') {
       const slug = readValue('slug');
       if (!slug) {
@@ -295,6 +363,39 @@ if (explorer) {
       }
       if (!query.has('address') && !query.has('city_code') && (!query.has('lon') || !query.has('lat'))) {
         throw new Error('Adresse, code commune ou coordonnées requis.');
+      }
+    } else if (operation === 'map-focus-parcelle') {
+      path = '/api/v1/map-focus/parcelle';
+      appendIfPresent(query, 'record_key', readValue('record_key'));
+      if (!query.has('record_key')) {
+        throw new Error('Record key required.');
+      }
+    } else if (operation === 'map-focus-parcelles') {
+      path = '/api/v1/map-focus/parcelles';
+      appendIfPresent(query, 'record_keys', readValue('record_keys'));
+      if (!query.has('record_keys')) {
+        throw new Error('Record keys required.');
+      }
+    } else if (operation === 'map-focus-address') {
+      path = '/api/v1/map-focus/address';
+      appendIfPresent(query, 'address', readValue('address'));
+      appendIfPresent(query, 'city_code', readValue('city_code'));
+      if (!query.has('address')) {
+        throw new Error('Focus address required.');
+      }
+    } else if (operation === 'map-focus-public-location') {
+      path = '/api/v1/map-focus/public-location';
+      appendIfPresent(query, 'lon', readValue('lon'));
+      appendIfPresent(query, 'lat', readValue('lat'));
+      if (!query.has('lon') || !query.has('lat')) {
+        throw new Error('Focus coordinates required.');
+      }
+    } else if (operation === 'map-focus-feature') {
+      path = '/api/v1/map-focus/feature';
+      appendIfPresent(query, 'layer_key', readValue('layer'));
+      appendIfPresent(query, 'feature_key', readValue('feature_key'));
+      if (!query.has('layer_key') || !query.has('feature_key')) {
+        throw new Error('Layer key and feature key required.');
       }
     } else if (operation === 'score-address') {
       path = '/api/v1/score/address';
@@ -358,14 +459,24 @@ if (explorer) {
     if (docLink) {
       const operationIds = {
         'address-overview': 'getAddressOverview',
+        'address-details': 'getAddressDetails',
+        'address-unlock': 'unlockAddress',
+        'account-usage': 'getAccountUsage',
         autocomplete: 'autocompleteAddress',
+        communes: 'searchCommunes',
+        'public-preview': 'getPublicPreviewByPath',
         'address-page-state': 'getAddressPageState',
         'map-layer': 'getMapLayer',
         'map-viewport': 'getMapViewport',
-        'score-address': 'scoreAddress',
-        'score-compare': 'scoreCompare',
-        'score-grid': 'scoreGrid',
-        'score-suggest': 'scoreAddressSuggest',
+        'map-focus-address': 'focusMapAddress',
+        'map-focus-public-location': 'focusPublicLocation',
+        'map-focus-parcelle': 'focusParcel',
+        'map-focus-parcelles': 'focusParcels',
+        'map-focus-feature': 'focusMapFeature',
+        'score-address': 'scoreAddresses',
+        'score-compare': 'compareScoredAddresses',
+        'score-grid': 'getScoreGrid',
+        'score-suggest': 'suggestScoreAddresses',
       };
       docLink.href = `./documentation-api.html#operation/${operationIds[operation] ?? 'getAddressOverview'}`;
     }
@@ -379,8 +490,11 @@ if (explorer) {
 
     for (const name of [
       'address',
+      'path',
       'city_code',
+      'normalized_address_key',
       'parcel_record_key',
+      'fields',
       'dvf_year',
       'lon',
       'lat',
@@ -388,6 +502,9 @@ if (explorer) {
       'limit',
       'slug',
       'layer',
+      'record_key',
+      'record_keys',
+      'feature_key',
       'layers',
       'viewport_render_mode',
       'bbox',
