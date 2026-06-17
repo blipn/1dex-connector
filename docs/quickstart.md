@@ -113,7 +113,7 @@ console.log(overview.version, suggestions.suggestions, score.items, details.fiel
 ## Python
 
 ```bash
-python -m pip install onedex
+python -m pip install 1dex-connector
 ```
 
 ```python

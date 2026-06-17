@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "onedex"
+name = "1dex-connector"
 version = "0.1.2"
 description = "Python connector for the public 1dex API surface: overview, subscriber address details, autocomplete, score, preview, account usage, and map routes."
 readme = "README.md"

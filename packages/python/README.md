@@ -1,6 +1,8 @@
-# onedex
+# 1dex-connector
 
 Python connector for the public 1dex API surface. Use `overview.address()` for address cards, `address.details()` / `address.unlock()` for subscriber address flows, `account.usage()` for API usage, `autocomplete.address()` / `communes.search()` / `score.addressSuggest()` for search, `score.*` for public score routes, `preview.byPath()` for public page metadata, `addressPages.state()` for page access state, and `map.*` helpers for map-layer, viewport and focus calls on `1dex.fr`.
+
+Install the PyPI distribution with `python -m pip install 1dex-connector`; the Python import package remains `onedex`.
 
 ```python
 import os
