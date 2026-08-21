@@ -1,4 +1,4 @@
-# npm Publishing
+# Package publishing
 
 The CLI package is published as `@1dex-fr/1dex`. The JavaScript connector package is published as `@1dex-fr/connector`.
 
@@ -16,11 +16,11 @@ In the npm package settings for `@1dex-fr/1dex` and `@1dex-fr/connector`, config
 | Workflow filename | `npm-publish.yml` |
 | Environment name | `npm` |
 
-## Release
+## npm release
 
 1. Bump `cli/package.json` for a CLI release, or `packages/js/package.json` for a JS connector release.
-2. Push `main` to GitHub.
-3. The `npm publish` workflow runs automatically when files under `cli/` or `packages/js/` change. It can also be started manually from GitHub Actions.
+2. Merge the validated release branch into `main`.
+3. Changes under `cli/` start the npm workflow automatically. The JS connector is intentionally manual: start `npm-publish.yml` with `publish_js_connector=true` after its trusted publisher is configured.
 4. Verify the package:
 
 ```bash
@@ -39,6 +39,14 @@ npm publish --access public --provenance
 ```
 
 The workflow first runs a dry-run and skips publishing when the package version already exists on npm.
+
+## PyPI release
+
+The Python distribution is `1dex-connector`; its import package remains `onedex`. The `pypi-publish.yml` workflow runs after Python package changes reach `main`, and can also be started manually. It builds a wheel, refuses an already-published version, then publishes through the protected `pypi` environment with GitHub OIDC trusted publishing. No long-lived PyPI token belongs in this repository.
+
+Before merge, bump `packages/python/pyproject.toml` and run `npm run check:package-python`. The supported release floor is Python 3.10. The Node packages require Node 22 or newer; CI covers Node 22/24 and Python 3.10/3.12.
+
+All three distributions use the repository MIT license. Publishing workflows remain restricted to `main`; pushing a feature branch validates packages but does not publish them.
 
 ## Troubleshooting
 

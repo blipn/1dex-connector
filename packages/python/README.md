@@ -45,7 +45,7 @@ viewport = client.map.viewport({
 
 ## Auth, purchase, and detailed reads
 
-Complete address details and unlock flows require an active professional 1dex subscription. Purchase and checkout happen on `1dex.fr`; once the professional account is active, create an API key at <https://1dex.fr/compte/api>.
+Complete address details and unlock flows require a 1dex API key. Free demo keys are pinned to the configured demo address; live keys use the account's subscription and activation rights. Purchase and checkout happen on `1dex.fr`. Create or manage keys at <https://1dex.fr/compte/api>.
 
 Pass the key explicitly or through `ONEDEX_API_KEY`:
 
@@ -59,40 +59,58 @@ client = OneDexClient(api_key=os.getenv("ONEDEX_API_KEY"))
 
 Recommended subscriber flow:
 
-1. Check subscription state, quota windows, credits, active grants, and recent consumptions with `client.account.usage()`.
-2. Try `client.address.details(...)` with an address, parcel, coordinates, or a `normalized_address_key`.
+1. Check the V2 `api_addresses` usage view (or the legacy V1 response during rollout) with `client.account.usage()`.
+2. Try `client.address.details(...)` with an address, parcel, coordinates, or a `normalized_address_key`, plus a caller-generated idempotency key.
 3. If the API raises `address_unlock_required`, call `client.address.unlock(...)` with the returned `normalized_address_key`, or post the returned `unlock_request` object when present.
-4. Read the detailed address again, or follow the returned `details_url`.
+4. Follow the returned `details_url` with `client.address.details_url(...)`; the helper rejects another origin or route.
 
 ```python
+import uuid
+
 usage = client.account.usage()
 
 try:
-    details = client.address.details({
-        "address": "10 rue des cordeliers aix",
-        "fields": ["summary", "rail"],
-    })
+    details = client.address.details(
+        address="10 rue des cordeliers aix",
+        fields=["summary", "rail"],
+        idempotency_key=str(uuid.uuid4()),
+        max_attempts=3,
+    )
 except OneDexApiError as error:
     if error.status != 402 or error.body.get("error") != "address_unlock_required":
         raise
 
     unlock_request = error.body.get("unlock_request")
     if unlock_request:
-        unlock = client.address.unlock(unlock_request)
+        unlock = client.address.unlock(
+            unlock_request,
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
     else:
-        unlock = client.address.unlock({
-            "normalized_address_key": error.body["normalized_address_key"],
-        })
+        unlock = client.address.unlock(
+            normalized_address_key=error.body["normalized_address_key"],
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
 
     details_url = unlock.get("details_url")
     if details_url:
-        details = client.request("GET", details_url)
+        details = client.address.details_url(
+            details_url,
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
     else:
-        details = client.address.details({
-            "normalized_address_key": unlock["normalized_address_key"],
-            "fields": ["summary", "rail"],
-        })
+        details = client.address.details(
+            normalized_address_key=unlock["normalized_address_key"],
+            fields=["summary", "rail"],
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
 ```
+
+Set `max_attempts` above 1 to retry `202`, `429`, and `503` with the exact same key while honoring `Retry-After`. A `409` is terminal. A `threading.Event` passed as `cancel_event` cancels before the call or between retry attempts.
 
 Common professional API errors:
 
@@ -108,6 +126,7 @@ The client exposes helpers for the current `/api/v1` routes:
 
 - `client.overview.address(...)`
 - `client.address.details(...)`
+- `client.address.details_url(...)`, `client.address.detailsUrl(...)`
 - `client.address.unlock(...)`
 - `client.account.usage()`
 - `client.autocomplete.address(...)`
@@ -116,3 +135,5 @@ The client exposes helpers for the current `/api/v1` routes:
 - `client.preview.byPath(...)`
 - `client.addressPages.state(...)`
 - `client.map.layer(...)`, `client.map.viewport(...)`, `client.map.focus.address(...)`, `client.map.focus.public_location(...)`, `client.map.focus.publicLocation(...)`, `client.map.focus.parcelle(...)`, `client.map.focus.parcelles(...)`, `client.map.focus.feature(...)`
+
+Supported runtimes: Python 3.10 and newer.

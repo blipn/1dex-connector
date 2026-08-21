@@ -26,16 +26,21 @@ curl "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordelier
 curl "https://1dex.fr/api/v1/address-overview?city_code=13001&parcel_record_key=parcel_123&dvf_year=2024"
 ```
 
-## Détails pro abonnés et déblocage
+## Détails authentifiés et déblocage
 
-Ces routes necessitent une cle API d'un compte professionnel avec abonnement actif. Elles donnent acces aux familles completes de l'adresse debloquee et au suivi de quota/credits du compte.
+Ces routes nécessitent une clé API. Une clé Free de démonstration est limitée à l'adresse épinglée par 1dex; une clé live suit les droits du compte. Chaque lecture détaillée et chaque déblocage exigent une clé d'idempotence propre à cette intention.
 
 ```bash
+export ONEDEX_DETAILS_REQUEST_ID=<uuid-stable-for-this-details-request>
+export ONEDEX_UNLOCK_REQUEST_ID=<uuid-stable-for-this-unlock-request>
+
 curl "https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&fields=summary,rail" \
-  -H "Authorization: Bearer $ONEDEX_API_KEY"
+  -H "Authorization: Bearer $ONEDEX_API_KEY" \
+  -H "Idempotency-Key: $ONEDEX_DETAILS_REQUEST_ID"
 
 curl -X POST "https://1dex.fr/api/v1/address-unlocks" \
   -H "Authorization: Bearer $ONEDEX_API_KEY" \
+  -H "Idempotency-Key: $ONEDEX_UNLOCK_REQUEST_ID" \
   -H "Content-Type: application/json" \
   -d '{"address":"10 rue des cordeliers aix"}'
 
@@ -48,9 +53,11 @@ Si `GET /address-details` répond `402 address_unlock_required`, lire `unlock_lo
 - `normalized_address_key`: appeler `POST /address-unlocks` avec cette clé seule.
 - `unlock_request`: envoyer l'objet `unlock_request` retourné.
 
-Après `POST /address-unlocks`, appeler le `details_url` retourné. Ne mélangez pas `normalized_address_key` avec `address`, `lon`/`lat` ou `parcel_record_key`.
+Après `POST /address-unlocks`, appeler exactement le `details_url` retourné. Les helpers `detailsUrl`/`details_url` vérifient qu'il reste sur l'origine 1dex et la route attendue. Ne mélangez pas `normalized_address_key` avec `address`, `lon`/`lat` ou `parcel_record_key`.
 
-`GET /account/usage` renvoie les fenetres de quota API, les credits adresse disponibles, les grants actifs, les consommations recentes et l'abonnement. Les erreurs d'acces usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.
+Conservez la même clé d'idempotence lors des tentatives d'une même intention et changez-la pour toute autre intention. `202`, `429` et `503` sont temporaires; respectez `Retry-After`. `409` est terminal et indique que la clé a déjà servi pour une intention différente.
+
+`GET /account/usage` renvoie `account-usage-v2` avec `api_addresses` après promotion V2; les clients acceptent aussi la réponse V1 pendant la transition. Les erreurs d'accès usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.
 
 ## Aperçu public
 
@@ -90,6 +97,7 @@ npm i @1dex-fr/connector
 ```
 
 ```js
+import { randomUUID } from "node:crypto";
 import { OneDexClient } from "@1dex-fr/connector";
 
 const client = new OneDexClient({
@@ -109,10 +117,11 @@ const score = await client.score.address({
 const details = await client.address.details({
   address: "10 rue des cordeliers aix",
   fields: ["summary", "rail"],
-});
+  idempotencyKey: randomUUID(),
+}, { retry: true });
 const usage = await client.account.usage();
 
-console.log(overview.version, suggestions.suggestions, score.items, details.fields, usage.credits.total_remaining);
+console.log(overview.version, suggestions.suggestions, score.items, details.fields, usage.version);
 ```
 
 ## Python
@@ -123,6 +132,7 @@ python -m pip install 1dex-connector
 
 ```python
 import os
+import uuid
 
 from onedex import OneDexClient
 
@@ -138,11 +148,13 @@ suggestions = client.autocomplete.address({
 score = client.score.address({
     "items": [{"address": "10 rue des cordeliers aix"}],
 })
-details = client.address.details({
-    "address": "10 rue des cordeliers aix",
-    "fields": ["summary", "rail"],
-})
+details = client.address.details(
+    address="10 rue des cordeliers aix",
+    fields=["summary", "rail"],
+    idempotency_key=str(uuid.uuid4()),
+    max_attempts=3,
+)
 usage = client.account.usage()
 
-print(overview["version"], suggestions["suggestions"], score["items"], details["fields"], usage["credits"]["total_remaining"])
+print(overview["version"], suggestions["suggestions"], score["items"], details["fields"], usage["version"])
 ```

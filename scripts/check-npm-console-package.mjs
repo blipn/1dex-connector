@@ -60,6 +60,18 @@ try {
   if (!installedSource.includes('--format <json|csv|summary>')) {
     throw new Error('Installed 1dex binary is missing the expected format option.');
   }
+  for (const fragment of [
+    '1dex account usage [options]',
+    '1dex address unlock <address> --idempotency-key <key>',
+    '1dex address details --details-url <url> --idempotency-key <key>',
+    '--max-attempts <number>',
+    'Idempotency-Key',
+    'account-usage-v2',
+  ]) {
+    if (!installedSource.includes(fragment)) {
+      throw new Error(`Installed 1dex binary is missing V2 connector fragment: ${fragment}`);
+    }
+  }
   if (!installedSource.includes('/api/v1/map-layer/')) {
     throw new Error('Installed 1dex binary is missing the expected map-layer URL builder.');
   }
@@ -97,6 +109,13 @@ try {
     '-0.542902',
     '--lat',
     '47.468617',
+    '--url',
+  ], { cwd: installDir });
+  run(process.execPath, [installedCli,
+    'address',
+    'details',
+    '--details-url',
+    '/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
     '--url',
   ], { cwd: installDir });
 

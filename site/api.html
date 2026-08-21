@@ -93,6 +93,12 @@
                 <input id="api-address" name="address" type="text" value="10 rue des cordeliers aix" autocomplete="street-address">
               </label>
 
+              <label class="field-label" for="api-idempotency-key" data-visible-for="address-details,address-unlock">
+                Clé d'idempotence
+                <input id="api-idempotency-key" name="idempotency_key" type="text" maxlength="255" autocomplete="off" aria-describedby="api-idempotency-help">
+                <span id="api-idempotency-help" class="field-hint">Conservez cette valeur pour rejouer exactement la même intention.</span>
+              </label>
+
               <label class="field-label" for="api-path" data-visible-for="public-preview">
                 Chemin public
                 <input id="api-path" name="path" type="text" value="/ville/aix-en-provence-13001" autocomplete="off">

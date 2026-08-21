@@ -113,6 +113,9 @@ test('help exposes the broader public API command surface', () => {
   assert.match(result.stdout, /1dex score address <address> \[options\]/u);
   assert.match(result.stdout, /--input <json-or-@file>/u);
   assert.match(result.stdout, /--parcel-record-key <key>/u);
+  assert.match(result.stdout, /1dex address unlock <address> --idempotency-key <key>/u);
+  assert.match(result.stdout, /--details-url <url>/u);
+  assert.match(result.stdout, /--max-attempts <number>/u);
 });
 
 test('bare address command still targets the public address overview URL', () => {
@@ -310,6 +313,7 @@ test('address unlock posts JSON and forwards subscriber API key', async () => {
     assert.equal(request.url, '/api/v1/address-unlocks');
     assert.equal(request.method, 'POST');
     assert.equal(request.headers.authorization, 'Bearer test-key');
+    assert.equal(request.headers['idempotency-key'], 'unlock-cli-123');
     let body = '';
     request.setEncoding('utf8');
     request.on('data', (chunk) => {
@@ -331,6 +335,8 @@ test('address unlock posts JSON and forwards subscriber API key', async () => {
       '10 rue des cordeliers aix',
       '--api-key',
       'test-key',
+      '--idempotency-key',
+      'unlock-cli-123',
       '--format',
       'summary',
       '--base-url',
@@ -347,6 +353,110 @@ test('address unlock posts JSON and forwards subscriber API key', async () => {
         'details_url=/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
       ].join('\n'),
     );
+  });
+});
+
+test('canonical address details command follows a safe details_url with idempotency', async () => {
+  await withJsonServer((request, response) => {
+    assert.equal(request.url, '/api/v1/address-details?normalized_address_key=addr_123&fields=summary');
+    assert.equal(request.method, 'GET');
+    assert.equal(request.headers.authorization, 'Bearer test-key');
+    assert.equal(request.headers['idempotency-key'], 'details-url-cli-123');
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({ version: 'address-details-v1', fields: ['summary'], resolved: {}, degraded: {} }));
+  }, async (baseUrl) => {
+    const result = await runCliAsync([
+      'address',
+      'details',
+      '--details-url',
+      '/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
+      '--idempotency-key',
+      'details-url-cli-123',
+      '--api-key',
+      'test-key',
+      '--base-url',
+      baseUrl,
+      '--format',
+      'summary',
+    ]);
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /version=address-details-v1/u);
+  });
+});
+
+test('CLI rejects invalid idempotency keys before sending a subscriber request', () => {
+  const result = runCli([
+    'address',
+    'unlock',
+    '10 rue des cordeliers aix',
+    '--idempotency-key',
+    ' padded',
+    '--base-url',
+    'http://127.0.0.1:9',
+  ]);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /surrounding whitespace/u);
+});
+
+test('CLI retries 202 with the same idempotency key and renders account usage v2', async () => {
+  let attempts = 0;
+  await withJsonServer((request, response) => {
+    attempts += 1;
+    assert.equal(request.url, '/api/v1/address-unlocks');
+    assert.equal(request.headers['idempotency-key'], 'retry-cli-123');
+    if (attempts === 1) {
+      response.writeHead(202, { 'content-type': 'application/json', 'retry-after': '1' });
+      response.end(JSON.stringify({ status: 'request_in_progress', retry_after_seconds: 1 }));
+      return;
+    }
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({
+      version: 'address-unlock-v1',
+      normalized_address_key: 'addr_123',
+      result: { status: 'unlocked' },
+      details_url: '/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
+    }));
+  }, async (baseUrl) => {
+    const result = await runCliAsync([
+      'address',
+      'unlock',
+      '10 rue des cordeliers aix',
+      '--idempotency-key',
+      'retry-cli-123',
+      '--max-attempts',
+      '2',
+      '--max-retry-delay-ms',
+      '0',
+      '--base-url',
+      baseUrl,
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(attempts, 2);
+  });
+
+  await withJsonServer((_request, response) => {
+    response.writeHead(200, { 'content-type': 'application/json' });
+    response.end(JSON.stringify({
+      version: 'account-usage-v2',
+      api_addresses: {
+        plan_key: 'demo',
+        plan_label: 'API Démonstration',
+        demo_window: {
+          normalized_address_key: 'addr_demo',
+          reads_used: 2,
+          reads_limit: 10,
+          reads_available: 8,
+        },
+      },
+    }));
+  }, async (baseUrl) => {
+    const result = await runCliAsync(['account', 'usage', '--base-url', baseUrl, '--format', 'summary']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /version=account-usage-v2/u);
+    assert.match(result.stdout, /plan=demo/u);
+    assert.match(result.stdout, /available=8/u);
   });
 });
 
@@ -379,6 +489,8 @@ test('address unlock accepts returned unlock_request JSON input', async () => {
       '{"address":"10 rue des cordeliers aix","city_code":"13001"}',
       '--base-url',
       baseUrl,
+      '--idempotency-key',
+      'unlock-input-123',
     ]);
 
     assert.equal(result.status, 0, result.stderr);

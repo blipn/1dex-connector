@@ -50,6 +50,7 @@ const requiredApiFragments = [
   '<option value="map-focus-public-location">Focus coordonnées</option>',
   'name="normalized_address_key"',
   'name="unlock_request"',
+  'name="idempotency_key"',
   'name="parcel_record_key"',
   'name="dvf_year"',
   'id="api-doc-link"',
@@ -82,8 +83,9 @@ const requiredQuickstartFragments = [
   'unlock_request',
   'details_url',
   'client.account.usage()',
-  'usage.credits.total_remaining',
-  'usage["credits"]["total_remaining"]',
+  'Idempotency-Key: $ONEDEX_DETAILS_REQUEST_ID',
+  'usage.version',
+  'usage["version"]',
   './api.html',
   './documentation-api.html',
 ];
@@ -129,6 +131,9 @@ const requiredAppFragments = [
   'Adresse, code commune ou coordonnées requis.',
   'parcel_record_key',
   'const unlockRequest = readValue(\'unlock_request\')',
+  "readValue('idempotency_key')",
+  "headers['idempotency-key'] = request.idempotencyKey",
+  "'idempotency_key'",
   'JSON.parse(unlockRequest)',
   'dvf_year',
   'pageParams.get(\'operation\')',
@@ -141,6 +146,10 @@ for (const fragment of requiredAppFragments) {
   if (!appJs.includes(fragment)) {
     throw new Error(`Missing app script fragment: ${fragment}`);
   }
+}
+
+if (/pageParams\.get\(['"]api_key['"]\)/u.test(appJs)) {
+  throw new Error('The public console must not load API credentials from its URL.');
 }
 
 if (siteIndex.includes('./docs/quickstart.md')) {

@@ -1,5 +1,6 @@
 import json
 import sys
+import threading
 import unittest
 import urllib.error
 from pathlib import Path
@@ -11,8 +12,10 @@ from onedex import OneDexApiError, OneDexClient  # noqa: E402
 
 
 class FakeResponse:
-    def __init__(self, body):
+    def __init__(self, body, *, status=200, headers=None):
         self._body = json.dumps(body).encode("utf-8")
+        self.status = status
+        self.headers = headers or {}
 
     def read(self):
         return self._body
@@ -220,8 +223,12 @@ class ClientTest(unittest.TestCase):
         client.address.details({
             "normalizedAddressKey": "addr_123",
             "fields": ["summary", "rail"],
+            "idempotencyKey": "details-req-123",
         })
-        client.address.unlock({"address": "10 rue des cordeliers aix"})
+        client.address.unlock({
+            "address": "10 rue des cordeliers aix",
+            "idempotency_key": "unlock-req-123",
+        })
         client.account.usage()
         client.preview.byPath("/ville/aix-en-provence-13001")
         client.communes.search({"q": "aix", "limit": 3})
@@ -236,12 +243,14 @@ class ClientTest(unittest.TestCase):
             "http://example.test/api/v1/address-details?normalized_address_key=addr_123&fields=summary%2Crail",
         )
         self.assertEqual(calls[0][0].headers["Authorization"], "Bearer test-key")
+        self.assertEqual(dict(calls[0][0].header_items())["Idempotency-key"], "details-req-123")
         self.assertEqual(calls[1][0].full_url, "http://example.test/api/v1/address-unlocks")
         self.assertEqual(calls[1][0].get_method(), "POST")
         self.assertEqual(
             json.loads(calls[1][0].data.decode("utf-8")),
             {"address": "10 rue des cordeliers aix"},
         )
+        self.assertEqual(dict(calls[1][0].header_items())["Idempotency-key"], "unlock-req-123")
         self.assertEqual(calls[2][0].full_url, "http://example.test/api/v1/account/usage")
         self.assertEqual(
             calls[3][0].full_url,
@@ -274,13 +283,155 @@ class ClientTest(unittest.TestCase):
                 "normalizedAddressKey": "addr_123",
                 "address": "10 rue des cordeliers aix",
                 "fields": "summary",
+                "idempotencyKey": "details-mixed",
             })
 
         with self.assertRaisesRegex(ValueError, "normalized_address_key alone"):
             client.address.unlock({
                 "normalizedAddressKey": "addr_123",
                 "parcelRecordKey": "13001000AB0022",
+                "idempotencyKey": "unlock-mixed",
             })
+
+    def test_subscriber_address_helpers_require_explicit_idempotency_keys(self):
+        client = OneDexClient(base_url="http://example.test")
+
+        with self.assertRaisesRegex(ValueError, "requires idempotency_key"):
+            client.address.details({"address": "10 rue des cordeliers aix", "fields": "summary"})
+        with self.assertRaisesRegex(ValueError, "requires idempotency_key"):
+            client.address.unlock({"address": "10 rue des cordeliers aix"})
+
+    def test_idempotency_keys_reject_surrounding_whitespace_controls_and_utf8_overflow(self):
+        client = OneDexClient(base_url="http://example.test")
+
+        for idempotency_key in (" padded", "line\nbreak", "é" * 128):
+            with self.subTest(idempotency_key=repr(idempotency_key)):
+                with self.assertRaisesRegex(ValueError, "(whitespace|control|255 UTF-8 bytes)"):
+                    client.address.unlock(address="x", idempotency_key=idempotency_key)
+
+    def test_pythonic_keyword_helpers_and_details_url_are_safe(self):
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            return FakeResponse({"version": "address-details-v1", "fields": ["summary"]})
+
+        client = OneDexClient(base_url="http://example.test", api_key="test-key", opener=opener)
+        client.address.details(
+            address="10 rue des cordeliers aix",
+            fields=["summary"],
+            idempotency_key="details-keyword-123",
+        )
+        client.address.details_url(
+            "/api/v1/address-details?normalized_address_key=addr_123&fields=summary",
+            idempotency_key="details-url-123",
+        )
+
+        self.assertEqual(dict(calls[0][0].header_items())["Idempotency-key"], "details-keyword-123")
+        self.assertEqual(
+            calls[1][0].full_url,
+            "http://example.test/api/v1/address-details?normalized_address_key=addr_123&fields=summary",
+        )
+        self.assertEqual(dict(calls[1][0].header_items())["Idempotency-key"], "details-url-123")
+        with self.assertRaisesRegex(ValueError, "configured 1dex origin"):
+            client.address.details_url(
+                "https://attacker.test/api/v1/address-details?fields=summary",
+                idempotency_key="blocked",
+            )
+
+    def test_retryable_responses_replay_the_exact_idempotency_key(self):
+        calls = []
+
+        def opener(request, timeout):
+            calls.append((request, timeout))
+            if len(calls) == 1:
+                return FakeResponse(
+                    {"status": "request_in_progress", "retry_after_seconds": 1},
+                    status=202,
+                    headers={"Retry-After": "1"},
+                )
+            if len(calls) == 2:
+                raise urllib.error.HTTPError(
+                    request.full_url,
+                    429,
+                    "Too Many Requests",
+                    {"Retry-After": "1"},
+                    FakeResponse({"error": "usage_limited", "retry_after_seconds": 1}),
+                )
+            return FakeResponse({"version": "address-unlock-v1", "result": {"status": "unlocked"}})
+
+        client = OneDexClient(base_url="http://example.test", opener=opener, sleeper=lambda _seconds: None)
+        result = client.address.unlock(
+            address="10 rue des cordeliers aix",
+            idempotency_key="stable-replay-key",
+            max_attempts=3,
+            max_retry_delay=0,
+        )
+
+        self.assertEqual(result["version"], "address-unlock-v1")
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(
+            [dict(request.header_items())["Idempotency-key"] for request, _timeout in calls],
+            ["stable-replay-key", "stable-replay-key", "stable-replay-key"],
+        )
+
+    def test_pending_conflict_and_cancellation_expose_retry_metadata(self):
+        def pending_opener(_request, timeout):
+            del timeout
+            return FakeResponse(
+                {"status": "request_in_progress", "retry_after_seconds": 2},
+                status=202,
+                headers={"Retry-After": "2"},
+            )
+
+        pending_client = OneDexClient(base_url="http://example.test", opener=pending_opener)
+        with self.assertRaises(OneDexApiError) as pending_context:
+            pending_client.address.unlock(address="x", idempotency_key="pending-key")
+        self.assertEqual(pending_context.exception.status, 202)
+        self.assertTrue(pending_context.exception.retryable)
+        self.assertEqual(pending_context.exception.retry_after_seconds, 2)
+        self.assertEqual(pending_context.exception.code, "request_in_progress")
+
+        def conflict_opener(request, timeout):
+            del timeout
+            raise urllib.error.HTTPError(
+                request.full_url,
+                409,
+                "Conflict",
+                {},
+                FakeResponse({"error": "idempotency_conflict"}),
+            )
+
+        conflict_client = OneDexClient(base_url="http://example.test", opener=conflict_opener)
+        with self.assertRaises(OneDexApiError) as conflict_context:
+            conflict_client.address.unlock(address="x", idempotency_key="conflict-key", max_attempts=3)
+        self.assertEqual(conflict_context.exception.status, 409)
+        self.assertFalse(conflict_context.exception.retryable)
+
+        cancel_event = threading.Event()
+        calls = 0
+
+        def cancel_opener(_request, timeout):
+            del timeout
+            nonlocal calls
+            calls += 1
+            cancel_event.set()
+            return FakeResponse(
+                {"status": "request_in_progress", "retry_after_seconds": 60},
+                status=202,
+                headers={"Retry-After": "60"},
+            )
+
+        cancel_client = OneDexClient(base_url="http://example.test", opener=cancel_opener)
+        with self.assertRaisesRegex(OneDexApiError, "aborted"):
+            cancel_client.address.details(
+                address="10 rue des cordeliers aix",
+                fields="summary",
+                idempotency_key="cancel-key",
+                max_attempts=3,
+                cancel_event=cancel_event,
+            )
+        self.assertEqual(calls, 1)
 
     def test_unknown_public_map_layer_is_rejected_locally(self):
         client = OneDexClient()

@@ -2,9 +2,11 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const root = process.cwd();
-const response = await fetch('https://1dex.fr/api/v1/openapi.yaml');
+const baseUrl = (process.env.ONEDEX_BASE_URL ?? 'https://1dex.fr').replace(/\/+$/, '');
+const openApiUrl = process.env.ONEDEX_OPENAPI_URL ?? `${baseUrl}/api/v1/openapi.yaml`;
+const response = await fetch(openApiUrl);
 if (!response.ok) {
-  throw new Error(`Unable to fetch live OpenAPI: HTTP ${response.status}`);
+  throw new Error(`Unable to fetch OpenAPI at ${openApiUrl}: HTTP ${response.status}`);
 }
 const specText = await response.text();
 
@@ -35,12 +37,20 @@ for (const path of requiredPaths) {
   }
 }
 
+if (process.env.ONEDEX_REQUIRE_V2_OPENAPI === '1') {
+  for (const fragment of ['Idempotency-Key', 'RequestInProgress', 'account-usage-v2', 'retry_after_seconds']) {
+    if (!specText.includes(fragment)) {
+      throw new Error(`V2 OpenAPI is missing required contract fragment: ${fragment}`);
+    }
+  }
+}
+
 // Runtime-supported helper kept for page-state consumers. It is intentionally
 // not required in the live OpenAPI until 1dex promotes this page helper as a
 // documented public contract. Keep a live route smoke so the connector wrapper
 // does not silently drift while the OpenAPI stays focused on canonical API docs.
 const runtimeOnlyChecks = [
-  'https://1dex.fr/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state',
+  `${baseUrl}/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state`,
 ];
 for (const url of runtimeOnlyChecks) {
   const runtimeResponse = await fetch(url, { headers: { accept: 'application/json' } });
@@ -80,6 +90,10 @@ const connectorFragments = [
   'normalized_address_key',
   'parcel_record_key',
   'dvf_year',
+  'Idempotency-Key',
+  'detailsUrl',
+  'RETRYABLE_STATUSES',
+  'account-usage-v2',
 ];
 
 for (const fragment of connectorFragments) {
@@ -88,4 +102,4 @@ for (const fragment of connectorFragments) {
   }
 }
 
-console.log('Live OpenAPI parity checks passed.');
+console.log(`OpenAPI parity checks passed for ${openApiUrl}.`);

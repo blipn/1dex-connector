@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
+const RETRYABLE_STATUSES = new Set([202, 429, 503]);
 const DEFAULT_SAMPLE_ADDRESS = '10 rue des cordeliers aix';
 const NPM_LATEST_URL = 'https://registry.npmjs.org/@1dex-fr%2f1dex/latest';
 const PUBLIC_MAP_LAYERS = new Set([
@@ -39,16 +40,20 @@ const VALUE_FLAGS = new Set([
   'city-code',
   'dvf-radius-m',
   'dvf-year',
+  'details-url',
   'feature-key',
   'fields',
   'format',
   'input',
+  'idempotency-key',
   'layer',
   'layer-key',
   'lat',
   'layers',
   'limit',
   'lon',
+  'max-attempts',
+  'max-retry-delay-ms',
   'normalized-address-key',
   'parcel-record-key',
   'path',
@@ -76,7 +81,64 @@ class OneDexApiError extends Error {
     this.status = options.status ?? 0;
     this.body = options.body;
     this.requestId = options.requestId ?? null;
+    this.retryable = options.retryable ?? false;
+    this.retryAfterSeconds = options.retryAfterSeconds ?? null;
+    this.code = options.code ?? null;
   }
+}
+
+function normalizeIdempotencyKey(value, name = 'idempotency key') {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${name} is required. Use --idempotency-key or ONEDEX_IDEMPOTENCY_KEY.`);
+  }
+  if (value !== value.trim() || /[\u0000-\u001f\u007f]/u.test(value)) {
+    throw new TypeError(`${name} must not contain surrounding whitespace or control characters.`);
+  }
+  if (Buffer.byteLength(value, 'utf8') > 255) {
+    throw new TypeError(`${name} must be at most 255 UTF-8 bytes.`);
+  }
+  return value;
+}
+
+function splitIdempotentInput(input, explicitKey, name) {
+  const {
+    idempotencyKey,
+    idempotency_key: idempotencyKeySnake,
+    ...payload
+  } = input;
+  const keys = [idempotencyKey, idempotencyKeySnake, explicitKey]
+    .filter((value) => value !== undefined && value !== null)
+    .map((value) => normalizeIdempotencyKey(value, `${name} idempotency key`));
+  if (keys.length === 0) {
+    normalizeIdempotencyKey(undefined, `${name} idempotency key`);
+  }
+  if (keys.some((key) => key !== keys[0])) {
+    throw new TypeError(`${name} received conflicting idempotency keys.`);
+  }
+  return { payload, idempotencyKey: keys[0] };
+}
+
+function parseRetryAfterSeconds(body, headers) {
+  const rawHeader = headers.get('retry-after');
+  const headerSeconds = Number(rawHeader);
+  if (rawHeader && Number.isFinite(headerSeconds) && headerSeconds >= 0) {
+    return Math.ceil(headerSeconds);
+  }
+  const bodySeconds = Number(body?.retry_after_seconds);
+  return Number.isFinite(bodySeconds) && bodySeconds >= 0 ? Math.ceil(bodySeconds) : null;
+}
+
+function normalizeDetailsPath(baseUrl, detailsUrl) {
+  const value = String(detailsUrl ?? '').trim();
+  if (!value) {
+    throw new TypeError('details URL is required. Use --details-url <url>.');
+  }
+  const base = new URL(baseUrl);
+  const resolved = new URL(value, `${baseUrl}/`);
+  if (resolved.origin !== base.origin || resolved.pathname !== '/api/v1/address-details') {
+    throw new TypeError('details URL must target /api/v1/address-details on the configured 1dex origin.');
+  }
+  return `${resolved.pathname}${resolved.search}`;
 }
 
 function normalizeBaseUrl(baseUrl) {
@@ -184,6 +246,11 @@ class OneDexClient {
     this.baseUrl = normalizeBaseUrl(options.baseUrl);
     this.fetch = options.fetch ?? globalThis.fetch;
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.maxAttempts = options.maxAttempts ?? 1;
+    this.maxRetryDelayMs = options.maxRetryDelayMs ?? Number.POSITIVE_INFINITY;
+    if (typeof this.maxRetryDelayMs !== 'number' || Number.isNaN(this.maxRetryDelayMs) || this.maxRetryDelayMs < 0) {
+      throw new TypeError('max retry delay must be a non-negative number.');
+    }
     this.defaultHeaders = {};
     if (options.apiKey) {
       this.defaultHeaders.authorization = `Bearer ${options.apiKey}`;
@@ -201,6 +268,7 @@ class OneDexClient {
     });
     this.address = Object.freeze({
       details: (input) => this.addressDetails(input),
+      detailsUrl: (detailsUrl, options) => this.addressDetailsUrl(detailsUrl, options),
       unlock: (input) => this.addressUnlock(input),
     });
     this.account = Object.freeze({
@@ -241,49 +309,75 @@ class OneDexClient {
   }
 
   async request(method, path, options = {}) {
-    const controller = new AbortController();
-    const timer = this.timeoutMs > 0
-      ? setTimeout(() => controller.abort(), this.timeoutMs)
-      : undefined;
-
     const headers = { accept: 'application/json', ...this.defaultHeaders };
+    if (options.idempotencyKey !== undefined) {
+      headers['Idempotency-Key'] = normalizeIdempotencyKey(options.idempotencyKey);
+    }
     let body;
     if (options.body !== undefined) {
       headers['content-type'] = 'application/json';
       body = JSON.stringify(options.body);
     }
 
-    let response;
-    try {
-      response = await this.fetch(`${this.baseUrl}${path}`, {
-        method,
-        headers,
-        body,
-        signal: controller.signal,
-      });
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new OneDexApiError('1dex API request timed out.', { status: 0 });
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      throw new OneDexApiError(`Unable to reach 1dex API: ${message}`, { status: 0 });
-    } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
+    const maxAttempts = options.maxAttempts ?? this.maxAttempts;
+    if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) {
+      throw new TypeError('max attempts must be an integer between 1 and 10.');
     }
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const controller = new AbortController();
+      const timer = this.timeoutMs > 0
+        ? setTimeout(() => controller.abort(), this.timeoutMs)
+        : undefined;
+      let response;
+      try {
+        response = await this.fetch(`${this.baseUrl}${path}`, {
+          method,
+          headers,
+          body,
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (error?.name === 'AbortError') {
+          throw new OneDexApiError('1dex API request timed out.', { status: 0 });
+        }
+        const message = error instanceof Error ? error.message : String(error);
+        throw new OneDexApiError(`Unable to reach 1dex API: ${message}`, { status: 0 });
+      } finally {
+        if (timer) {
+          clearTimeout(timer);
+        }
+      }
 
-    const bodyValue = await readJsonResponse(response);
-    if (!response.ok) {
-      const warning = Array.isArray(bodyValue?.warnings) ? bodyValue.warnings[0] : undefined;
-      const warningMessage = warning?.message;
-      throw new OneDexApiError(warningMessage ?? `1dex API returned ${response.status}.`, {
-        status: response.status,
-        body: bodyValue,
-        requestId: bodyValue?.request_id ?? response.headers.get('x-request-id'),
-      });
+      const bodyValue = await readJsonResponse(response);
+      if (response.status === 202 || !response.ok) {
+        const warning = Array.isArray(bodyValue?.warnings) ? bodyValue.warnings[0] : undefined;
+        const retryAfterSeconds = parseRetryAfterSeconds(bodyValue, response.headers);
+        const error = new OneDexApiError(
+          warning?.message
+            ?? bodyValue?.message
+            ?? (response.status === 202 ? '1dex API request is still in progress.' : `1dex API returned ${response.status}.`),
+          {
+            status: response.status,
+            body: bodyValue,
+            requestId: bodyValue?.request_id ?? response.headers.get('x-request-id'),
+            retryable: RETRYABLE_STATUSES.has(response.status),
+            retryAfterSeconds,
+            code: typeof bodyValue?.error === 'string' ? bodyValue.error : bodyValue?.status,
+          },
+        );
+        if (!error.retryable || attempt >= maxAttempts) {
+          throw error;
+        }
+        const requestedDelayMs = (retryAfterSeconds ?? 1) * 1_000;
+        const delayMs = Math.min(requestedDelayMs, this.maxRetryDelayMs);
+        if (delayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+        continue;
+      }
+      return bodyValue;
     }
-    return bodyValue;
+    throw new OneDexApiError('1dex API retry loop ended unexpectedly.', { status: 0 });
   }
 
   mapParcelles(input) {
@@ -357,7 +451,8 @@ class OneDexClient {
   }
 
   addressDetails(input) {
-    const { fields, ...locatorInput } = input;
+    const { payload, idempotencyKey } = splitIdempotentInput(input, undefined, 'address details');
+    const { fields, ...locatorInput } = payload;
     const query = normalizeAddressLocator(locatorInput);
     assertNormalizedAddressKeyIsAlone(query, 'address details input');
     if (!hasAddressLocator(query)) {
@@ -366,16 +461,23 @@ class OneDexClient {
     return this.request('GET', appendQuery('/api/v1/address-details', {
       ...query,
       fields: normalizeCsvList(fields, 'address details fields'),
-    }));
+    }), { idempotencyKey });
+  }
+
+  addressDetailsUrl(detailsUrl, options = {}) {
+    return this.request('GET', normalizeDetailsPath(this.baseUrl, detailsUrl), {
+      idempotencyKey: normalizeIdempotencyKey(options.idempotencyKey, 'address details URL idempotency key'),
+    });
   }
 
   addressUnlock(input) {
-    const body = normalizeAddressLocator(input);
+    const { payload, idempotencyKey } = splitIdempotentInput(input, undefined, 'address unlock');
+    const body = normalizeAddressLocator(payload);
     assertNormalizedAddressKeyIsAlone(body, 'address unlock input');
     if (!hasAddressLocator(body)) {
       throw new TypeError('address unlock input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
     }
-    return this.request('POST', '/api/v1/address-unlocks', { body });
+    return this.request('POST', '/api/v1/address-unlocks', { body, idempotencyKey });
   }
 
   accountUsage() {
@@ -474,6 +576,10 @@ Usage:
   1dex details <address|--normalized-address-key|--parcel-record-key|--lon/--lat> --fields <csv> [options]
   1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--input> [options]
   1dex usage [options]
+  1dex account usage [options]
+  1dex address unlock <address> --idempotency-key <key> [options]
+  1dex address details <address> --fields <csv> --idempotency-key <key> [options]
+  1dex address details --details-url <url> --idempotency-key <key> [options]
   1dex autocomplete <query> [options]
   1dex communes <query> [options]
   1dex preview <path> [options]
@@ -504,6 +610,10 @@ Options:
       --parcel-record-key <key>        Parcel record key for address overview.
       --normalized-address-key <key>   Stable key returned by address-details or address-unlocks.
       --fields <csv>                   Address details fields, or all.
+      --details-url <url>              Follow the exact details_url returned by address unlock.
+      --idempotency-key <key>          Stable key for this exact unlock or details intention.
+      --max-attempts <number>          Attempts for 202/429/503 using the same key. Default: 1.
+      --max-retry-delay-ms <number>    Optional cap for Retry-After waits.
       --record-key <key>               Parcel focus record key.
       --record-keys <csv>              Parcel focus record keys.
       --path <path>                    Public preview path.
@@ -536,6 +646,7 @@ Options:
 Environment:
   ONEDEX_BASE_URL (defaults to https://1dex.fr)
   ONEDEX_API_KEY adds Authorization: Bearer for subscriber endpoints
+  ONEDEX_IDEMPOTENCY_KEY supplies the current unlock/details intention key
   ONEDEX_NO_UPDATE_CHECK=1 disables the npm version update notice
 `;
 }
@@ -552,10 +663,11 @@ function examples() {
   1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 
   # Subscriber address details and unlock flow.
-  1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
-  1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
-  1dex unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --api-key "$ONEDEX_API_KEY"
-  1dex usage --api-key "$ONEDEX_API_KEY" -f summary
+  1dex address details "10 rue des cordeliers aix" --fields summary,rail,tabs --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+  1dex address unlock "10 rue des cordeliers aix" --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+  1dex address unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+  1dex address details --details-url '/api/v1/address-details?normalized_address_key=addr_123&fields=summary' --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --max-attempts 3 --api-key "$ONEDEX_API_KEY"
+  1dex account usage --api-key "$ONEDEX_API_KEY" -f summary
 
   # Public address search and score suggest.
   1dex autocomplete "10 rue des cordeliers aix" --limit 5
@@ -723,7 +835,13 @@ function createClient(flags) {
     baseUrl: flags['base-url'] ?? process.env.ONEDEX_BASE_URL,
     apiKey: flags['api-key'] ?? process.env.ONEDEX_API_KEY,
     timeoutMs: readOptionalNumber(flags['timeout-ms'], 'timeout-ms') ?? 30_000,
+    maxAttempts: readOptionalNumber(flags['max-attempts'], 'max-attempts') ?? 1,
+    maxRetryDelayMs: readOptionalNumber(flags['max-retry-delay-ms'], 'max-retry-delay-ms') ?? Number.POSITIVE_INFINITY,
   });
+}
+
+function readIdempotencyKey(flags) {
+  return flags['idempotency-key'] ?? process.env.ONEDEX_IDEMPOTENCY_KEY;
 }
 
 function readOptionalNumber(value, name) {
@@ -822,6 +940,7 @@ function buildAddressDetailsInput(flags, subjectParts) {
     fields,
     dvf_radius_m: readOptionalNumber(flags['dvf-radius-m'], 'dvf-radius-m'),
     dvf_year: readOptionalNumber(flags['dvf-year'], 'dvf-year'),
+    idempotency_key: readIdempotencyKey(flags),
   };
 }
 
@@ -846,9 +965,18 @@ function buildAddressUnlockInput(flags, subjectParts) {
     if (!hasAddressLocator(fromInput)) {
       throw new Error('Address unlock payload requires address, normalized_address_key, parcel_record_key, or lon/lat.');
     }
-    return fromInput;
+    const flagKey = readIdempotencyKey(flags);
+    const inputKey = fromInput.idempotency_key ?? fromInput.idempotencyKey;
+    if (flagKey !== undefined && inputKey !== undefined
+      && normalizeIdempotencyKey(flagKey) !== normalizeIdempotencyKey(inputKey)) {
+      throw new Error('Address unlock received conflicting idempotency keys.');
+    }
+    return flagKey === undefined ? fromInput : { ...fromInput, idempotency_key: flagKey };
   }
-  return buildAddressLocatorInput(flags, subjectParts, 'address unlock locator');
+  return {
+    ...buildAddressLocatorInput(flags, subjectParts, 'address unlock locator'),
+    idempotency_key: readIdempotencyKey(flags),
+  };
 }
 
 function buildAutocompleteInput(flags, subjectParts) {
@@ -1000,8 +1128,10 @@ function resolveCommand(positional) {
   if (resource && ![
     'address-page-state',
     'address-details',
+    'address',
     'address-unlocks',
     'autocomplete',
+    'account',
     'communes',
     'context',
     'details',
@@ -1025,6 +1155,18 @@ function resolveCommand(positional) {
     'viewport',
   ].includes(resource)) {
     return { name: 'overview', subjectParts: positional };
+  }
+
+  if (resource === 'address' && action === 'details') {
+    return { name: 'address-details', subjectParts };
+  }
+
+  if (resource === 'address' && (action === 'unlock' || action === 'unlocks')) {
+    return { name: 'address-unlock', subjectParts };
+  }
+
+  if (resource === 'account' && action === 'usage') {
+    return { name: 'account-usage', subjectParts };
   }
 
   if (resource === 'map' && action === 'focus') {
@@ -1156,7 +1298,8 @@ function buildOverviewUrl(flags, input) {
 
 function buildAddressDetailsUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
-  return `${baseUrl}${appendQuery('/api/v1/address-details', input)}`;
+  const { idempotency_key: _idempotencyKey, idempotencyKey: _idempotencyKeyCamel, ...query } = input;
+  return `${baseUrl}${appendQuery('/api/v1/address-details', query)}`;
 }
 
 function buildAutocompleteUrl(flags, input) {
@@ -1257,7 +1400,7 @@ function isAddressUnlockResponse(response) {
 }
 
 function isAccountUsageResponse(response) {
-  return response?.version === 'account-usage-v1';
+  return response?.version === 'account-usage-v1' || response?.version === 'account-usage-v2';
 }
 
 function isPublicPreviewResponse(response) {
@@ -1547,6 +1690,19 @@ function printSummary(response) {
   }
 
   if (isAccountUsageResponse(response)) {
+    if (response?.version === 'account-usage-v2') {
+      const usage = response.api_addresses ?? {};
+      const demoWindow = usage.demo_window;
+      console.log([
+        `version=${response.version}`,
+        `plan=${usage.plan_key ?? ''}`,
+        `available=${usage.available ?? demoWindow?.reads_available ?? ''}`,
+        `day_used=${usage.day?.used ?? demoWindow?.reads_used ?? ''}`,
+        `day_limit=${usage.day?.limit ?? demoWindow?.reads_limit ?? ''}`,
+        `lots=${usage.lots?.length ?? 0}`,
+      ].join('\n'));
+      return;
+    }
     const creditRemaining = response?.credits?.total_remaining;
     console.log([
       `version=${response?.version ?? ''}`,
@@ -1683,12 +1839,23 @@ async function main() {
     }
     response = await client.overview.address(input);
   } else if (command.name === 'address-details') {
-    const input = buildAddressDetailsInput(flags, command.subjectParts);
-    if (flags.url) {
-      console.log(buildAddressDetailsUrl(flags, input));
-      return;
+    if (flags['details-url']) {
+      if (flags.url) {
+        const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+        console.log(`${baseUrl}${normalizeDetailsPath(baseUrl, flags['details-url'])}`);
+        return;
+      }
+      response = await client.address.detailsUrl(flags['details-url'], {
+        idempotencyKey: readIdempotencyKey(flags),
+      });
+    } else {
+      const input = buildAddressDetailsInput(flags, command.subjectParts);
+      if (flags.url) {
+        console.log(buildAddressDetailsUrl(flags, input));
+        return;
+      }
+      response = await client.address.details(input);
     }
-    response = await client.address.details(input);
   } else if (command.name === 'address-unlock') {
     const input = buildAddressUnlockInput(flags, command.subjectParts);
     if (flags.url) {
@@ -1798,6 +1965,12 @@ main().catch((error) => {
     console.error(`${error.message} (${error.status || 'network'})`);
     if (error.requestId) {
       console.error(`request_id=${error.requestId}`);
+    }
+    if (error.retryAfterSeconds !== null) {
+      console.error(`retry_after_seconds=${error.retryAfterSeconds}`);
+    }
+    if (error.code) {
+      console.error(`error_code=${error.code}`);
     }
   } else {
     console.error(error instanceof Error ? error.message : String(error));

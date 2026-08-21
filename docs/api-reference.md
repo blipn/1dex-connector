@@ -34,13 +34,15 @@ La surface pro abonnes n'est pas une API de checkout ou de gestion de compte: le
 | --- | --- | --- |
 | `client.address.details(...)` | `GET /api/v1/address-details` | Donnees completes par familles (`summary`, `rail`, `mobile`, `tabs`, `map_layers`, `parcel_dvf`, `sources`, `source_outcomes`, ou `all`) pour une adresse deja debloquee. |
 | `client.address.unlock(...)` | `POST /api/v1/address-unlocks` | Deblocage d'une adresse avec consommation d'un credit si necessaire, statut `already_active`, `unlocked` ou `insufficient_credits`, puis `details_url`. |
-| `client.account.usage()` | `GET /api/v1/account/usage` | Quotas API minute/heure/jour, credits adresse, pools de credits, grants actifs, consommations recentes et abonnement courant. |
+| `client.account.usage()` | `GET /api/v1/account/usage` | Vue `account-usage-v2` des adresses API live ou demo; forme V1 encore acceptée par les clients pendant la transition. |
 
 Flux recommande:
 
 1. Appeler `account.usage()` pour connaitre quotas et credits.
-2. Appeler `address.details({ ..., fields })`.
-3. Si l'API renvoie `address_unlock_required`, poster `normalized_address_key` seul quand `unlock_locator_kind=normalized_address_key`, sinon poster `unlock_request`.
-4. Appeler le `details_url` renvoye par `address.unlock(...)`.
+2. Appeler `address.details({ ..., fields, idempotencyKey })` avec une clé propre à cette intention.
+3. Si l'API renvoie `address_unlock_required`, poster `normalized_address_key` seul quand `unlock_locator_kind=normalized_address_key`, sinon poster `unlock_request`, avec une nouvelle clé d'idempotence.
+4. Appeler le `details_url` renvoyé via `address.detailsUrl(...)` ou `address.details_url(...)`, avec une nouvelle clé d'idempotence.
+
+Une clé d'idempotence identifie une intention exacte: la conserver pour les rejeux de celle-ci et ne jamais la réutiliser ailleurs. Les clients proposent des tentatives bornées pour `202`, `429` et `503`; `409` reste terminal.
 
 Erreurs d'acces a prevoir: `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -45,7 +45,11 @@ function run(command, args, options = {}) {
 function findPython() {
   const attempts = [];
   for (const [command, prefixArgs] of candidates) {
-    const result = spawnSync(command, [...prefixArgs, '-c', 'import tomllib'], {
+    const result = spawnSync(command, [
+      ...prefixArgs,
+      '-c',
+      'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)',
+    ], {
       encoding: 'utf8',
       shell: process.platform === 'win32' && command === 'py',
       stdio: 'pipe',
@@ -53,40 +57,49 @@ function findPython() {
     if (result.status === 0) {
       return { command, prefixArgs };
     }
-    attempts.push(`${command} ${prefixArgs.join(' ')} -c "import tomllib"`);
+    attempts.push(`${command} ${prefixArgs.join(' ')} (Python 3.10+)`);
   }
 
-  throw new Error(`Unable to find Python 3.11+ with tomllib. Tried: ${attempts.join(', ')}`);
+  throw new Error(`Unable to find Python 3.10+. Tried: ${attempts.join(', ')}`);
 }
 
 const python = findPython();
 const runPython = (args, options = {}) => run(python.command, [...python.prefixArgs, ...args], options);
+const hasPip = spawnSync(python.command, [...python.prefixArgs, '-m', 'pip', '--version'], {
+  encoding: 'utf8',
+  stdio: 'pipe',
+}).status === 0;
+
+const pyprojectText = await readFile(join(packageDir, 'pyproject.toml'), 'utf8');
+const projectSection = pyprojectText.split(/^\[project\]\s*$/mu)[1]?.split(/^\[/mu)[0];
+const project = {
+  name: projectSection?.match(/^name\s*=\s*"([^"]+)"\s*$/mu)?.[1],
+  version: projectSection?.match(/^version\s*=\s*"([^"]+)"\s*$/mu)?.[1],
+};
+if (!project.name || !project.version) {
+  throw new Error('Unable to read project name and version from packages/python/pyproject.toml.');
+}
 
 try {
   await mkdir(wheelDir, { recursive: true });
   await mkdir(installDir, { recursive: true });
   await mkdir(cacheDir, { recursive: true });
 
-  const project = JSON.parse(runPython([
-    '-c',
-    [
-      'import json, tomllib',
-      'data = tomllib.load(open("pyproject.toml", "rb"))["project"]',
-      'print(json.dumps({"name": data["name"], "version": data["version"]}))',
-    ].join('; '),
-  ], { cwd: packageDir }).stdout);
-
-  runPython([
-    '-m',
-    'pip',
-    'wheel',
-    '.',
-    '--no-deps',
-    '-w',
-    wheelDir,
-    '--cache-dir',
-    cacheDir,
-  ], { cwd: packageDir });
+  if (hasPip) {
+    runPython([
+      '-m',
+      'pip',
+      'wheel',
+      '.',
+      '--no-deps',
+      '-w',
+      wheelDir,
+      '--cache-dir',
+      cacheDir,
+    ], { cwd: packageDir });
+  } else {
+    run('uv', ['build', '--wheel', '--out-dir', wheelDir, '.'], { cwd: packageDir });
+  }
 
   const wheels = await readdir(wheelDir);
   const wheel = wheels.find((file) => file.startsWith('1dex_connector-') && file.includes(`-${project.version}-`) && file.endsWith('.whl'));
@@ -95,17 +108,26 @@ try {
   }
   const wheelPath = join(wheelDir, wheel);
 
-  runPython([
-    '-m',
-    'pip',
-    'install',
-    '--no-deps',
-    '--target',
-    installDir,
-    wheelPath,
-    '--cache-dir',
-    cacheDir,
-  ]);
+  if (hasPip) {
+    runPython([
+      '-m',
+      'pip',
+      'install',
+      '--no-deps',
+      '--target',
+      installDir,
+      wheelPath,
+      '--cache-dir',
+      cacheDir,
+    ]);
+  } else {
+    runPython([
+      '-c',
+      'import sys, zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])',
+      wheelPath,
+      installDir,
+    ]);
+  }
 
   const pythonPath = process.env.PYTHONPATH
     ? `${installDir}${process.platform === 'win32' ? ';' : ':'}${process.env.PYTHONPATH}`
@@ -133,9 +155,12 @@ try {
       'metadata = archive.read(metadata_name).decode()',
       'assert f"Name: {sys.argv[2]}" in metadata',
       'assert f"Version: {sys.argv[3]}" in metadata',
+      'assert "Requires-Python: >=3.10" in metadata',
       'assert "public and professional 1dex API surface" in metadata',
       'assert "Auth, purchase, and detailed reads" in metadata',
       'assert "insufficient_credits" in metadata',
+      'assert "idempotency_key" in metadata',
+      'assert "details_url" in metadata',
       'assert any(name.endswith("/LICENSE") and "dist-info/licenses" in name for name in archive.namelist())',
     ].join('; '),
     wheelPath,

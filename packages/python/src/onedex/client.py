@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -8,6 +9,7 @@ from typing import Any, Mapping
 
 
 DEFAULT_BASE_URL = "https://1dex.fr"
+RETRYABLE_STATUSES = frozenset((202, 429, 503))
 PUBLIC_MAP_LAYERS = frozenset((
     "context",
     "iris",
@@ -32,12 +34,18 @@ class OneDexApiError(Exception):
         body: Any = None,
         request_id: str | None = None,
         headers: Mapping[str, str] | None = None,
+        retryable: bool = False,
+        retry_after_seconds: int | None = None,
+        code: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
         self.body = body
         self.request_id = request_id
         self.headers = dict(headers or {})
+        self.retryable = retryable
+        self.retry_after_seconds = retry_after_seconds
+        self.code = code
 
 
 def _normalize_base_url(base_url: str | None) -> str:
@@ -57,6 +65,55 @@ def _ensure_non_empty_string(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a non-empty string.")
     return value.strip()
+
+
+def _normalize_idempotency_key(value: Any, name: str = "idempotency_key") -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{name} must be a non-empty string.")
+    if value != value.strip() or any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError(f"{name} must not contain surrounding whitespace or control characters.")
+    if len(value.encode("utf-8")) > 255:
+        raise ValueError(f"{name} must be at most 255 UTF-8 bytes.")
+    return value
+
+
+def _merge_payload(
+    payload: Mapping[str, Any] | None,
+    keyword_payload: Mapping[str, Any],
+    name: str,
+) -> dict[str, Any]:
+    data = dict(_ensure_mapping(payload, name)) if payload is not None else {}
+    for key, value in keyword_payload.items():
+        if key in data and data[key] != value:
+            raise ValueError(f"{name} received conflicting values for {key}.")
+        data[key] = value
+    return data
+
+
+def _split_idempotent_payload(
+    payload: Mapping[str, Any],
+    explicit_key: str | None,
+    name: str,
+) -> tuple[dict[str, Any], str]:
+    data = dict(payload)
+    camel_key = data.pop("idempotencyKey", None)
+    snake_key = data.pop("idempotency_key", None)
+    candidates = [value for value in (camel_key, snake_key, explicit_key) if value is not None]
+    if not candidates:
+        raise ValueError(f"{name} requires idempotency_key.")
+    normalized = [_normalize_idempotency_key(value, f"{name} idempotency_key") for value in candidates]
+    if any(value != normalized[0] for value in normalized[1:]):
+        raise ValueError(f"{name} received conflicting idempotency keys.")
+    return data, normalized[0]
+
+
+def _normalize_details_path(base_url: str, details_url: str) -> str:
+    value = _ensure_non_empty_string(details_url, "details_url")
+    base = urllib.parse.urlsplit(base_url)
+    resolved = urllib.parse.urlsplit(urllib.parse.urljoin(f"{base_url}/", value))
+    if (resolved.scheme, resolved.netloc) != (base.scheme, base.netloc) or resolved.path != "/api/v1/address-details":
+        raise ValueError("details_url must target /api/v1/address-details on the configured 1dex origin.")
+    return urllib.parse.urlunsplit(("", "", resolved.path, resolved.query, ""))
 
 
 def _has_coordinates(payload: Mapping[str, Any]) -> bool:
@@ -127,6 +184,69 @@ def _request_id_from_body(body: Any) -> str | None:
     return None
 
 
+def _headers_to_dict(headers: Any) -> dict[str, str]:
+    if headers is None:
+        return {}
+    if hasattr(headers, "items"):
+        return {str(key): str(value) for key, value in headers.items()}
+    return dict(headers)
+
+
+def _header_value(headers: Mapping[str, str], name: str) -> str | None:
+    normalized_name = name.lower()
+    for key, value in headers.items():
+        if key.lower() == normalized_name:
+            return value
+    return None
+
+
+def _parse_retry_after_seconds(body: Any, headers: Mapping[str, str]) -> int | None:
+    raw_header = _header_value(headers, "retry-after")
+    if raw_header is not None:
+        try:
+            return max(0, int(float(raw_header)))
+        except ValueError:
+            pass
+    if isinstance(body, Mapping):
+        try:
+            value = float(body.get("retry_after_seconds"))
+            return max(0, int(value))
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
+def _build_api_error(status: int, body: Any, headers: Mapping[str, str]) -> OneDexApiError:
+    warning = (
+        body.get("warnings", [None])[0]
+        if isinstance(body, Mapping) and isinstance(body.get("warnings"), list) and body.get("warnings")
+        else None
+    )
+    message = (
+        warning.get("message")
+        if isinstance(warning, Mapping) and isinstance(warning.get("message"), str)
+        else body.get("message")
+        if isinstance(body, Mapping) and isinstance(body.get("message"), str)
+        else "1dex API request is still in progress."
+        if status == 202
+        else f"1dex API request failed with HTTP {status}."
+    )
+    code = None
+    if isinstance(body, Mapping):
+        raw_code = body.get("error", body.get("status"))
+        code = raw_code if isinstance(raw_code, str) else None
+    return OneDexApiError(
+        message,
+        status=status,
+        body=body,
+        request_id=_request_id_from_body(body) or _header_value(headers, "x-request-id"),
+        headers=headers,
+        retryable=status in RETRYABLE_STATUSES,
+        retry_after_seconds=_parse_retry_after_seconds(body, headers),
+        code=code,
+    )
+
+
 def _network_error_message(exc: BaseException) -> str:
     reason = getattr(exc, "reason", None)
     return str(reason or exc)
@@ -167,21 +287,80 @@ class _AddressNamespace:
     def __init__(self, client: "OneDexClient") -> None:
         self._client = client
 
-    def details(self, payload: Mapping[str, Any]) -> Any:
-        data = _normalize_address_locator_payload(_ensure_mapping(payload, "address details input"))
+    def details(
+        self,
+        payload: Mapping[str, Any] | None = None,
+        *,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        max_retry_delay: float | None = None,
+        cancel_event: Any = None,
+        **locator: Any,
+    ) -> Any:
+        merged = _merge_payload(payload, locator, "address details input")
+        intent, key = _split_idempotent_payload(merged, idempotency_key, "address details input")
+        data = _normalize_address_locator_payload(intent)
         fields = _csv_list(data.pop("fields", None), "address details fields")
         _ensure_normalized_address_key_is_alone(data, "address details input")
         if not _has_address_locator(data):
             raise ValueError("address details input requires address, normalized_address_key, parcel_record_key, or lon/lat.")
         data["fields"] = fields
-        return self._client.request("GET", "/api/v1/address-details", query=data)
+        return self._client.request(
+            "GET",
+            "/api/v1/address-details",
+            query=data,
+            idempotency_key=key,
+            max_attempts=max_attempts,
+            max_retry_delay=max_retry_delay,
+            cancel_event=cancel_event,
+        )
 
-    def unlock(self, payload: Mapping[str, Any]) -> Any:
-        data = _normalize_address_locator_payload(_ensure_mapping(payload, "address unlock input"))
+    def details_url(
+        self,
+        details_url: str,
+        *,
+        idempotency_key: str,
+        max_attempts: int = 1,
+        max_retry_delay: float | None = None,
+        cancel_event: Any = None,
+    ) -> Any:
+        return self._client.request(
+            "GET",
+            _normalize_details_path(self._client.base_url, details_url),
+            idempotency_key=_normalize_idempotency_key(idempotency_key),
+            max_attempts=max_attempts,
+            max_retry_delay=max_retry_delay,
+            cancel_event=cancel_event,
+        )
+
+    def detailsUrl(self, details_url: str, **options: Any) -> Any:  # noqa: N802
+        return self.details_url(details_url, **options)
+
+    def unlock(
+        self,
+        payload: Mapping[str, Any] | None = None,
+        *,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        max_retry_delay: float | None = None,
+        cancel_event: Any = None,
+        **locator: Any,
+    ) -> Any:
+        merged = _merge_payload(payload, locator, "address unlock input")
+        intent, key = _split_idempotent_payload(merged, idempotency_key, "address unlock input")
+        data = _normalize_address_locator_payload(intent)
         _ensure_normalized_address_key_is_alone(data, "address unlock input")
         if not _has_address_locator(data):
             raise ValueError("address unlock input requires address, normalized_address_key, parcel_record_key, or lon/lat.")
-        return self._client.request("POST", "/api/v1/address-unlocks", body=data)
+        return self._client.request(
+            "POST",
+            "/api/v1/address-unlocks",
+            body=data,
+            idempotency_key=key,
+            max_attempts=max_attempts,
+            max_retry_delay=max_retry_delay,
+            cancel_event=cancel_event,
+        )
 
 
 class _AccountNamespace:
@@ -388,6 +567,7 @@ class OneDexClient:
         headers: Mapping[str, str] | None = None,
         timeout: float = 30.0,
         opener: Any = None,
+        sleeper: Any = None,
     ) -> None:
         self.base_url = _normalize_base_url(base_url)
         self.headers = {}
@@ -396,6 +576,7 @@ class OneDexClient:
         self.headers.update(dict(headers or {}))
         self.timeout = timeout
         self._opener = opener or urllib.request.urlopen
+        self._sleeper = sleeper or time.sleep
         self.autocomplete = _AutocompleteNamespace(self)
         self.address_pages = _AddressPagesNamespace(self)
         self.addressPages = self.address_pages  # noqa: N815
@@ -415,6 +596,10 @@ class OneDexClient:
         body: Mapping[str, Any] | None = None,
         query: Mapping[str, Any] | None = None,
         headers: Mapping[str, str] | None = None,
+        idempotency_key: str | None = None,
+        max_attempts: int = 1,
+        max_retry_delay: float | None = None,
+        cancel_event: Any = None,
     ) -> Any:
         url = f"{self.base_url}{path}"
         if query:
@@ -430,6 +615,8 @@ class OneDexClient:
             **self.headers,
             **dict(headers or {}),
         }
+        if idempotency_key is not None:
+            request_headers["Idempotency-Key"] = _normalize_idempotency_key(idempotency_key)
         data = None
         if body is not None:
             request_headers.setdefault("Content-Type", "application/json")
@@ -440,40 +627,53 @@ class OneDexClient:
             }
             data = json.dumps(filtered_body).encode("utf-8")
 
-        request = urllib.request.Request(
-            url,
-            data=data,
-            headers=request_headers,
-            method=method.upper(),
-        )
+        if not isinstance(max_attempts, int) or max_attempts < 1 or max_attempts > 10:
+            raise ValueError("max_attempts must be an integer between 1 and 10.")
+        if max_retry_delay is not None and max_retry_delay < 0:
+            raise ValueError("max_retry_delay must be non-negative.")
 
-        try:
-            with self._opener(request, timeout=self.timeout) as response:
-                return _read_json_response(response)
-        except urllib.error.HTTPError as exc:
-            body_value = _read_json_response(exc)
-            warning = (
-                body_value.get("warnings", [None])[0]
-                if isinstance(body_value, Mapping) and isinstance(body_value.get("warnings"), list)
-                else None
+        for attempt in range(1, max_attempts + 1):
+            if cancel_event is not None and cancel_event.is_set():
+                raise OneDexApiError("1dex API request aborted.", status=0)
+            request = urllib.request.Request(
+                url,
+                data=data,
+                headers=request_headers,
+                method=method.upper(),
             )
-            message = (
-                warning.get("message")
-                if isinstance(warning, Mapping) and isinstance(warning.get("message"), str)
-                else f"1dex API request failed with HTTP {exc.code}."
-            )
-            raise OneDexApiError(
-                message,
-                status=exc.code,
-                body=body_value,
-                request_id=_request_id_from_body(body_value),
-                headers=dict(exc.headers.items()),
-            ) from exc
-        except (urllib.error.URLError, OSError) as exc:
-            raise OneDexApiError(
-                f"Unable to reach 1dex API: {_network_error_message(exc)}",
-                status=0,
-            ) from exc
+            error: OneDexApiError | None = None
+            try:
+                with self._opener(request, timeout=self.timeout) as response:
+                    status = int(getattr(response, "status", getattr(response, "code", 200)))
+                    response_headers = _headers_to_dict(getattr(response, "headers", {}))
+                    body_value = _read_json_response(response)
+                    if status == 202:
+                        error = _build_api_error(status, body_value, response_headers)
+                    else:
+                        return body_value
+            except urllib.error.HTTPError as exc:
+                body_value = _read_json_response(exc)
+                error = _build_api_error(exc.code, body_value, _headers_to_dict(exc.headers))
+            except (urllib.error.URLError, OSError) as exc:
+                raise OneDexApiError(
+                    f"Unable to reach 1dex API: {_network_error_message(exc)}",
+                    status=0,
+                ) from exc
+
+            if error is None:
+                raise OneDexApiError("1dex API retry loop ended unexpectedly.", status=0)
+            if not error.retryable or attempt >= max_attempts:
+                raise error
+            delay = float(error.retry_after_seconds if error.retry_after_seconds is not None else 1)
+            if max_retry_delay is not None:
+                delay = min(delay, max_retry_delay)
+            if cancel_event is not None:
+                if cancel_event.wait(delay):
+                    raise OneDexApiError("1dex API request aborted.", status=0)
+            elif delay > 0:
+                self._sleeper(delay)
+
+        raise OneDexApiError("1dex API retry loop ended unexpectedly.", status=0)
 
     def address_overview(self, payload: Mapping[str, Any]) -> Any:
         return self.request(

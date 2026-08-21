@@ -183,8 +183,9 @@ test('subscriber, preview, commune, and map focus helpers use canonical public A
   await client.address.details({
     normalizedAddressKey: 'addr_123',
     fields: ['summary', 'rail'],
+    idempotencyKey: 'details-req-123',
   });
-  await client.address.unlock({ address: '10 rue des cordeliers aix' });
+  await client.address.unlock({ address: '10 rue des cordeliers aix', idempotencyKey: 'unlock-req-123' });
   await client.account.usage();
   await client.preview.byPath('/ville/aix-en-provence-13001');
   await client.communes.search({ q: 'aix', limit: 3 });
@@ -199,9 +200,11 @@ test('subscriber, preview, commune, and map focus helpers use canonical public A
     'http://example.test/api/v1/address-details?normalized_address_key=addr_123&fields=summary%2Crail',
   );
   assert.equal(calls[0].init.headers.authorization, 'Bearer test-key');
+  assert.equal(calls[0].init.headers['Idempotency-Key'], 'details-req-123');
   assert.equal(calls[1].url, 'http://example.test/api/v1/address-unlocks');
   assert.equal(calls[1].init.method, 'POST');
   assert.equal(calls[1].init.body, JSON.stringify({ address: '10 rue des cordeliers aix' }));
+  assert.equal(calls[1].init.headers['Idempotency-Key'], 'unlock-req-123');
   assert.equal(calls[2].url, 'http://example.test/api/v1/account/usage');
   assert.equal(calls[3].url, 'http://example.test/api/v1/public-preview?path=%2Fville%2Faix-en-provence-13001');
   assert.equal(calls[4].url, 'http://example.test/api/v1/communes/search?q=aix&limit=3');
@@ -229,6 +232,7 @@ test('subscriber address helpers reject mixed normalized key and resolved locato
       normalizedAddressKey: 'addr_123',
       address: '10 rue des cordeliers aix',
       fields: 'summary',
+      idempotencyKey: 'details-mixed',
     }),
     /normalizedAddressKey alone/u,
   );
@@ -236,9 +240,166 @@ test('subscriber address helpers reject mixed normalized key and resolved locato
     () => client.address.unlock({
       normalizedAddressKey: 'addr_123',
       parcelRecordKey: '13001000AB0022',
+      idempotencyKey: 'unlock-mixed',
     }),
     /normalizedAddressKey alone/u,
   );
+});
+
+test('subscriber address helpers require an explicit idempotency key', () => {
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse({ status: 'ok' }),
+  });
+
+  assert.throws(
+    () => client.address.details({ address: '10 rue des cordeliers aix', fields: 'summary' }),
+    /requires idempotencyKey/u,
+  );
+  assert.throws(
+    () => client.address.unlock({ address: '10 rue des cordeliers aix' }),
+    /requires idempotencyKey/u,
+  );
+});
+
+test('idempotency keys preserve exact valid values and reject invalid UTF-8 forms', () => {
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse({ status: 'ok' }),
+  });
+
+  for (const idempotencyKey of [' padded', 'line\nbreak', 'é'.repeat(128)]) {
+    assert.throws(
+      () => client.address.unlock({ address: 'x', idempotencyKey }),
+      /idempotency key.*(whitespace|control|255 UTF-8 bytes)/u,
+    );
+  }
+});
+
+test('address detailsUrl follows only same-origin canonical URLs with a fresh idempotency key', async () => {
+  const calls = [];
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    apiKey: 'test-key',
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return createJsonResponse({ version: 'address-details-v1', fields: ['summary'] });
+    },
+  });
+
+  await client.address.detailsUrl(
+    '/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
+    { idempotencyKey: 'details-url-123' },
+  );
+
+  assert.equal(
+    calls[0].url,
+    'http://example.test/api/v1/address-details?normalized_address_key=addr_123&fields=summary',
+  );
+  assert.equal(calls[0].init.headers.authorization, 'Bearer test-key');
+  assert.equal(calls[0].init.headers['Idempotency-Key'], 'details-url-123');
+  assert.throws(
+    () => client.address.detailsUrl('https://attacker.test/api/v1/address-details?fields=summary', { idempotencyKey: 'blocked' }),
+    /configured 1dex origin/u,
+  );
+  assert.throws(
+    () => client.address.detailsUrl('/api/v1/account/usage', { idempotencyKey: 'blocked' }),
+    /configured 1dex origin/u,
+  );
+});
+
+test('retryable subscriber responses replay the exact idempotency key and stop on success', async () => {
+  const calls = [];
+  const responses = [
+    createJsonResponse({ status: 'request_in_progress', retry_after_seconds: 1 }, { status: 202, headers: { 'retry-after': '1' } }),
+    createJsonResponse({ error: 'usage_limited', retry_after_seconds: 1 }, { status: 429, headers: { 'retry-after': '1' } }),
+    createJsonResponse({ version: 'address-details-v1', fields: ['summary'] }),
+  ];
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async (url, init) => {
+      calls.push({ url, init });
+      return responses.shift();
+    },
+  });
+
+  const result = await client.address.details({
+    address: '10 rue des cordeliers aix',
+    fields: 'summary',
+    idempotencyKey: 'stable-replay-key',
+  }, { retry: { maxAttempts: 3, maxDelayMs: 0 } });
+
+  assert.equal(result.version, 'address-details-v1');
+  assert.equal(calls.length, 3);
+  assert.deepEqual(calls.map((call) => call.init.headers['Idempotency-Key']), [
+    'stable-replay-key',
+    'stable-replay-key',
+    'stable-replay-key',
+  ]);
+});
+
+test('pending, backpressure, and conflicts expose stable retry metadata', async () => {
+  const pendingClient = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse(
+      { status: 'request_in_progress', retry_after_seconds: 2 },
+      { status: 202, headers: { 'retry-after': '2' } },
+    ),
+  });
+  await assert.rejects(
+    () => pendingClient.address.unlock({ address: 'x', idempotencyKey: 'pending-key' }),
+    (error) => {
+      assert.equal(error.status, 202);
+      assert.equal(error.retryable, true);
+      assert.equal(error.retryAfterSeconds, 2);
+      assert.equal(error.code, 'request_in_progress');
+      return true;
+    },
+  );
+
+  const conflictClient = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => createJsonResponse({ error: 'idempotency_conflict' }, { status: 409 }),
+  });
+  await assert.rejects(
+    () => conflictClient.address.unlock({ address: 'x', idempotencyKey: 'conflict-key' }, { retry: true }),
+    (error) => {
+      assert.equal(error.status, 409);
+      assert.equal(error.retryable, false);
+      assert.equal(error.code, 'idempotency_conflict');
+      return true;
+    },
+  );
+});
+
+test('caller cancellation aborts retry waiting without launching another request', async () => {
+  const controller = new AbortController();
+  let calls = 0;
+  const client = new OneDexClient({
+    baseUrl: 'http://example.test',
+    fetch: async () => {
+      calls += 1;
+      queueMicrotask(() => controller.abort());
+      return createJsonResponse(
+        { status: 'request_in_progress', retry_after_seconds: 60 },
+        { status: 202, headers: { 'retry-after': '60' } },
+      );
+    },
+  });
+
+  await assert.rejects(
+    () => client.address.details({
+      address: '10 rue des cordeliers aix',
+      fields: 'summary',
+      idempotencyKey: 'cancel-key',
+    }, { retry: true, signal: controller.signal }),
+    (error) => {
+      assert.equal(error.status, 0);
+      assert.match(error.message, /aborted/u);
+      return true;
+    },
+  );
+  assert.equal(calls, 1);
 });
 
 test('unknown public map layer is rejected locally', async () => {

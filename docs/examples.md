@@ -4,6 +4,7 @@ Runnable examples:
 
 - `examples/curl/address-overview.sh`
 - `examples/curl/map-parcelles.sh`
+- `examples/curl/subscriber-address-workflow.sh`
 - `examples/go/map-parcelles.go`
 - `examples/node/address-overview.mjs`
 - `examples/node/address-details.mjs`
@@ -27,9 +28,9 @@ CLI examples:
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
-1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
-1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
-1dex usage --api-key "$ONEDEX_API_KEY" -f summary
+1dex address details "10 rue des cordeliers aix" --fields summary,rail,tabs --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY" --max-attempts 3
+1dex address unlock "10 rue des cordeliers aix" --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY" --max-attempts 3
+1dex account usage --api-key "$ONEDEX_API_KEY" -f summary
 1dex "10 rue des cordeliers aix"
 1dex autocomplete "10 rue des cordeliers aix" --limit 5
 1dex communes aix --limit 5
@@ -62,3 +63,5 @@ python examples/python/address_details.py "10 rue des cordeliers aix"
 ```
 
 If the address is locked, those examples print the returned unlock payload and stop. Set `ONEDEX_UNLOCK=1` only when you intentionally want to consume one address credit when needed.
+
+Detailed reads and unlocks require a caller-generated idempotency key. Reuse the same value only for retries of the same logical request; use a fresh value for a new address or intent. The clients can retry `202`, `429`, and `503` while preserving that exact key. A `409` is terminal because it means the key was reused for a different intention.
