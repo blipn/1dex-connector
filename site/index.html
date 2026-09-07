@@ -91,7 +91,7 @@
         <div class="section-heading" data-reveal>
           <p class="eyebrow">Démarrage</p>
           <h2 id="quickstart-title">Lire, débloquer et scorer une adresse.</h2>
-          <p>Le connecteur expose des helpers pour les routes publiques documentées sur <code>1dex.fr</code>, dont les détails, déblocages et quotas réservés aux comptes professionnels abonnés.</p>
+          <p>Le connecteur expose les routes documentées sur <code>1dex.fr</code>, dont les détails et déblocages idempotents pour clés démo publiées et clés live autorisées.</p>
         </div>
         <div class="code-columns">
           <article class="code-sample" data-reveal>
@@ -101,7 +101,7 @@
             </div>
             <pre id="npm-sample"><code>npm i -g @1dex-fr/1dex
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
-1dex details "10 rue des cordeliers aix" --fields summary,rail --api-key "$ONEDEX_API_KEY"
+1dex address details "10 rue des cordeliers aix" --fields summary,rail --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
 1dex score address "10 rue des cordeliers aix" -f summary</code></pre>
           </article>
           <article class="code-sample" data-reveal>
@@ -111,7 +111,8 @@
             </div>
             <pre id="curl-sample"><code>curl -sS "https://1dex.fr/api/v1/address-overview?address=10%20rue%20des%20cordeliers%20aix&amp;dvf_radius_m=600"
 curl -sS "https://1dex.fr/api/v1/address-details?address=10%20rue%20des%20cordeliers%20aix&amp;fields=summary,rail" \
-  -H "Authorization: Bearer $ONEDEX_API_KEY"
+  -H "Authorization: Bearer $ONEDEX_API_KEY" \
+  -H "Idempotency-Key: $ONEDEX_DETAILS_REQUEST_ID"
 curl -sS -X POST "https://1dex.fr/api/v1/score/address" \
   -H "Content-Type: application/json" \
   -d '{"items":[{"address":"10 rue des cordeliers aix"}]}'</code></pre>
@@ -123,6 +124,7 @@ curl -sS -X POST "https://1dex.fr/api/v1/score/address" \
             </div>
             <pre id="js-sample"><code>npm i @1dex-fr/connector
 
+import { randomUUID } from "node:crypto";
 import { OneDexClient } from "@1dex-fr/connector";
 
 const client = new OneDexClient({
@@ -138,10 +140,11 @@ const score = await client.score.address({
 const details = await client.address.details({
   address: "10 rue des cordeliers aix",
   fields: ["summary", "rail"],
-});
+  idempotencyKey: randomUUID(),
+}, { retry: true });
 const usage = await client.account.usage();
 
-console.log(suggestions.suggestions, score.items, details.fields, usage.credits.total_remaining);</code></pre>
+console.log(suggestions.suggestions, score.items, details.fields, usage.version);</code></pre>
           </article>
           <article class="code-sample" data-reveal>
             <div class="sample-head">
@@ -151,6 +154,7 @@ console.log(suggestions.suggestions, score.items, details.fields, usage.credits.
 <pre id="py-sample"><code>python -m pip install 1dex-connector
 
 import os
+import uuid
 
 from onedex import OneDexClient
 
@@ -162,13 +166,15 @@ suggestions = client.autocomplete.address({
 score = client.score.address({
     "items": [{"address": "10 rue des cordeliers aix"}],
 })
-details = client.address.details({
-    "address": "10 rue des cordeliers aix",
-    "fields": ["summary", "rail"],
-})
+details = client.address.details(
+    address="10 rue des cordeliers aix",
+    fields=["summary", "rail"],
+    idempotency_key=str(uuid.uuid4()),
+    max_attempts=3,
+)
 usage = client.account.usage()
 
-print(suggestions["suggestions"], score["items"], details["fields"], usage["credits"]["total_remaining"])</code></pre>
+print(suggestions["suggestions"], score["items"], details["fields"], usage["version"])</code></pre>
           </article>
         </div>
       </section>

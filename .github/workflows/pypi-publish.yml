@@ -1,86 +1,111 @@
 name: PyPI publish
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/pypi-publish.yml"
-      - "packages/python/**"
 
 permissions:
   contents: read
-  id-token: write
+  actions: read
+
+concurrency:
+  group: pypi-publish
+  cancel-in-progress: false
 
 jobs:
   publish:
     name: Publish Python connector
+    if: >-
+      github.repository == 'blipn/1dex-connector' &&
+      ((github.event_name == 'workflow_run' &&
+        github.event.workflow_run.event == 'push' &&
+        github.event.workflow_run.head_branch == 'main' &&
+        github.event.workflow_run.conclusion == 'success') ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     environment: pypi
-    defaults:
-      run:
-        working-directory: packages/python
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout exact validated commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Require current main and its successful CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          git fetch --no-tags origin main
+          test "$(git rev-parse HEAD)" = "${RELEASE_SHA}"
+          test "$(git rev-parse FETCH_HEAD)" = "${RELEASE_SHA}"
+          COUNT="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs?head_sha=${RELEASE_SHA}&branch=main&event=push&status=success&per_page=1" --jq '.total_count')"
+          test "${COUNT}" -gt 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-
-      - name: Install build tools
-        run: python -m pip install --upgrade build
-
-      - name: Run CI checks
-        run: npm run ci
-        working-directory: ${{ github.workspace }}
-
-      - name: Read package version
+      - name: Check exact registry version
         id: package
-        run: |
-          NAME="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['name'])")"
-          VERSION="$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")"
-          echo "name=${NAME}" >> "${GITHUB_OUTPUT}"
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
-
-      - name: Ensure package version is unpublished
-        env:
-          PACKAGE_NAME: ${{ steps.package.outputs.name }}
-          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+        working-directory: packages/python
         run: |
           python - <<'PY'
+          import json
           import os
-          import sys
+          import re
+          import tomllib
           import urllib.error
+          import urllib.parse
           import urllib.request
 
-          name = os.environ["PACKAGE_NAME"]
-          version = os.environ["PACKAGE_VERSION"]
-          url = f"https://pypi.org/pypi/{name}/{version}/json"
+          with open('pyproject.toml', 'rb') as source:
+              project = tomllib.load(source)['project']
+          name, version = project['name'], project['version']
+          url = f"https://pypi.org/pypi/{urllib.parse.quote(name)}/{urllib.parse.quote(version)}/json"
           try:
-              with urllib.request.urlopen(url, timeout=15):
-                  pass
-          except urllib.error.HTTPError as exc:
-              if exc.code == 404:
-                  print(f"{name} {version} is not published yet.")
-                  sys.exit(0)
-              raise
-
-          print(f"{name} {version} already exists on PyPI; bump packages/python/pyproject.toml before publishing.")
-          sys.exit(1)
+              with urllib.request.urlopen(url, timeout=15) as response:
+                  published = json.load(response)
+              if published['info']['name'] != name or published['info']['version'] != version:
+                  raise RuntimeError('Registry identity mismatch.')
+              distribution_name = re.sub(r'[-_.]+', '_', name).lower()
+              expected_files = {
+                  f'{distribution_name}-{version}-py3-none-any.whl',
+                  f'{distribution_name}-{version}.tar.gz',
+              }
+              missing_files = expected_files - {item['filename'] for item in published['urls']}
+              if missing_files:
+                  raise RuntimeError(f'Incomplete PyPI version {name} {version}; missing {", ".join(sorted(missing_files))}. Inspect the existing release before retrying.')
+              exists = True
+          except urllib.error.HTTPError as error:
+              if error.code != 404:
+                  raise
+              exists = False
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f"exists={str(exists).lower()}\n")
+          print(f"{name} {version}: {'already published; skipped' if exists else 'not published'}")
           PY
 
-      - name: Build package
-        run: python -m build
+      - name: Install build tools
+        if: steps.package.outputs.exists == 'false'
+        run: python -m pip install --upgrade build twine
 
-      - name: Publish package
+      - name: Build wheel from source distribution
+        if: steps.package.outputs.exists == 'false'
+        working-directory: packages/python
+        run: |
+          python -m build
+          python -m twine check --strict dist/*
+
+      - name: Publish validated distributions with OIDC
+        if: steps.package.outputs.exists == 'false'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/python/dist

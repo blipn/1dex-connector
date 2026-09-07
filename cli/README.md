@@ -16,7 +16,7 @@ Or install it in a project and run it with `npx`:
 ```bash
 npm i @1dex-fr/1dex
 npx 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
-npx 1dex details "10 rue des cordeliers aix" --fields summary,rail --api-key "$ONEDEX_API_KEY"
+npx 1dex address details "10 rue des cordeliers aix" --fields summary,rail --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
 npx 1dex autocomplete "10 rue des cordeliers aix"
 npx 1dex score address "10 rue des cordeliers aix" -f summary
 npx 1dex parcelles "50 rue des tanneurs aix" -f summary
@@ -27,10 +27,10 @@ npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
-1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
-1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
-1dex unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --api-key "$ONEDEX_API_KEY"
-1dex usage --api-key "$ONEDEX_API_KEY" -f summary
+1dex address details "10 rue des cordeliers aix" --fields summary,rail,tabs --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY" --max-attempts 3
+1dex address unlock "10 rue des cordeliers aix" --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY" --max-attempts 3
+1dex address unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+1dex account usage --api-key "$ONEDEX_API_KEY" -f summary
 1dex autocomplete "10 rue des cordeliers aix" --limit 5
 1dex communes aix --limit 5
 1dex preview /ville/aix-en-provence-13001 --url
@@ -43,14 +43,16 @@ npx 1dex parcelles "50 rue des tanneurs aix" -f summary
 
 ## Auth, purchase, and detailed reads
 
-Public commands such as `overview`, `autocomplete`, `score`, `preview`, `communes`, and `map` do not require an API key within public quotas. Complete address details and unlock flows require an active professional 1dex subscription. Purchase and checkout happen on `1dex.fr`; once the professional account is active, create an API key at <https://1dex.fr/compte/api> and pass it with `--api-key` or `ONEDEX_API_KEY`.
+Public commands such as `overview`, `autocomplete`, `score`, `preview`, `communes`, and `map` do not require an API key within public quotas. Complete address details and unlock flows require a 1dex API key. Free demo keys are pinned to the configured demo address; live keys use the account's subscription and activation rights. Manage keys at <https://1dex.fr/compte/api> and pass one with `--api-key` or `ONEDEX_API_KEY`.
 
 Recommended subscriber flow:
 
-1. Check subscription state, quota windows, credits, active grants, and recent consumptions with `1dex usage --api-key "$ONEDEX_API_KEY" -f summary`.
-2. Try `1dex details "<address>" --fields summary,rail --api-key "$ONEDEX_API_KEY"`.
-3. If the API returns `address_unlock_required`, run `1dex unlock --normalized-address-key <key>` when `normalized_address_key` is returned, or `1dex unlock --input '<unlock_request-json>'` when the API returns an `unlock_request` payload.
-4. Read the address again through the returned `details_url`.
+1. Check live/demo usage with `1dex account usage --api-key "$ONEDEX_API_KEY" -f summary`.
+2. Try `1dex address details "<address>" --fields summary,rail --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY"`.
+3. If the API returns `address_unlock_required`, run `1dex address unlock --normalized-address-key <key> --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID"`, or pass the returned `unlock_request` JSON.
+4. Follow the returned URL with `1dex address details --details-url '<details_url>' --idempotency-key '<new-key>'`.
+
+Reuse a key only for retries of the exact same intention. `--max-attempts` retries `202`, `429`, and `503` with that key and respects `Retry-After`; `409` is terminal.
 
 Common professional API errors:
 
@@ -60,12 +62,12 @@ Common professional API errors:
 - `address_unlock_required`: the detailed address must be unlocked before reading.
 - `insufficient_credits`: the account has no remaining address credits for the requested unlock.
 
-`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. It accepts the live public location parameters (`address`, `city_code`, `lon`/`lat`, `parcel_record_key`, `dvf_radius_m`, `dvf_year`); the bare `1dex <address>` form keeps the same overview route for backwards compatibility. `details`, `unlock`, and `usage` use subscriber API keys from `--api-key` or `ONEDEX_API_KEY`. When using `--normalized-address-key`, pass it alone; do not combine it with address text, `--parcel-record-key`, or `--lon`/`--lat`. Use `1dex unlock --input '<unlock_request-json>'` when `address-details` returns an `unlock_request` object instead of a stable key. `usage` returns API quota windows, address credit pools, active grants, recent consumptions, and subscription state; use it before batch jobs to avoid spending requests blindly. `autocomplete`, `communes`, `preview`, `state`, `viewport`, `focus`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary. `parcelles` is the primary free connector layer; `dvf`, `travaux`, `iris`, `context`, and `labels` are public verified shortcuts.
+`1dex overview` calls `https://1dex.fr/api/v1/address-overview` and prints the public address overview payload. It accepts the live public location parameters (`address`, `city_code`, `lon`/`lat`, `parcel_record_key`, `dvf_radius_m`, `dvf_year`); the bare `1dex <address>` form keeps the same overview route for backwards compatibility. `details`, `unlock`, and `usage` remain aliases of the canonical `address details`, `address unlock`, and `account usage` commands. They use API keys from `--api-key` or `ONEDEX_API_KEY`. When using `--normalized-address-key`, pass it alone; do not combine it with address text, `--parcel-record-key`, or `--lon`/`--lat`. `usage` understands V1 and `account-usage-v2`. `autocomplete`, `communes`, `preview`, `state`, `viewport`, `focus`, and `score *` target the canonical `/api/v1` routes. The map-layer commands call `https://1dex.fr/api/v1/map-layer/{layer}` and print JSON, CSV, or a short summary.
 
 ```bash
 1dex overview "10 rue des cordeliers aix" --dvf-radius-m 300
 1dex "10 rue des cordeliers aix"
-1dex details "10 rue des cordeliers aix" --fields summary,rail
+1dex address details "10 rue des cordeliers aix" --fields summary,rail --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID"
 1dex autocomplete "10 rue des cordeliers aix" --url
 1dex communes aix --url
 1dex state "10-rue-de-la-paix-paris-75002"
@@ -81,9 +83,9 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 ```text
 1dex <address> [options]
 1dex overview <address|--city-code|--lon/--lat|--parcel-record-key> [options]
-1dex details <address|--normalized-address-key|--parcel-record-key|--lon/--lat> --fields <csv> [options]
-1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--input> [options]
-1dex usage [options]
+1dex address details <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--details-url> --idempotency-key <key> [options]
+1dex address unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--input> --idempotency-key <key> [options]
+1dex account usage [options]
 1dex autocomplete <query> [options]
 1dex communes <query> [options]
 1dex preview <path> [options]
@@ -110,4 +112,5 @@ Run `1dex examples` for copy-paste commands and `1dex doctor` to verify that the
 
 Set `ONEDEX_BASE_URL` only if you need to target another compatible environment.
 Set `ONEDEX_API_KEY` for subscriber endpoints when you do not pass `--api-key`.
+Set `ONEDEX_IDEMPOTENCY_KEY` only for the current logical details or unlock intention when you do not pass `--idempotency-key`.
 Set `ONEDEX_NO_UPDATE_CHECK=1` to disable the npm update notice in automated environments.

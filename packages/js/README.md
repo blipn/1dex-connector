@@ -14,7 +14,7 @@ import { OneDexClient } from "@1dex-fr/connector";
 
 ## Public reads
 
-Public endpoints such as `overview`, `autocomplete`, `score`, `preview`, `communes`, and `map` can be called without an API key within public quotas.
+Public overview access is intended for manual, one-off checks within public quotas. Automation and integrations require active API rights. Some map layers also require an authorized Explorer session; an API key alone does not grant access to detailed DVF or works layers.
 
 ```js
 import { OneDexClient } from "@1dex-fr/connector";
@@ -41,9 +41,9 @@ const viewport = await client.map.viewport({
 });
 ```
 
-## Auth, purchase, and detailed reads
+## Authentication and detailed reads
 
-Complete address details and unlock flows require an active professional 1dex subscription. Purchase and checkout happen on `1dex.fr`; once the professional account is active, create an API key at <https://1dex.fr/compte/api>.
+Complete address details and unlock flows require a 1dex API key. Professional Free accounts can issue a demo key only when a demo is published in that environment. Demo keys are pinned to the configured address; live keys use the account's subscription and activation rights. Check current offer availability on `1dex.fr`. Keep live keys in your backend, never in browser code or URLs. Create or manage keys at <https://1dex.fr/compte/api>.
 
 Pass the key explicitly or through `ONEDEX_API_KEY`:
 
@@ -57,19 +57,22 @@ const client = new OneDexClient({
 
 Recommended subscriber flow:
 
-1. Check subscription state, quota windows, credits, active grants, and recent consumptions with `client.account.usage()`.
-2. Try `client.address.details(...)` with an address, parcel, coordinates, or a `normalizedAddressKey`.
+1. Check the V2 `api_addresses` usage view (or the legacy V1 response during rollout) with `client.account.usage()`.
+2. Try `client.address.details(...)` with an address, parcel, coordinates, or a `normalizedAddressKey`, plus a caller-generated idempotency key.
 3. If the API raises `address_unlock_required`, call `client.address.unlock(...)` with the returned `normalized_address_key`, or post the returned `unlock_request` object when present.
-4. Read the detailed address again, or follow the returned `details_url`.
+4. Follow the returned `details_url` with `client.address.detailsUrl(...)`; the helper rejects another origin or route.
 
 ```js
+import { randomUUID } from "node:crypto";
+
 const usage = await client.account.usage();
 
 try {
   const details = await client.address.details({
     address: "10 rue des cordeliers aix",
     fields: ["summary", "rail"],
-  });
+    idempotencyKey: randomUUID(),
+  }, { retry: true });
   console.log(details.fields);
 } catch (error) {
   if (!(error instanceof OneDexApiError)) {
@@ -79,22 +82,33 @@ try {
     throw error;
   }
 
+  const unlockIdempotencyKey = randomUUID();
   const unlock = error.body.unlock_request
-    ? await client.address.unlock(error.body.unlock_request)
+    ? await client.address.unlock({
+        ...error.body.unlock_request,
+        idempotencyKey: unlockIdempotencyKey,
+      }, { retry: true })
     : await client.address.unlock({
         normalizedAddressKey: error.body.normalized_address_key,
-      });
+        idempotencyKey: unlockIdempotencyKey,
+      }, { retry: true });
 
   const details = unlock.details_url
-    ? await client.request("GET", unlock.details_url)
+    ? await client.address.detailsUrl(unlock.details_url, {
+        idempotencyKey: randomUUID(),
+        retry: true,
+      })
     : await client.address.details({
         normalizedAddressKey: unlock.normalized_address_key,
         fields: ["summary", "rail"],
-      });
+        idempotencyKey: randomUUID(),
+      }, { retry: true });
 
-  console.log(usage.credits.total_remaining, details.fields);
+  console.log(usage.version, details.fields);
 }
 ```
+
+`retry: true` retries `202`, `429`, and `503` with the exact same idempotency key and honors `Retry-After`. A `409` is never retried: it means the key identifies another intention. Pass an `AbortSignal` to cancel both the active request and any retry wait.
 
 Common professional API errors:
 
@@ -110,6 +124,7 @@ The client exposes helpers for the current `/api/v1` routes:
 
 - `client.overview.address(...)`
 - `client.address.details(...)`
+- `client.address.detailsUrl(...)`
 - `client.address.unlock(...)`
 - `client.account.usage()`
 - `client.autocomplete.address(...)`
@@ -120,3 +135,9 @@ The client exposes helpers for the current `/api/v1` routes:
 - `client.map.layer(...)`, `client.map.viewport(...)`, `client.map.focus.address(...)`, `client.map.focus.publicLocation(...)`, `client.map.focus.parcelle(...)`, `client.map.focus.parcelles(...)`, `client.map.focus.feature(...)`
 
 For command-line usage, install `@1dex-fr/1dex`.
+
+Supported runtimes: Node 22 and 24. Type declarations cover both legacy account usage and `account-usage-v2` during rollout.
+
+## Transport limits
+
+The base URL accepts either `https://1dex.fr` or `https://1dex.fr/api/v1`. HTTP redirects are rejected so credentials and mutations are never forwarded to an unexpected URL. A retry wait budget stops retries when `Retry-After` exceeds it; it never shortens the server’s delay. Errors retain the HTTP status even when an upstream response contains text or HTML.

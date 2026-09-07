@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "packages/python/src"))
@@ -20,10 +21,15 @@ client = OneDexClient(
 
 fields = ["summary", "rail"]
 usage = client.account.usage()
-print("credits_remaining=", usage.get("credits", {}).get("total_remaining", ""))
+print("usage_version=", usage.get("version", "legacy"))
 
 try:
-    details = client.address.details({"address": address, "fields": fields})
+    details = client.address.details(
+        address=address,
+        fields=fields,
+        idempotency_key=str(uuid.uuid4()),
+        max_attempts=3,
+    )
     print(json.dumps(details, indent=2, ensure_ascii=False))
 except OneDexApiError as error:
     if error.status != 402 or not isinstance(error.body, dict) or error.body.get("error") != "address_unlock_required":
@@ -39,17 +45,31 @@ except OneDexApiError as error:
 
     unlock_request = error.body.get("unlock_request")
     if unlock_request:
-        unlock = client.address.unlock(unlock_request)
+        unlock = client.address.unlock(
+            unlock_request,
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
     else:
-        unlock = client.address.unlock({"normalized_address_key": error.body["normalized_address_key"]})
+        unlock = client.address.unlock(
+            normalized_address_key=error.body["normalized_address_key"],
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
 
     details_url = unlock.get("details_url")
     if details_url:
-        details = client.request("GET", details_url)
+        details = client.address.details_url(
+            details_url,
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
     else:
-        details = client.address.details({
-            "normalized_address_key": unlock["normalized_address_key"],
-            "fields": fields,
-        })
+        details = client.address.details(
+            normalized_address_key=unlock["normalized_address_key"],
+            fields=fields,
+            idempotency_key=str(uuid.uuid4()),
+            max_attempts=3,
+        )
 
     print(json.dumps(details, indent=2, ensure_ascii=False))

@@ -6,10 +6,13 @@ Le contrat public canonique des erreurs est documente sur `1dex.fr`:
 
 Comportement du connecteur:
 
-- Les reponses HTTP `2xx` sont renvoyees en JSON decode.
-- Les reponses non `2xx` levent `OneDexApiError`.
-- L'objet d'erreur contient `status`, `body` decode lorsqu'il est disponible, et le meilleur identifiant de requete disponible.
-- Les appelants doivent respecter `Retry-After` sur les reponses `429`.
+- Les réponses HTTP finales `2xx`, sauf `202`, sont renvoyées en JSON décodé.
+- `202 request_in_progress` est exposé comme temporaire ou rejoué quand la politique de tentatives est activée.
+- Les autres réponses non finales lèvent `OneDexApiError`.
+- L'objet d'erreur contient `status`, `body`, `requestId`, `retryable`, `retryAfterSeconds` et `code` lorsqu'ils sont disponibles.
+- `202`, `429` et `503` sont rejouables avec la même `Idempotency-Key`; les clients respectent `Retry-After` et bornent le nombre de tentatives.
+- `409` n'est jamais rejoué: la clé d'idempotence identifie déjà une autre intention.
+- Une annulation JS coupe la requête et l'attente. En Python synchrone, `cancel_event` arrête avant l'appel ou entre deux tentatives.
 
 Erreurs d'acces pro usuelles:
 

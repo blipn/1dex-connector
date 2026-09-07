@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
+import { OneDexApiError, OneDexClient } from '@1dex-fr/connector';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
 const DEFAULT_SAMPLE_ADDRESS = '10 rue des cordeliers aix';
@@ -39,16 +40,20 @@ const VALUE_FLAGS = new Set([
   'city-code',
   'dvf-radius-m',
   'dvf-year',
+  'details-url',
   'feature-key',
   'fields',
   'format',
   'input',
+  'idempotency-key',
   'layer',
   'layer-key',
   'lat',
   'layers',
   'limit',
   'lon',
+  'max-attempts',
+  'max-retry-delay-ms',
   'normalized-address-key',
   'parcel-record-key',
   'path',
@@ -69,14 +74,30 @@ const BOOLEAN_FLAGS = new Set([
   'version',
 ]);
 
-class OneDexApiError extends Error {
-  constructor(message, options = {}) {
-    super(message);
-    this.name = 'OneDexApiError';
-    this.status = options.status ?? 0;
-    this.body = options.body;
-    this.requestId = options.requestId ?? null;
+function normalizeIdempotencyKey(value, name = 'idempotency key') {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new TypeError(`${name} is required. Use --idempotency-key or ONEDEX_IDEMPOTENCY_KEY.`);
   }
+  if (value !== value.trim() || /[\u0000-\u001f\u007f]/u.test(value)) {
+    throw new TypeError(`${name} must not contain surrounding whitespace or control characters.`);
+  }
+  if (Buffer.byteLength(value, 'utf8') > 255) {
+    throw new TypeError(`${name} must be at most 255 UTF-8 bytes.`);
+  }
+  return value;
+}
+
+function normalizeDetailsPath(baseUrl, detailsUrl) {
+  const value = String(detailsUrl ?? '').trim();
+  if (!value) {
+    throw new TypeError('details URL is required. Use --details-url <url>.');
+  }
+  const base = new URL(baseUrl);
+  const resolved = new URL(value, `${baseUrl}/`);
+  if (resolved.origin !== base.origin || resolved.pathname !== '/api/v1/address-details') {
+    throw new TypeError('details URL must target /api/v1/address-details on the configured 1dex origin.');
+  }
+  return `${resolved.pathname}${resolved.search}`;
 }
 
 function normalizeBaseUrl(baseUrl) {
@@ -84,7 +105,7 @@ function normalizeBaseUrl(baseUrl) {
   if (!value) {
     throw new TypeError('baseUrl must not be empty.');
   }
-  return value.replace(/\/+$/, '');
+  return value.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
 }
 
 function appendQuery(path, query) {
@@ -130,341 +151,6 @@ function assertNormalizedAddressKeyIsAlone(input, name) {
   }
 }
 
-function normalizeCsvList(value, name) {
-  if (Array.isArray(value)) {
-    const items = value.map((item) => String(item).trim()).filter(Boolean);
-    if (items.length === 0) {
-      throw new Error(`${name} must not be empty.`);
-    }
-    return items.join(',');
-  }
-  const text = String(value ?? '').trim();
-  if (!text) {
-    throw new Error(`${name} must not be empty.`);
-  }
-  return text;
-}
-
-function normalizeAddressLocator(input) {
-  const {
-    cityCode,
-    city_code: cityCodeSnake,
-    normalizedAddressKey,
-    normalized_address_key: normalizedAddressKeySnake,
-    parcelRecordKey,
-    parcel_record_key: parcelRecordKeySnake,
-    ...query
-  } = input;
-  return {
-    ...query,
-    city_code: cityCodeSnake ?? cityCode,
-    normalized_address_key: normalizedAddressKeySnake ?? normalizedAddressKey,
-    parcel_record_key: parcelRecordKeySnake ?? parcelRecordKey,
-  };
-}
-
-async function readJsonResponse(response) {
-  const text = await response.text();
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new OneDexApiError('1dex API returned invalid JSON.', {
-      status: response.status,
-      body: text,
-      requestId: response.headers.get('x-request-id'),
-    });
-  }
-}
-
-class OneDexClient {
-  constructor(options = {}) {
-    this.baseUrl = normalizeBaseUrl(options.baseUrl);
-    this.fetch = options.fetch ?? globalThis.fetch;
-    this.timeoutMs = options.timeoutMs ?? 30_000;
-    this.defaultHeaders = {};
-    if (options.apiKey) {
-      this.defaultHeaders.authorization = `Bearer ${options.apiKey}`;
-    }
-
-    if (typeof this.fetch !== 'function') {
-      throw new TypeError('A fetch implementation is required.');
-    }
-
-    this.autocomplete = Object.freeze({
-      address: (input) => this.autocompleteAddress(input),
-    });
-    this.addressPages = Object.freeze({
-      state: (slug) => this.addressPageState(slug),
-    });
-    this.address = Object.freeze({
-      details: (input) => this.addressDetails(input),
-      unlock: (input) => this.addressUnlock(input),
-    });
-    this.account = Object.freeze({
-      usage: () => this.accountUsage(),
-    });
-    this.communes = Object.freeze({
-      search: (input) => this.communeSearch(input),
-    });
-    this.map = Object.freeze({
-      parcelles: (input) => this.mapParcelles(input),
-      dvf: (input) => this.mapLayer({ ...input, layer: 'parcelles_dvf' }),
-      travaux: (input) => this.mapLayer({ ...input, layer: 'parcelles_travaux' }),
-      iris: (input) => this.mapLayer({ ...input, layer: 'iris' }),
-      context: (input) => this.mapLayer({ ...input, layer: 'context' }),
-      labels: (input) => this.mapLayer({ ...input, layer: 'parcelles_labels' }),
-      layer: (input) => this.mapLayer(input),
-      viewport: (input) => this.mapViewport(input),
-      focus: Object.freeze({
-        parcelle: (input) => this.mapFocusParcelle(input),
-        parcelles: (input) => this.mapFocusParcelles(input),
-        address: (input) => this.mapFocusAddress(input),
-        publicLocation: (input) => this.mapFocusPublicLocation(input),
-        feature: (input) => this.mapFocusFeature(input),
-      }),
-    });
-    this.overview = Object.freeze({
-      address: (input) => this.addressOverview(input),
-    });
-    this.preview = Object.freeze({
-      byPath: (input) => this.publicPreview(input),
-    });
-    this.score = Object.freeze({
-      address: (input) => this.scoreAddress(input),
-      compare: (input) => this.scoreCompare(input),
-      grid: (input) => this.scoreGrid(input),
-      addressSuggest: (input) => this.scoreAddressSuggest(input),
-    });
-  }
-
-  async request(method, path, options = {}) {
-    const controller = new AbortController();
-    const timer = this.timeoutMs > 0
-      ? setTimeout(() => controller.abort(), this.timeoutMs)
-      : undefined;
-
-    const headers = { accept: 'application/json', ...this.defaultHeaders };
-    let body;
-    if (options.body !== undefined) {
-      headers['content-type'] = 'application/json';
-      body = JSON.stringify(options.body);
-    }
-
-    let response;
-    try {
-      response = await this.fetch(`${this.baseUrl}${path}`, {
-        method,
-        headers,
-        body,
-        signal: controller.signal,
-      });
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        throw new OneDexApiError('1dex API request timed out.', { status: 0 });
-      }
-      const message = error instanceof Error ? error.message : String(error);
-      throw new OneDexApiError(`Unable to reach 1dex API: ${message}`, { status: 0 });
-    } finally {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    }
-
-    const bodyValue = await readJsonResponse(response);
-    if (!response.ok) {
-      const warning = Array.isArray(bodyValue?.warnings) ? bodyValue.warnings[0] : undefined;
-      const warningMessage = warning?.message;
-      throw new OneDexApiError(warningMessage ?? `1dex API returned ${response.status}.`, {
-        status: response.status,
-        body: bodyValue,
-        requestId: bodyValue?.request_id ?? response.headers.get('x-request-id'),
-      });
-    }
-    return bodyValue;
-  }
-
-  mapParcelles(input) {
-    return this.mapLayer({ ...input, layer: 'parcelles' });
-  }
-
-  mapLayer(input) {
-    const { address, city_code: cityCode, lon, lat, layer = 'parcelles', ...query } = input;
-    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || !cityCode.trim())) {
-      throw new TypeError('map layer input requires address, city_code, or lon/lat.');
-    }
-    const layerKey = normalizeMapLayer(layer);
-    const path = appendQuery(`/api/v1/map-layer/${encodeURIComponent(layerKey)}`, {
-      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
-      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
-      lon,
-      lat,
-      ...query,
-    });
-    return this.request('GET', path);
-  }
-
-  mapViewport(input) {
-    const { address, city_code: cityCode, lon, lat, layers, ...query } = input;
-    if (typeof layers !== 'string' || !layers.trim()) {
-      throw new TypeError('map viewport input requires layers.');
-    }
-    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || !cityCode.trim())) {
-      throw new TypeError('map viewport input requires address, city_code, or lon/lat.');
-    }
-    return this.request('GET', appendQuery('/api/v1/map-viewport', {
-      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
-      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
-      lon,
-      lat,
-      layers: layers.trim(),
-      ...query,
-    }));
-  }
-
-  addressOverview(input) {
-    const { address, city_code: cityCode, lon, lat, ...query } = input;
-    if ((typeof address !== 'string' || !address.trim()) && (typeof cityCode !== 'string' || !cityCode.trim()) && (lon === undefined || lat === undefined) && !query.parcel_record_key) {
-      throw new TypeError('address overview input requires address, city_code, lon/lat, or parcel_record_key.');
-    }
-    return this.request('GET', appendQuery('/api/v1/address-overview', {
-      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
-      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
-      lon,
-      lat,
-      ...query,
-    }));
-  }
-
-  autocompleteAddress(input) {
-    const { q, ...query } = input;
-    if (typeof q !== 'string' || !q.trim()) {
-      throw new TypeError('autocomplete input requires q.');
-    }
-    return this.request('GET', appendQuery('/api/v1/autocomplete/address', {
-      q: q.trim(),
-      ...query,
-    }));
-  }
-
-  addressPageState(slug) {
-    if (typeof slug !== 'string' || !slug.trim()) {
-      throw new TypeError('address page state requires slug.');
-    }
-    return this.request('GET', `/api/v1/address-pages/${encodeURIComponent(slug.trim())}/state`);
-  }
-
-  addressDetails(input) {
-    const { fields, ...locatorInput } = input;
-    const query = normalizeAddressLocator(locatorInput);
-    assertNormalizedAddressKeyIsAlone(query, 'address details input');
-    if (!hasAddressLocator(query)) {
-      throw new TypeError('address details input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
-    }
-    return this.request('GET', appendQuery('/api/v1/address-details', {
-      ...query,
-      fields: normalizeCsvList(fields, 'address details fields'),
-    }));
-  }
-
-  addressUnlock(input) {
-    const body = normalizeAddressLocator(input);
-    assertNormalizedAddressKeyIsAlone(body, 'address unlock input');
-    if (!hasAddressLocator(body)) {
-      throw new TypeError('address unlock input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
-    }
-    return this.request('POST', '/api/v1/address-unlocks', { body });
-  }
-
-  accountUsage() {
-    return this.request('GET', '/api/v1/account/usage');
-  }
-
-  communeSearch(input) {
-    const { q, ...query } = input;
-    if (typeof q !== 'string' || !q.trim()) {
-      throw new TypeError('commune search input requires q.');
-    }
-    return this.request('GET', appendQuery('/api/v1/communes/search', { q: q.trim(), ...query }));
-  }
-
-  publicPreview(input) {
-    const path = typeof input === 'string' ? input : input?.path;
-    if (typeof path !== 'string' || !path.trim()) {
-      throw new TypeError('public preview input requires path.');
-    }
-    return this.request('GET', appendQuery('/api/v1/public-preview', { path: path.trim() }));
-  }
-
-  mapFocusParcelle(input) {
-    const recordKey = input.record_key ?? input.recordKey;
-    return this.request('GET', appendQuery('/api/v1/map-focus/parcelle', {
-      record_key: normalizeCsvList(recordKey, 'record-key'),
-    }));
-  }
-
-  mapFocusParcelles(input) {
-    const recordKeys = input.record_keys ?? input.recordKeys;
-    return this.request('GET', appendQuery('/api/v1/map-focus/parcelles', {
-      record_keys: normalizeCsvList(recordKeys, 'record-keys'),
-    }));
-  }
-
-  mapFocusAddress(input) {
-    const { address, city_code: cityCode, ...query } = input;
-    if (typeof address !== 'string' || !address.trim()) {
-      throw new TypeError('map focus address input requires address.');
-    }
-    return this.request('GET', appendQuery('/api/v1/map-focus/address', {
-      address: address.trim(),
-      city_code: cityCode,
-      ...query,
-    }));
-  }
-
-  mapFocusPublicLocation(input) {
-    const { lon, lat, ...query } = input;
-    if (lon === undefined || lat === undefined) {
-      throw new TypeError('map focus public-location input requires lon and lat.');
-    }
-    return this.request('GET', appendQuery('/api/v1/map-focus/public-location', { lon, lat, ...query }));
-  }
-
-  mapFocusFeature(input) {
-    const layerKey = input.layer_key ?? input.layerKey ?? input.layer;
-    const featureKey = input.feature_key ?? input.featureKey;
-    return this.request('GET', appendQuery('/api/v1/map-focus/feature', {
-      layer_key: normalizeCsvList(layerKey, 'layer-key'),
-      feature_key: normalizeCsvList(featureKey, 'feature-key'),
-    }));
-  }
-
-  scoreAddress(input) {
-    return this.request('POST', '/api/v1/score/address', { body: input });
-  }
-
-  scoreCompare(input) {
-    return this.request('POST', '/api/v1/score/compare', { body: input });
-  }
-
-  scoreGrid(input) {
-    return this.request('GET', appendQuery('/api/v1/score/grid', input));
-  }
-
-  scoreAddressSuggest(input) {
-    const { q, ...query } = input;
-    if (typeof q !== 'string' || !q.trim()) {
-      throw new TypeError('score address suggest input requires q.');
-    }
-    return this.request('GET', appendQuery('/api/v1/score/address-suggest', {
-      q: q.trim(),
-      ...query,
-    }));
-  }
-}
-
 function usage() {
   return `1dex CLI
 
@@ -474,6 +160,10 @@ Usage:
   1dex details <address|--normalized-address-key|--parcel-record-key|--lon/--lat> --fields <csv> [options]
   1dex unlock <address|--normalized-address-key|--parcel-record-key|--lon/--lat|--input> [options]
   1dex usage [options]
+  1dex account usage [options]
+  1dex address unlock <address> --idempotency-key <key> [options]
+  1dex address details <address> --fields <csv> --idempotency-key <key> [options]
+  1dex address details --details-url <url> --idempotency-key <key> [options]
   1dex autocomplete <query> [options]
   1dex communes <query> [options]
   1dex preview <path> [options]
@@ -504,6 +194,10 @@ Options:
       --parcel-record-key <key>        Parcel record key for address overview.
       --normalized-address-key <key>   Stable key returned by address-details or address-unlocks.
       --fields <csv>                   Address details fields, or all.
+      --details-url <url>              Follow the exact details_url returned by address unlock.
+      --idempotency-key <key>          Stable key for this exact unlock or details intention.
+      --max-attempts <number>          Attempts for 202/429/503 using the same key. Default: 1.
+      --max-retry-delay-ms <number>    Stop if Retry-After exceeds this wait budget.
       --record-key <key>               Parcel focus record key.
       --record-keys <csv>              Parcel focus record keys.
       --path <path>                    Public preview path.
@@ -536,6 +230,7 @@ Options:
 Environment:
   ONEDEX_BASE_URL (defaults to https://1dex.fr)
   ONEDEX_API_KEY adds Authorization: Bearer for subscriber endpoints
+  ONEDEX_IDEMPOTENCY_KEY supplies the current unlock/details intention key
   ONEDEX_NO_UPDATE_CHECK=1 disables the npm version update notice
 `;
 }
@@ -552,10 +247,11 @@ function examples() {
   1dex overview --city-code 13001 --parcel-record-key parcel_123 --dvf-year 2024 --url
 
   # Subscriber address details and unlock flow.
-  1dex details "10 rue des cordeliers aix" --fields summary,rail,tabs --api-key "$ONEDEX_API_KEY"
-  1dex unlock "10 rue des cordeliers aix" --api-key "$ONEDEX_API_KEY"
-  1dex unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --api-key "$ONEDEX_API_KEY"
-  1dex usage --api-key "$ONEDEX_API_KEY" -f summary
+  1dex address details "10 rue des cordeliers aix" --fields summary,rail,tabs --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+  1dex address unlock "10 rue des cordeliers aix" --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+  1dex address unlock --input '{"address":"10 rue des cordeliers aix","city_code":"13001"}' --idempotency-key "$ONEDEX_UNLOCK_REQUEST_ID" --api-key "$ONEDEX_API_KEY"
+  1dex address details --details-url '/api/v1/address-details?normalized_address_key=addr_123&fields=summary' --idempotency-key "$ONEDEX_DETAILS_REQUEST_ID" --max-attempts 3 --api-key "$ONEDEX_API_KEY"
+  1dex account usage --api-key "$ONEDEX_API_KEY" -f summary
 
   # Public address search and score suggest.
   1dex autocomplete "10 rue des cordeliers aix" --limit 5
@@ -723,7 +419,15 @@ function createClient(flags) {
     baseUrl: flags['base-url'] ?? process.env.ONEDEX_BASE_URL,
     apiKey: flags['api-key'] ?? process.env.ONEDEX_API_KEY,
     timeoutMs: readOptionalNumber(flags['timeout-ms'], 'timeout-ms') ?? 30_000,
+    retry: {
+      maxAttempts: readOptionalNumber(flags['max-attempts'], 'max-attempts') ?? 1,
+      maxDelayMs: readOptionalNumber(flags['max-retry-delay-ms'], 'max-retry-delay-ms') ?? Number.POSITIVE_INFINITY,
+    },
   });
+}
+
+function readIdempotencyKey(flags) {
+  return flags['idempotency-key'] ?? process.env.ONEDEX_IDEMPOTENCY_KEY;
 }
 
 function readOptionalNumber(value, name) {
@@ -822,6 +526,7 @@ function buildAddressDetailsInput(flags, subjectParts) {
     fields,
     dvf_radius_m: readOptionalNumber(flags['dvf-radius-m'], 'dvf-radius-m'),
     dvf_year: readOptionalNumber(flags['dvf-year'], 'dvf-year'),
+    idempotency_key: readIdempotencyKey(flags),
   };
 }
 
@@ -846,9 +551,18 @@ function buildAddressUnlockInput(flags, subjectParts) {
     if (!hasAddressLocator(fromInput)) {
       throw new Error('Address unlock payload requires address, normalized_address_key, parcel_record_key, or lon/lat.');
     }
-    return fromInput;
+    const flagKey = readIdempotencyKey(flags);
+    const inputKey = fromInput.idempotency_key ?? fromInput.idempotencyKey;
+    if (flagKey !== undefined && inputKey !== undefined
+      && normalizeIdempotencyKey(flagKey) !== normalizeIdempotencyKey(inputKey)) {
+      throw new Error('Address unlock received conflicting idempotency keys.');
+    }
+    return flagKey === undefined ? fromInput : { ...fromInput, idempotency_key: flagKey };
   }
-  return buildAddressLocatorInput(flags, subjectParts, 'address unlock locator');
+  return {
+    ...buildAddressLocatorInput(flags, subjectParts, 'address unlock locator'),
+    idempotency_key: readIdempotencyKey(flags),
+  };
 }
 
 function buildAutocompleteInput(flags, subjectParts) {
@@ -1000,8 +714,10 @@ function resolveCommand(positional) {
   if (resource && ![
     'address-page-state',
     'address-details',
+    'address',
     'address-unlocks',
     'autocomplete',
+    'account',
     'communes',
     'context',
     'details',
@@ -1025,6 +741,18 @@ function resolveCommand(positional) {
     'viewport',
   ].includes(resource)) {
     return { name: 'overview', subjectParts: positional };
+  }
+
+  if (resource === 'address' && action === 'details') {
+    return { name: 'address-details', subjectParts };
+  }
+
+  if (resource === 'address' && (action === 'unlock' || action === 'unlocks')) {
+    return { name: 'address-unlock', subjectParts };
+  }
+
+  if (resource === 'account' && action === 'usage') {
+    return { name: 'account-usage', subjectParts };
   }
 
   if (resource === 'map' && action === 'focus') {
@@ -1156,7 +884,8 @@ function buildOverviewUrl(flags, input) {
 
 function buildAddressDetailsUrl(flags, input) {
   const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
-  return `${baseUrl}${appendQuery('/api/v1/address-details', input)}`;
+  const { idempotency_key: _idempotencyKey, idempotencyKey: _idempotencyKeyCamel, ...query } = input;
+  return `${baseUrl}${appendQuery('/api/v1/address-details', query)}`;
 }
 
 function buildAutocompleteUrl(flags, input) {
@@ -1257,7 +986,7 @@ function isAddressUnlockResponse(response) {
 }
 
 function isAccountUsageResponse(response) {
-  return response?.version === 'account-usage-v1';
+  return response?.version === 'account-usage-v1' || response?.version === 'account-usage-v2';
 }
 
 function isPublicPreviewResponse(response) {
@@ -1547,6 +1276,25 @@ function printSummary(response) {
   }
 
   if (isAccountUsageResponse(response)) {
+    if (response?.version === 'account-usage-v2') {
+      const usage = response.api_addresses ?? {};
+      const demoWindow = usage.demo_window;
+      console.log([
+        `version=${response.version}`,
+        `plan=${usage.plan_key ?? ''}`,
+        `available=${usage.available ?? demoWindow?.reads_available ?? ''}`,
+        ...(demoWindow ? [
+          `reads_used=${demoWindow.reads_used ?? ''}`,
+          `reads_limit=${demoWindow.reads_limit ?? ''}`,
+          `window_seconds=${demoWindow.window_seconds ?? ''}`,
+        ] : [
+          `day_used=${usage.day?.used ?? ''}`,
+          `day_limit=${usage.day?.limit ?? ''}`,
+          `lots=${usage.lots?.length ?? 0}`,
+        ]),
+      ].join('\n'));
+      return;
+    }
     const creditRemaining = response?.credits?.total_remaining;
     console.log([
       `version=${response?.version ?? ''}`,
@@ -1683,12 +1431,23 @@ async function main() {
     }
     response = await client.overview.address(input);
   } else if (command.name === 'address-details') {
-    const input = buildAddressDetailsInput(flags, command.subjectParts);
-    if (flags.url) {
-      console.log(buildAddressDetailsUrl(flags, input));
-      return;
+    if (flags['details-url']) {
+      if (flags.url) {
+        const baseUrl = normalizeBaseUrl(flags['base-url'] ?? process.env.ONEDEX_BASE_URL);
+        console.log(`${baseUrl}${normalizeDetailsPath(baseUrl, flags['details-url'])}`);
+        return;
+      }
+      response = await client.address.detailsUrl(flags['details-url'], {
+        idempotencyKey: readIdempotencyKey(flags),
+      });
+    } else {
+      const input = buildAddressDetailsInput(flags, command.subjectParts);
+      if (flags.url) {
+        console.log(buildAddressDetailsUrl(flags, input));
+        return;
+      }
+      response = await client.address.details(input);
     }
-    response = await client.address.details(input);
   } else if (command.name === 'address-unlock') {
     const input = buildAddressUnlockInput(flags, command.subjectParts);
     if (flags.url) {
@@ -1798,6 +1557,12 @@ main().catch((error) => {
     console.error(`${error.message} (${error.status || 'network'})`);
     if (error.requestId) {
       console.error(`request_id=${error.requestId}`);
+    }
+    if (error.retryAfterSeconds !== null) {
+      console.error(`retry_after_seconds=${error.retryAfterSeconds}`);
+    }
+    if (error.code) {
+      console.error(`error_code=${error.code}`);
     }
   } else {
     console.error(error instanceof Error ? error.message : String(error));

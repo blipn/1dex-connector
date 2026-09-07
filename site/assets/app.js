@@ -280,6 +280,18 @@ if (explorer) {
     let path = '/api/v1/address-overview';
     let method = 'GET';
     let body = null;
+    let idempotencyKey = '';
+
+    function requireIdempotencyKey(label) {
+      const value = form.elements.idempotency_key?.value ?? '';
+      if (!value) {
+        throw new Error(`Clé d'idempotence requise pour ${label}.`);
+      }
+      if (value !== value.trim() || new TextEncoder().encode(value).byteLength > 255 || /[\u0000-\u001f\u007f]/u.test(value)) {
+        throw new Error("La clé d'idempotence doit contenir au plus 255 octets UTF-8, sans espaces externes ni caractère de contrôle.");
+      }
+      return value;
+    }
 
     if (operation === 'address-overview') {
       appendAddressLocator(query);
@@ -290,6 +302,7 @@ if (explorer) {
       }
     } else if (operation === 'address-details') {
       path = '/api/v1/address-details';
+      idempotencyKey = requireIdempotencyKey('les détails');
       appendAddressLocator(query);
       appendIfPresent(query, 'fields', readValue('fields'));
       appendIfPresent(query, 'dvf_radius_m', readValue('dvf_radius_m'));
@@ -303,6 +316,7 @@ if (explorer) {
     } else if (operation === 'address-unlock') {
       path = '/api/v1/address-unlocks';
       method = 'POST';
+      idempotencyKey = requireIdempotencyKey('le déblocage');
       const unlockRequest = readValue('unlock_request');
       const normalizedAddressKey = readValue('normalized_address_key');
       if (unlockRequest) {
@@ -458,6 +472,7 @@ if (explorer) {
       url,
       body,
       apiKey: readValue('api_key'),
+      idempotencyKey,
     };
   }
 
@@ -525,12 +540,16 @@ if (explorer) {
       'sortBy',
       'score_items',
       'unlock_request',
-      'api_key',
+      'idempotency_key',
     ]) {
       const value = pageParams.get(name);
       if (value !== null && form.elements[name]) {
         form.elements[name].value = value;
       }
+    }
+
+    if (!readValue('idempotency_key') && form.elements.idempotency_key && globalThis.crypto?.randomUUID) {
+      form.elements.idempotency_key.value = globalThis.crypto.randomUUID();
     }
   }
 
@@ -553,6 +572,9 @@ if (explorer) {
 
       if (request.apiKey) {
         lines.push('  -H "Authorization: Bearer $ONEDEX_API_KEY"');
+      }
+      if (request.idempotencyKey) {
+        lines.push('  -H "Idempotency-Key: $ONEDEX_IDEMPOTENCY_KEY"');
       }
 
       curlOutput.textContent = lines.join(' \\\n');
@@ -591,6 +613,9 @@ if (explorer) {
     }
     if (request.apiKey) {
       headers.authorization = `Bearer ${request.apiKey}`;
+    }
+    if (request.idempotencyKey) {
+      headers['idempotency-key'] = request.idempotencyKey;
     }
 
     try {
