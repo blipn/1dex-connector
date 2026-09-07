@@ -407,8 +407,8 @@ test('CLI retries 202 with the same idempotency key and renders account usage v2
     assert.equal(request.url, '/api/v1/address-unlocks');
     assert.equal(request.headers['idempotency-key'], 'retry-cli-123');
     if (attempts === 1) {
-      response.writeHead(202, { 'content-type': 'application/json', 'retry-after': '1' });
-      response.end(JSON.stringify({ status: 'request_in_progress', retry_after_seconds: 1 }));
+      response.writeHead(202, { 'content-type': 'application/json', 'retry-after': '0' });
+      response.end(JSON.stringify({ status: 'request_in_progress', retry_after_seconds: 0 }));
       return;
     }
     response.writeHead(200, { 'content-type': 'application/json' });
@@ -448,6 +448,7 @@ test('CLI retries 202 with the same idempotency key and renders account usage v2
           reads_used: 2,
           reads_limit: 10,
           reads_available: 8,
+          window_seconds: 3600,
         },
       },
     }));
@@ -457,6 +458,10 @@ test('CLI retries 202 with the same idempotency key and renders account usage v2
     assert.match(result.stdout, /version=account-usage-v2/u);
     assert.match(result.stdout, /plan=demo/u);
     assert.match(result.stdout, /available=8/u);
+    assert.match(result.stdout, /reads_used=2/u);
+    assert.match(result.stdout, /reads_limit=10/u);
+    assert.match(result.stdout, /window_seconds=3600/u);
+    assert.doesNotMatch(result.stdout, /day_used|day_limit/u);
   });
 });
 

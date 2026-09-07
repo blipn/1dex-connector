@@ -9,6 +9,7 @@ export interface OneDexRequestOptions {
 
 export interface OneDexRetryOptions {
   maxAttempts?: number;
+  /** Stop retrying if the server asks to wait longer; never retry before Retry-After. */
   maxDelayMs?: number;
 }
 
@@ -74,7 +75,7 @@ export type OneDexIdempotencyInput =
   | { idempotencyKey: string; idempotency_key?: never }
   | { idempotency_key: string; idempotencyKey?: never };
 
-export type AddressDetailsInput = AddressLocatorInput & OneDexIdempotencyInput & {
+export type AddressDetailsParameters = AddressLocatorInput & {
   fields: string | string[];
   dvf_radius_m?: number;
   dvf_year?: number;
@@ -89,6 +90,7 @@ export type AddressDetailsInput = AddressLocatorInput & OneDexIdempotencyInput &
   dvf_price_m2_max?: number;
 };
 
+export type AddressDetailsInput = AddressDetailsParameters & OneDexIdempotencyInput;
 export type AddressUnlockInput = AddressLocatorInput & OneDexIdempotencyInput;
 
 export type AddressDetailsField =
@@ -169,11 +171,11 @@ export interface AddressUnlockResponse {
 
 export interface AddressUnlockRequiredBody {
   error: 'address_unlock_required';
-  message: string;
+  message?: string;
   normalized_address_key: string | null;
   unlock_locator_kind: AddressUnlockFollowUpLocatorKind;
   unlock_request?: AddressLocatorInput;
-  unlock_preview: AddressUnlockPreview;
+  unlock_preview?: AddressUnlockPreview;
   [key: string]: unknown;
 }
 
@@ -295,9 +297,9 @@ export interface LiveApiAddressUsage {
   plan_label: 'API Essentiel' | 'API Scale' | 'API Dedicated' | 'API V3';
   day: ApiAddressQuotaWindow;
   month: ApiAddressQuotaWindow;
-  available: number;
-  lots: ApiActivationLotUsage[];
-  as_of: string;
+  available?: number;
+  lots?: ApiActivationLotUsage[];
+  as_of?: string;
   [key: string]: unknown;
 }
 
@@ -427,6 +429,7 @@ export class OneDexClient {
     apiKey?: string;
     headers?: Record<string, string | number | boolean | null | undefined>;
     timeoutMs?: number;
+    retry?: boolean | OneDexRetryOptions;
     fetch?: typeof fetch;
   });
 
@@ -443,8 +446,10 @@ export class OneDexClient {
 
   readonly address: {
     details(input: AddressDetailsInput, options?: OneDexRequestOptions): Promise<AddressDetailsResponse>;
+    details(input: AddressDetailsParameters, options: OneDexIdempotentRequestOptions): Promise<AddressDetailsResponse>;
     detailsUrl(detailsUrl: string, options: OneDexIdempotentRequestOptions): Promise<AddressDetailsResponse>;
     unlock(input: AddressUnlockInput, options?: OneDexRequestOptions): Promise<AddressUnlockResponse>;
+    unlock(input: AddressLocatorInput, options: OneDexIdempotentRequestOptions): Promise<AddressUnlockResponse>;
   };
 
   readonly account: {
@@ -492,8 +497,10 @@ export class OneDexClient {
   autocompleteAddress(input: AutocompleteAddressInput, options?: OneDexRequestOptions): Promise<unknown>;
   addressPageState(slug: string, options?: OneDexRequestOptions): Promise<unknown>;
   addressDetails(input: AddressDetailsInput, options?: OneDexRequestOptions): Promise<AddressDetailsResponse>;
+  addressDetails(input: AddressDetailsParameters, options: OneDexIdempotentRequestOptions): Promise<AddressDetailsResponse>;
   addressDetailsUrl(detailsUrl: string, options: OneDexIdempotentRequestOptions): Promise<AddressDetailsResponse>;
   addressUnlock(input: AddressUnlockInput, options?: OneDexRequestOptions): Promise<AddressUnlockResponse>;
+  addressUnlock(input: AddressLocatorInput, options: OneDexIdempotentRequestOptions): Promise<AddressUnlockResponse>;
   accountUsage(options?: OneDexRequestOptions): Promise<AccountUsageResponse>;
   communeSearch(input: CommuneSearchInput, options?: OneDexRequestOptions): Promise<unknown>;
   mapParcelles(input: MapParcellesInput, options?: OneDexRequestOptions): Promise<unknown>;

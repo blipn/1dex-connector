@@ -14,7 +14,7 @@ import { OneDexClient } from "@1dex-fr/connector";
 
 ## Public reads
 
-Public endpoints such as `overview`, `autocomplete`, `score`, `preview`, `communes`, and `map` can be called without an API key within public quotas.
+Public overview access is intended for manual, one-off checks within public quotas. Automation and integrations require active API rights. Some map layers also require an authorized Explorer session; an API key alone does not grant access to detailed DVF or works layers.
 
 ```js
 import { OneDexClient } from "@1dex-fr/connector";
@@ -41,9 +41,9 @@ const viewport = await client.map.viewport({
 });
 ```
 
-## Auth, purchase, and detailed reads
+## Authentication and detailed reads
 
-Complete address details and unlock flows require a 1dex API key. Free demo keys are pinned to the configured demo address; live keys use the account's subscription and activation rights. Purchase and checkout still happen on `1dex.fr`. Create or manage keys at <https://1dex.fr/compte/api>.
+Complete address details and unlock flows require a 1dex API key. Professional Free accounts can issue a demo key only when a demo is published in that environment. Demo keys are pinned to the configured address; live keys use the account's subscription and activation rights. Check current offer availability on `1dex.fr`. Keep live keys in your backend, never in browser code or URLs. Create or manage keys at <https://1dex.fr/compte/api>.
 
 Pass the key explicitly or through `ONEDEX_API_KEY`:
 
@@ -137,3 +137,7 @@ The client exposes helpers for the current `/api/v1` routes:
 For command-line usage, install `@1dex-fr/1dex`.
 
 Supported runtimes: Node 22 and 24. Type declarations cover both legacy account usage and `account-usage-v2` during rollout.
+
+## Transport limits
+
+The base URL accepts either `https://1dex.fr` or `https://1dex.fr/api/v1`. HTTP redirects are rejected so credentials and mutations are never forwarded to an unexpected URL. A retry wait budget stops retries when `Retry-After` exceeds it; it never shortens the server’s delay. Errors retain the HTTP status even when an upstream response contains text or HTML.

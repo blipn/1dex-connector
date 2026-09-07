@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 const root = process.cwd();
 const packageDir = join(root, 'packages/python');
 const tempRoot = await mkdtemp(join(tmpdir(), 'onedex-python-package-'));
-const wheelDir = join(tempRoot, 'wheels');
+const wheelDir = join(tempRoot, 'distributions');
 const installDir = join(tempRoot, 'install');
 const cacheDir = join(tempRoot, 'pip-cache');
 
@@ -86,19 +86,14 @@ try {
   await mkdir(cacheDir, { recursive: true });
 
   if (hasPip) {
-    runPython([
-      '-m',
-      'pip',
-      'wheel',
-      '.',
-      '--no-deps',
-      '-w',
-      wheelDir,
-      '--cache-dir',
-      cacheDir,
-    ], { cwd: packageDir });
+    const buildToolsDir = join(tempRoot, 'build-tools');
+    runPython(['-m', 'pip', 'install', '--target', buildToolsDir, '--cache-dir', cacheDir, 'build']);
+    // The default build creates the wheel from the sdist, testing both shipped artifacts.
+    runPython(['-m', 'build', '--outdir', wheelDir, packageDir], {
+      env: { ...process.env, PYTHONPATH: buildToolsDir },
+    });
   } else {
-    run('uv', ['build', '--wheel', '--out-dir', wheelDir, '.'], { cwd: packageDir });
+    run('uv', ['run', '--no-project', '--with', 'build', 'python', '-m', 'build', '--outdir', wheelDir, packageDir]);
   }
 
   const wheels = await readdir(wheelDir);
@@ -107,6 +102,10 @@ try {
     throw new Error(`Missing built 1dex connector wheel: ${wheels.join(', ')}`);
   }
   const wheelPath = join(wheelDir, wheel);
+  const sdist = wheels.find((file) => file === `1dex_connector-${project.version}.tar.gz`);
+  if (!sdist || wheels.length !== 2) {
+    throw new Error(`Expected exactly a source distribution and wheel: ${wheels.join(', ')}`);
+  }
 
   if (hasPip) {
     runPython([
@@ -129,46 +128,55 @@ try {
     ]);
   }
 
-  const pythonPath = process.env.PYTHONPATH
-    ? `${installDir}${process.platform === 'win32' ? ';' : ':'}${process.env.PYTHONPATH}`
-    : installDir;
-
   runPython([
     '-c',
     [
       'from onedex import OneDexClient, OneDexApiError',
+      'from importlib.metadata import version',
+      'import pathlib, sys, onedex',
+      'assert pathlib.Path(onedex.__file__).resolve().is_relative_to(pathlib.Path(sys.argv[1]).resolve())',
+      'assert version(sys.argv[2]) == sys.argv[3]',
       'client = OneDexClient()',
       'assert client.base_url == "https://1dex.fr"',
       'assert OneDexApiError.__name__ == "OneDexApiError"',
     ].join('; '),
+    installDir,
+    project.name,
+    project.version,
   ], {
-    env: { ...process.env, PYTHONPATH: pythonPath },
+    cwd: installDir,
+    env: { ...process.env, PYTHONPATH: installDir },
   });
 
   runPython([
     '-c',
     [
-      'import pathlib, sys, zipfile',
+      'import pathlib, sys, zipfile, tarfile, email',
       'wheel = pathlib.Path(sys.argv[1])',
       'archive = zipfile.ZipFile(wheel)',
       'metadata_name = next(name for name in archive.namelist() if name.endswith("/METADATA"))',
-      'metadata = archive.read(metadata_name).decode()',
-      'assert f"Name: {sys.argv[2]}" in metadata',
-      'assert f"Version: {sys.argv[3]}" in metadata',
-      'assert "Requires-Python: >=3.10" in metadata',
-      'assert "public and professional 1dex API surface" in metadata',
-      'assert "Auth, purchase, and detailed reads" in metadata',
-      'assert "insufficient_credits" in metadata',
-      'assert "idempotency_key" in metadata',
-      'assert "details_url" in metadata',
+      'metadata = email.message_from_bytes(archive.read(metadata_name))',
+      'assert metadata["Name"] == sys.argv[2]',
+      'assert metadata["Version"] == sys.argv[3]',
+      'assert metadata["Requires-Python"] == ">=3.10"',
+      'assert metadata["License-Expression"] == "MIT"',
+      'assert metadata["License-File"] == "LICENSE"',
+      'assert metadata["Description-Content-Type"] == "text/markdown"',
+      'assert metadata.get_payload().strip()',
       'assert any(name.endswith("/LICENSE") and "dist-info/licenses" in name for name in archive.namelist())',
+      'source = tarfile.open(sys.argv[4], "r:gz")',
+      'prefix = f"1dex_connector-{sys.argv[3]}/"',
+      'assert all(prefix + name in source.getnames() for name in ["pyproject.toml", "README.md", "LICENSE", "src/onedex/__init__.py", "src/onedex/client.py"])',
+      'source_metadata = email.message_from_bytes(source.extractfile(prefix + "PKG-INFO").read())',
+      'assert all(source_metadata[key] == metadata[key] for key in ["Name", "Version", "Requires-Python", "License-Expression", "License-File"])',
     ].join('; '),
     wheelPath,
     project.name,
     project.version,
+    join(wheelDir, sdist),
   ]);
 
-  console.log('Python package check passed.');
+  console.log(`Python package check passed: ${project.name} ${project.version} (sdist, wheel, isolated installed import).`);
 } finally {
   await rm(tempRoot, { recursive: true, force: true });
 }

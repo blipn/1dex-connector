@@ -311,8 +311,8 @@ test('address detailsUrl follows only same-origin canonical URLs with a fresh id
 test('retryable subscriber responses replay the exact idempotency key and stop on success', async () => {
   const calls = [];
   const responses = [
-    createJsonResponse({ status: 'request_in_progress', retry_after_seconds: 1 }, { status: 202, headers: { 'retry-after': '1' } }),
-    createJsonResponse({ error: 'usage_limited', retry_after_seconds: 1 }, { status: 429, headers: { 'retry-after': '1' } }),
+    createJsonResponse({ status: 'request_in_progress', retry_after_seconds: 0 }, { status: 202, headers: { 'retry-after': '0' } }),
+    createJsonResponse({ error: 'usage_limited', retry_after_seconds: 0 }, { status: 429, headers: { 'retry-after': '0' } }),
     createJsonResponse({ version: 'address-details-v1', fields: ['summary'] }),
   ];
   const client = new OneDexClient({

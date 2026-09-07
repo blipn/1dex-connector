@@ -33,7 +33,7 @@ function normalizeBaseUrl(baseUrl) {
   if (!value) {
     throw new TypeError('baseUrl must not be empty.');
   }
-  return value.replace(/\/+$/, '');
+  return value.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
 }
 
 function normalizeHeaders(headers) {
@@ -141,7 +141,8 @@ function parseRetryAfterSeconds(body, headers) {
 
 function retryDelayMs(error, policy) {
   const requestedDelayMs = (error.retryAfterSeconds ?? 1) * 1_000;
-  return Math.min(requestedDelayMs, policy.maxDelayMs);
+  // A client wait budget must never shorten the server's backoff deadline.
+  return requestedDelayMs <= Math.min(policy.maxDelayMs, 2_147_483_647) ? requestedDelayMs : null;
 }
 
 function waitForRetry(delayMs, signal) {
@@ -374,6 +375,9 @@ async function readJsonResponse(response) {
   try {
     return JSON.parse(text);
   } catch {
+    if (!response.ok || response.status === 202) {
+      return text;
+    }
     throw new OneDexApiError('1dex API returned invalid JSON.', {
       status: response.status,
       body: text,
@@ -392,6 +396,7 @@ export class OneDexClient {
       ...normalizeHeaders(options.headers),
     };
     this.timeoutMs = options.timeoutMs ?? 30_000;
+    this.retryPolicy = normalizeRetryPolicy(options.retry);
 
     if (typeof this.fetch !== 'function') {
       throw new TypeError('A fetch implementation is required.');
@@ -446,11 +451,12 @@ export class OneDexClient {
   }
 
   async request(method, path, options = {}) {
-    const headers = {
-      accept: 'application/json',
-      ...this.defaultHeaders,
-      ...normalizeHeaders(options.headers),
-    };
+    const headers = { accept: 'application/json' };
+    for (const source of [this.defaultHeaders, normalizeHeaders(options.headers)]) {
+      for (const [key, value] of Object.entries(source)) {
+        setHeader(headers, key, value);
+      }
+    }
     if (options.idempotencyKey !== undefined) {
       setHeader(headers, 'Idempotency-Key', normalizeIdempotencyKey(options.idempotencyKey));
     }
@@ -461,7 +467,7 @@ export class OneDexClient {
       body = JSON.stringify(options.body);
     }
 
-    const retryPolicy = normalizeRetryPolicy(options.retry);
+    const retryPolicy = normalizeRetryPolicy(options.retry ?? this.retryPolicy);
     for (let attempt = 1; attempt <= retryPolicy.maxAttempts; attempt += 1) {
       const controller = new AbortController();
       const timeoutMs = options.timeoutMs ?? this.timeoutMs;
@@ -471,17 +477,24 @@ export class OneDexClient {
       const requestSignal = combineSignals(controller.signal, options.signal);
 
       let response;
+      let responseBody;
       try {
+        requestSignal.signal.throwIfAborted();
         response = await this.fetch(`${this.baseUrl}${path}`, {
           method,
           headers,
           body,
           signal: requestSignal.signal,
+          redirect: 'error',
         });
+        responseBody = await readJsonResponse(response);
       } catch (error) {
-        if (error?.name === 'AbortError') {
-          const abortedByCaller = options.signal?.aborted && !controller.signal.aborted;
+        if (requestSignal.signal.aborted || error?.name === 'AbortError') {
+          const abortedByCaller = options.signal?.aborted;
           throw new OneDexApiError(abortedByCaller ? '1dex API request aborted.' : '1dex API request timed out.', { status: 0 });
+        }
+        if (error instanceof OneDexApiError) {
+          throw error;
         }
         throw new OneDexApiError(`Unable to reach 1dex API: ${networkErrorMessage(error)}`, { status: 0 });
       } finally {
@@ -491,7 +504,6 @@ export class OneDexClient {
         }
       }
 
-      const responseBody = await readJsonResponse(response);
       if (response.status === 202 || !response.ok) {
         const requestId = readRequestId(responseBody, response.headers);
         const warning = Array.isArray(responseBody?.warnings) ? responseBody.warnings[0] : undefined;
@@ -512,8 +524,12 @@ export class OneDexClient {
         if (!error.retryable || attempt >= retryPolicy.maxAttempts) {
           throw error;
         }
+        const delayMs = retryDelayMs(error, retryPolicy);
+        if (delayMs === null) {
+          throw error;
+        }
         try {
-          await waitForRetry(retryDelayMs(error, retryPolicy), options.signal);
+          await waitForRetry(delayMs, options.signal);
         } catch (waitError) {
           if (waitError?.name === 'AbortError') {
             throw new OneDexApiError('1dex API request aborted.', { status: 0 });

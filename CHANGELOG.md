@@ -2,13 +2,18 @@
 
 ## 0.2.0
 
-- Align subscriber workflows with the dormant Explorer V2 contract while retaining read compatibility with the currently published V1 usage envelope.
+- Align with the production OpenAPI 0.6.0 contract and current demo/live account usage shapes.
+- Keep timeout and cancellation active until the response body is read; reject authenticated redirects and preserve non-JSON backpressure status.
+- Respect Retry-After deadlines even when a wait budget is configured, including HTTP-date values.
+- Reuse the JavaScript SDK from the CLI and verify both installed npm archives together.
+- Check TypeScript overloads and actual Python wheel installation before publishing from reviewed main CI.
+
 - Require caller-owned `Idempotency-Key` values for unlock and detailed-read intentions in JavaScript, Python, and the CLI.
 - Add safe `details_url` helpers that refuse cross-origin URLs before attaching API credentials.
 - Treat `202`, `429`, and `503` as retryable outcomes with parsed `Retry-After` metadata; optional bounded retries replay the exact same key, while `409` remains terminal.
 - Abort JavaScript retry waits with the caller signal and provide cooperative Python cancellation between synchronous attempts.
-- Add typed `account-usage-v2` live/demo responses, canonical nested CLI commands, a supported-runtime CI matrix, and opt-in V2 OpenAPI parity checks.
-- Set the supported runtime floor to Node.js 22 and Python 3.10; packages remain dependency-free and publishing stays provenance-backed.
+- Add typed `account-usage-v2` live/demo responses, canonical nested CLI commands, and mandatory production OpenAPI checks in the supported-runtime CI matrix.
+- Set the supported runtime floor to Node.js 22 and Python 3.10. The SDKs have no runtime dependencies; the CLI depends only on the JavaScript SDK.
 
 ## 0.1.7
 

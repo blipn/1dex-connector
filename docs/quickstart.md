@@ -28,7 +28,7 @@ curl "https://1dex.fr/api/v1/address-overview?city_code=13001&parcel_record_key=
 
 ## Détails authentifiés et déblocage
 
-Ces routes nécessitent une clé API. Une clé Free de démonstration est limitée à l'adresse épinglée par 1dex; une clé live suit les droits du compte. Chaque lecture détaillée et chaque déblocage exigent une clé d'idempotence propre à cette intention.
+Ces routes nécessitent une clé API. Une clé de démonstration, disponible pour un compte professionnel Free lorsque la démo est publiée, est limitée à l'adresse épinglée par 1dex; une clé live suit les droits du compte. Chaque lecture détaillée et chaque déblocage exigent une clé d'idempotence propre à cette intention.
 
 ```bash
 export ONEDEX_DETAILS_REQUEST_ID=<uuid-stable-for-this-details-request>
@@ -57,7 +57,7 @@ Après `POST /address-unlocks`, appeler exactement le `details_url` retourné. L
 
 Conservez la même clé d'idempotence lors des tentatives d'une même intention et changez-la pour toute autre intention. `202`, `429` et `503` sont temporaires; respectez `Retry-After`. `409` est terminal et indique que la clé a déjà servi pour une intention différente.
 
-`GET /account/usage` renvoie `account-usage-v2` avec `api_addresses` après promotion V2; les clients acceptent aussi la réponse V1 pendant la transition. Les erreurs d'accès usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.
+`GET /account/usage` renvoie `account-usage-v2` avec `api_addresses` dans le contrat courant ; les clients tolèrent aussi la réponse V1 des anciennes installations. Les erreurs d'accès usuelles sont `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required` et `insufficient_credits`.
 
 ## Aperçu public
 

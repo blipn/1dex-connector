@@ -16,12 +16,13 @@ class FakeResponse:
         self._body = json.dumps(body).encode("utf-8")
         self.status = status
         self.headers = headers or {}
+        self.closed = False
 
     def read(self):
         return self._body
 
     def close(self):
-        pass
+        self.closed = True
 
     def __enter__(self):
         return self
@@ -346,17 +347,17 @@ class ClientTest(unittest.TestCase):
             calls.append((request, timeout))
             if len(calls) == 1:
                 return FakeResponse(
-                    {"status": "request_in_progress", "retry_after_seconds": 1},
+                    {"status": "request_in_progress", "retry_after_seconds": 0},
                     status=202,
-                    headers={"Retry-After": "1"},
+                    headers={"Retry-After": "0"},
                 )
             if len(calls) == 2:
                 raise urllib.error.HTTPError(
                     request.full_url,
                     429,
                     "Too Many Requests",
-                    {"Retry-After": "1"},
-                    FakeResponse({"error": "usage_limited", "retry_after_seconds": 1}),
+                    {"Retry-After": "0"},
+                    FakeResponse({"error": "usage_limited", "retry_after_seconds": 0}),
                 )
             return FakeResponse({"version": "address-unlock-v1", "result": {"status": "unlocked"}})
 

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 const root = process.cwd();
 const baseUrl = (process.env.ONEDEX_BASE_URL ?? 'https://1dex.fr').replace(/\/+$/, '');
 const openApiUrl = process.env.ONEDEX_OPENAPI_URL ?? `${baseUrl}/api/v1/openapi.yaml`;
-const response = await fetch(openApiUrl);
+const response = await fetch(openApiUrl, { signal: AbortSignal.timeout(15_000) });
 if (!response.ok) {
   throw new Error(`Unable to fetch OpenAPI at ${openApiUrl}: HTTP ${response.status}`);
 }
@@ -37,7 +37,7 @@ for (const path of requiredPaths) {
   }
 }
 
-if (process.env.ONEDEX_REQUIRE_V2_OPENAPI === '1') {
+{ // The idempotent contract is now served by production.
   for (const fragment of ['Idempotency-Key', 'RequestInProgress', 'account-usage-v2', 'retry_after_seconds']) {
     if (!specText.includes(fragment)) {
       throw new Error(`V2 OpenAPI is missing required contract fragment: ${fragment}`);
@@ -53,7 +53,7 @@ const runtimeOnlyChecks = [
   `${baseUrl}/api/v1/address-pages/10-rue-de-la-paix-paris-75002/state`,
 ];
 for (const url of runtimeOnlyChecks) {
-  const runtimeResponse = await fetch(url, { headers: { accept: 'application/json' } });
+  const runtimeResponse = await fetch(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
   if (!runtimeResponse.ok) {
     throw new Error(`Runtime-supported connector route failed: ${url} HTTP ${runtimeResponse.status}`);
   }

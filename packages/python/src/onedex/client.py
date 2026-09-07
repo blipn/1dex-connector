@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Any, Mapping
+from email.utils import parsedate_to_datetime
+from datetime import timezone
 
 
 DEFAULT_BASE_URL = "https://1dex.fr"
@@ -52,7 +55,13 @@ def _normalize_base_url(base_url: str | None) -> str:
     value = (base_url or DEFAULT_BASE_URL).strip()
     if not value:
         raise ValueError("base_url must not be empty.")
-    return value.rstrip("/")
+    return value.rstrip("/").removesuffix("/api/v1")
+
+
+class _NoRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Never forward API credentials or replay a mutation to another URL.
+        return None
 
 
 def _ensure_mapping(value: Any, name: str) -> Mapping[str, Any]:
@@ -174,8 +183,11 @@ def _read_json_response(response: Any) -> Any:
         return None
     try:
         return json.loads(raw.decode("utf-8"))
-    except json.JSONDecodeError as exc:
-        raise OneDexApiError("1dex API returned invalid JSON.") from exc
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        status = int(getattr(response, "status", getattr(response, "code", 200)))
+        if status >= 400 or status == 202 or 300 <= status < 400:
+            return raw.decode("utf-8", errors="replace")
+        raise OneDexApiError("1dex API returned invalid JSON.", status=status) from exc
 
 
 def _request_id_from_body(body: Any) -> str | None:
@@ -204,13 +216,23 @@ def _parse_retry_after_seconds(body: Any, headers: Mapping[str, str]) -> int | N
     raw_header = _header_value(headers, "retry-after")
     if raw_header is not None:
         try:
-            return max(0, int(float(raw_header)))
-        except ValueError:
+            value = float(raw_header)
+            if math.isfinite(value) and value >= 0:
+                return math.ceil(value)
+        except (TypeError, ValueError):
+            pass
+        try:
+            deadline = parsedate_to_datetime(raw_header)
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=timezone.utc)
+            return max(0, math.ceil(deadline.timestamp() - time.time()))
+        except (TypeError, ValueError, OverflowError):
             pass
     if isinstance(body, Mapping):
         try:
             value = float(body.get("retry_after_seconds"))
-            return max(0, int(value))
+            if math.isfinite(value) and value >= 0:
+                return math.ceil(value)
         except (TypeError, ValueError):
             pass
     return None
@@ -575,7 +597,7 @@ class OneDexClient:
             self.headers["Authorization"] = f"Bearer {api_key.strip()}"
         self.headers.update(dict(headers or {}))
         self.timeout = timeout
-        self._opener = opener or urllib.request.urlopen
+        self._opener = opener or urllib.request.build_opener(_NoRedirects()).open
         self._sleeper = sleeper or time.sleep
         self.autocomplete = _AutocompleteNamespace(self)
         self.address_pages = _AddressPagesNamespace(self)
@@ -610,16 +632,14 @@ class OneDexClient:
             }
             url = f"{url}?{urllib.parse.urlencode(filtered)}"
 
-        request_headers = {
-            "Accept": "application/json",
-            **self.headers,
-            **dict(headers or {}),
-        }
+        request_headers = {"accept": "application/json"}
+        for source in (self.headers, dict(headers or {})):
+            request_headers.update({key.lower(): str(value) for key, value in source.items()})
         if idempotency_key is not None:
-            request_headers["Idempotency-Key"] = _normalize_idempotency_key(idempotency_key)
+            request_headers["idempotency-key"] = _normalize_idempotency_key(idempotency_key)
         data = None
         if body is not None:
-            request_headers.setdefault("Content-Type", "application/json")
+            request_headers.setdefault("content-type", "application/json")
             filtered_body = {
                 key: value
                 for key, value in body.items()
@@ -629,8 +649,8 @@ class OneDexClient:
 
         if not isinstance(max_attempts, int) or max_attempts < 1 or max_attempts > 10:
             raise ValueError("max_attempts must be an integer between 1 and 10.")
-        if max_retry_delay is not None and max_retry_delay < 0:
-            raise ValueError("max_retry_delay must be non-negative.")
+        if max_retry_delay is not None and (not math.isfinite(max_retry_delay) or max_retry_delay < 0):
+            raise ValueError("max_retry_delay must be finite and non-negative.")
 
         for attempt in range(1, max_attempts + 1):
             if cancel_event is not None and cancel_event.is_set():
@@ -647,13 +667,14 @@ class OneDexClient:
                     status = int(getattr(response, "status", getattr(response, "code", 200)))
                     response_headers = _headers_to_dict(getattr(response, "headers", {}))
                     body_value = _read_json_response(response)
-                    if status == 202:
+                    if status == 202 or status >= 300:
                         error = _build_api_error(status, body_value, response_headers)
                     else:
                         return body_value
             except urllib.error.HTTPError as exc:
-                body_value = _read_json_response(exc)
-                error = _build_api_error(exc.code, body_value, _headers_to_dict(exc.headers))
+                with exc:
+                    body_value = _read_json_response(exc)
+                    error = _build_api_error(exc.code, body_value, _headers_to_dict(exc.headers))
             except (urllib.error.URLError, OSError) as exc:
                 raise OneDexApiError(
                     f"Unable to reach 1dex API: {_network_error_message(exc)}",
@@ -665,8 +686,8 @@ class OneDexClient:
             if not error.retryable or attempt >= max_attempts:
                 raise error
             delay = float(error.retry_after_seconds if error.retry_after_seconds is not None else 1)
-            if max_retry_delay is not None:
-                delay = min(delay, max_retry_delay)
+            if delay > min(max_retry_delay if max_retry_delay is not None else 2_147_483, 2_147_483):
+                raise error
             if cancel_event is not None:
                 if cancel_event.wait(delay):
                     raise OneDexApiError("1dex API request aborted.", status=0)

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from 'node:fs';
+import { OneDexApiError, OneDexClient } from '@1dex-fr/connector';
 
 const DEFAULT_BASE_URL = 'https://1dex.fr';
-const RETRYABLE_STATUSES = new Set([202, 429, 503]);
 const DEFAULT_SAMPLE_ADDRESS = '10 rue des cordeliers aix';
 const NPM_LATEST_URL = 'https://registry.npmjs.org/@1dex-fr%2f1dex/latest';
 const PUBLIC_MAP_LAYERS = new Set([
@@ -74,19 +74,6 @@ const BOOLEAN_FLAGS = new Set([
   'version',
 ]);
 
-class OneDexApiError extends Error {
-  constructor(message, options = {}) {
-    super(message);
-    this.name = 'OneDexApiError';
-    this.status = options.status ?? 0;
-    this.body = options.body;
-    this.requestId = options.requestId ?? null;
-    this.retryable = options.retryable ?? false;
-    this.retryAfterSeconds = options.retryAfterSeconds ?? null;
-    this.code = options.code ?? null;
-  }
-}
-
 function normalizeIdempotencyKey(value, name = 'idempotency key') {
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`${name} is required. Use --idempotency-key or ONEDEX_IDEMPOTENCY_KEY.`);
@@ -98,34 +85,6 @@ function normalizeIdempotencyKey(value, name = 'idempotency key') {
     throw new TypeError(`${name} must be at most 255 UTF-8 bytes.`);
   }
   return value;
-}
-
-function splitIdempotentInput(input, explicitKey, name) {
-  const {
-    idempotencyKey,
-    idempotency_key: idempotencyKeySnake,
-    ...payload
-  } = input;
-  const keys = [idempotencyKey, idempotencyKeySnake, explicitKey]
-    .filter((value) => value !== undefined && value !== null)
-    .map((value) => normalizeIdempotencyKey(value, `${name} idempotency key`));
-  if (keys.length === 0) {
-    normalizeIdempotencyKey(undefined, `${name} idempotency key`);
-  }
-  if (keys.some((key) => key !== keys[0])) {
-    throw new TypeError(`${name} received conflicting idempotency keys.`);
-  }
-  return { payload, idempotencyKey: keys[0] };
-}
-
-function parseRetryAfterSeconds(body, headers) {
-  const rawHeader = headers.get('retry-after');
-  const headerSeconds = Number(rawHeader);
-  if (rawHeader && Number.isFinite(headerSeconds) && headerSeconds >= 0) {
-    return Math.ceil(headerSeconds);
-  }
-  const bodySeconds = Number(body?.retry_after_seconds);
-  return Number.isFinite(bodySeconds) && bodySeconds >= 0 ? Math.ceil(bodySeconds) : null;
 }
 
 function normalizeDetailsPath(baseUrl, detailsUrl) {
@@ -146,7 +105,7 @@ function normalizeBaseUrl(baseUrl) {
   if (!value) {
     throw new TypeError('baseUrl must not be empty.');
   }
-  return value.replace(/\/+$/, '');
+  return value.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
 }
 
 function appendQuery(path, query) {
@@ -189,381 +148,6 @@ function hasResolvedAddressLocator(input) {
 function assertNormalizedAddressKeyIsAlone(input, name) {
   if (hasNormalizedAddressKey(input) && (hasResolvedAddressLocator(input) || input.city_code)) {
     throw new Error(`${name} must use normalized_address_key alone, without address, city_code, parcel_record_key, or lon/lat.`);
-  }
-}
-
-function normalizeCsvList(value, name) {
-  if (Array.isArray(value)) {
-    const items = value.map((item) => String(item).trim()).filter(Boolean);
-    if (items.length === 0) {
-      throw new Error(`${name} must not be empty.`);
-    }
-    return items.join(',');
-  }
-  const text = String(value ?? '').trim();
-  if (!text) {
-    throw new Error(`${name} must not be empty.`);
-  }
-  return text;
-}
-
-function normalizeAddressLocator(input) {
-  const {
-    cityCode,
-    city_code: cityCodeSnake,
-    normalizedAddressKey,
-    normalized_address_key: normalizedAddressKeySnake,
-    parcelRecordKey,
-    parcel_record_key: parcelRecordKeySnake,
-    ...query
-  } = input;
-  return {
-    ...query,
-    city_code: cityCodeSnake ?? cityCode,
-    normalized_address_key: normalizedAddressKeySnake ?? normalizedAddressKey,
-    parcel_record_key: parcelRecordKeySnake ?? parcelRecordKey,
-  };
-}
-
-async function readJsonResponse(response) {
-  const text = await response.text();
-  if (!text) {
-    return null;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new OneDexApiError('1dex API returned invalid JSON.', {
-      status: response.status,
-      body: text,
-      requestId: response.headers.get('x-request-id'),
-    });
-  }
-}
-
-class OneDexClient {
-  constructor(options = {}) {
-    this.baseUrl = normalizeBaseUrl(options.baseUrl);
-    this.fetch = options.fetch ?? globalThis.fetch;
-    this.timeoutMs = options.timeoutMs ?? 30_000;
-    this.maxAttempts = options.maxAttempts ?? 1;
-    this.maxRetryDelayMs = options.maxRetryDelayMs ?? Number.POSITIVE_INFINITY;
-    if (typeof this.maxRetryDelayMs !== 'number' || Number.isNaN(this.maxRetryDelayMs) || this.maxRetryDelayMs < 0) {
-      throw new TypeError('max retry delay must be a non-negative number.');
-    }
-    this.defaultHeaders = {};
-    if (options.apiKey) {
-      this.defaultHeaders.authorization = `Bearer ${options.apiKey}`;
-    }
-
-    if (typeof this.fetch !== 'function') {
-      throw new TypeError('A fetch implementation is required.');
-    }
-
-    this.autocomplete = Object.freeze({
-      address: (input) => this.autocompleteAddress(input),
-    });
-    this.addressPages = Object.freeze({
-      state: (slug) => this.addressPageState(slug),
-    });
-    this.address = Object.freeze({
-      details: (input) => this.addressDetails(input),
-      detailsUrl: (detailsUrl, options) => this.addressDetailsUrl(detailsUrl, options),
-      unlock: (input) => this.addressUnlock(input),
-    });
-    this.account = Object.freeze({
-      usage: () => this.accountUsage(),
-    });
-    this.communes = Object.freeze({
-      search: (input) => this.communeSearch(input),
-    });
-    this.map = Object.freeze({
-      parcelles: (input) => this.mapParcelles(input),
-      dvf: (input) => this.mapLayer({ ...input, layer: 'parcelles_dvf' }),
-      travaux: (input) => this.mapLayer({ ...input, layer: 'parcelles_travaux' }),
-      iris: (input) => this.mapLayer({ ...input, layer: 'iris' }),
-      context: (input) => this.mapLayer({ ...input, layer: 'context' }),
-      labels: (input) => this.mapLayer({ ...input, layer: 'parcelles_labels' }),
-      layer: (input) => this.mapLayer(input),
-      viewport: (input) => this.mapViewport(input),
-      focus: Object.freeze({
-        parcelle: (input) => this.mapFocusParcelle(input),
-        parcelles: (input) => this.mapFocusParcelles(input),
-        address: (input) => this.mapFocusAddress(input),
-        publicLocation: (input) => this.mapFocusPublicLocation(input),
-        feature: (input) => this.mapFocusFeature(input),
-      }),
-    });
-    this.overview = Object.freeze({
-      address: (input) => this.addressOverview(input),
-    });
-    this.preview = Object.freeze({
-      byPath: (input) => this.publicPreview(input),
-    });
-    this.score = Object.freeze({
-      address: (input) => this.scoreAddress(input),
-      compare: (input) => this.scoreCompare(input),
-      grid: (input) => this.scoreGrid(input),
-      addressSuggest: (input) => this.scoreAddressSuggest(input),
-    });
-  }
-
-  async request(method, path, options = {}) {
-    const headers = { accept: 'application/json', ...this.defaultHeaders };
-    if (options.idempotencyKey !== undefined) {
-      headers['Idempotency-Key'] = normalizeIdempotencyKey(options.idempotencyKey);
-    }
-    let body;
-    if (options.body !== undefined) {
-      headers['content-type'] = 'application/json';
-      body = JSON.stringify(options.body);
-    }
-
-    const maxAttempts = options.maxAttempts ?? this.maxAttempts;
-    if (!Number.isInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 10) {
-      throw new TypeError('max attempts must be an integer between 1 and 10.');
-    }
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      const controller = new AbortController();
-      const timer = this.timeoutMs > 0
-        ? setTimeout(() => controller.abort(), this.timeoutMs)
-        : undefined;
-      let response;
-      try {
-        response = await this.fetch(`${this.baseUrl}${path}`, {
-          method,
-          headers,
-          body,
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if (error?.name === 'AbortError') {
-          throw new OneDexApiError('1dex API request timed out.', { status: 0 });
-        }
-        const message = error instanceof Error ? error.message : String(error);
-        throw new OneDexApiError(`Unable to reach 1dex API: ${message}`, { status: 0 });
-      } finally {
-        if (timer) {
-          clearTimeout(timer);
-        }
-      }
-
-      const bodyValue = await readJsonResponse(response);
-      if (response.status === 202 || !response.ok) {
-        const warning = Array.isArray(bodyValue?.warnings) ? bodyValue.warnings[0] : undefined;
-        const retryAfterSeconds = parseRetryAfterSeconds(bodyValue, response.headers);
-        const error = new OneDexApiError(
-          warning?.message
-            ?? bodyValue?.message
-            ?? (response.status === 202 ? '1dex API request is still in progress.' : `1dex API returned ${response.status}.`),
-          {
-            status: response.status,
-            body: bodyValue,
-            requestId: bodyValue?.request_id ?? response.headers.get('x-request-id'),
-            retryable: RETRYABLE_STATUSES.has(response.status),
-            retryAfterSeconds,
-            code: typeof bodyValue?.error === 'string' ? bodyValue.error : bodyValue?.status,
-          },
-        );
-        if (!error.retryable || attempt >= maxAttempts) {
-          throw error;
-        }
-        const requestedDelayMs = (retryAfterSeconds ?? 1) * 1_000;
-        const delayMs = Math.min(requestedDelayMs, this.maxRetryDelayMs);
-        if (delayMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, delayMs));
-        }
-        continue;
-      }
-      return bodyValue;
-    }
-    throw new OneDexApiError('1dex API retry loop ended unexpectedly.', { status: 0 });
-  }
-
-  mapParcelles(input) {
-    return this.mapLayer({ ...input, layer: 'parcelles' });
-  }
-
-  mapLayer(input) {
-    const { address, city_code: cityCode, lon, lat, layer = 'parcelles', ...query } = input;
-    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || !cityCode.trim())) {
-      throw new TypeError('map layer input requires address, city_code, or lon/lat.');
-    }
-    const layerKey = normalizeMapLayer(layer);
-    const path = appendQuery(`/api/v1/map-layer/${encodeURIComponent(layerKey)}`, {
-      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
-      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
-      lon,
-      lat,
-      ...query,
-    });
-    return this.request('GET', path);
-  }
-
-  mapViewport(input) {
-    const { address, city_code: cityCode, lon, lat, layers, ...query } = input;
-    if (typeof layers !== 'string' || !layers.trim()) {
-      throw new TypeError('map viewport input requires layers.');
-    }
-    if ((typeof address !== 'string' || !address.trim()) && (lon === undefined || lat === undefined) && (typeof cityCode !== 'string' || !cityCode.trim())) {
-      throw new TypeError('map viewport input requires address, city_code, or lon/lat.');
-    }
-    return this.request('GET', appendQuery('/api/v1/map-viewport', {
-      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
-      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
-      lon,
-      lat,
-      layers: layers.trim(),
-      ...query,
-    }));
-  }
-
-  addressOverview(input) {
-    const { address, city_code: cityCode, lon, lat, ...query } = input;
-    if ((typeof address !== 'string' || !address.trim()) && (typeof cityCode !== 'string' || !cityCode.trim()) && (lon === undefined || lat === undefined) && !query.parcel_record_key) {
-      throw new TypeError('address overview input requires address, city_code, lon/lat, or parcel_record_key.');
-    }
-    return this.request('GET', appendQuery('/api/v1/address-overview', {
-      address: typeof address === 'string' && address.trim() ? address.trim() : undefined,
-      city_code: typeof cityCode === 'string' && cityCode.trim() ? cityCode.trim() : undefined,
-      lon,
-      lat,
-      ...query,
-    }));
-  }
-
-  autocompleteAddress(input) {
-    const { q, ...query } = input;
-    if (typeof q !== 'string' || !q.trim()) {
-      throw new TypeError('autocomplete input requires q.');
-    }
-    return this.request('GET', appendQuery('/api/v1/autocomplete/address', {
-      q: q.trim(),
-      ...query,
-    }));
-  }
-
-  addressPageState(slug) {
-    if (typeof slug !== 'string' || !slug.trim()) {
-      throw new TypeError('address page state requires slug.');
-    }
-    return this.request('GET', `/api/v1/address-pages/${encodeURIComponent(slug.trim())}/state`);
-  }
-
-  addressDetails(input) {
-    const { payload, idempotencyKey } = splitIdempotentInput(input, undefined, 'address details');
-    const { fields, ...locatorInput } = payload;
-    const query = normalizeAddressLocator(locatorInput);
-    assertNormalizedAddressKeyIsAlone(query, 'address details input');
-    if (!hasAddressLocator(query)) {
-      throw new TypeError('address details input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
-    }
-    return this.request('GET', appendQuery('/api/v1/address-details', {
-      ...query,
-      fields: normalizeCsvList(fields, 'address details fields'),
-    }), { idempotencyKey });
-  }
-
-  addressDetailsUrl(detailsUrl, options = {}) {
-    return this.request('GET', normalizeDetailsPath(this.baseUrl, detailsUrl), {
-      idempotencyKey: normalizeIdempotencyKey(options.idempotencyKey, 'address details URL idempotency key'),
-    });
-  }
-
-  addressUnlock(input) {
-    const { payload, idempotencyKey } = splitIdempotentInput(input, undefined, 'address unlock');
-    const body = normalizeAddressLocator(payload);
-    assertNormalizedAddressKeyIsAlone(body, 'address unlock input');
-    if (!hasAddressLocator(body)) {
-      throw new TypeError('address unlock input requires address, normalized_address_key, parcel_record_key, or lon/lat.');
-    }
-    return this.request('POST', '/api/v1/address-unlocks', { body, idempotencyKey });
-  }
-
-  accountUsage() {
-    return this.request('GET', '/api/v1/account/usage');
-  }
-
-  communeSearch(input) {
-    const { q, ...query } = input;
-    if (typeof q !== 'string' || !q.trim()) {
-      throw new TypeError('commune search input requires q.');
-    }
-    return this.request('GET', appendQuery('/api/v1/communes/search', { q: q.trim(), ...query }));
-  }
-
-  publicPreview(input) {
-    const path = typeof input === 'string' ? input : input?.path;
-    if (typeof path !== 'string' || !path.trim()) {
-      throw new TypeError('public preview input requires path.');
-    }
-    return this.request('GET', appendQuery('/api/v1/public-preview', { path: path.trim() }));
-  }
-
-  mapFocusParcelle(input) {
-    const recordKey = input.record_key ?? input.recordKey;
-    return this.request('GET', appendQuery('/api/v1/map-focus/parcelle', {
-      record_key: normalizeCsvList(recordKey, 'record-key'),
-    }));
-  }
-
-  mapFocusParcelles(input) {
-    const recordKeys = input.record_keys ?? input.recordKeys;
-    return this.request('GET', appendQuery('/api/v1/map-focus/parcelles', {
-      record_keys: normalizeCsvList(recordKeys, 'record-keys'),
-    }));
-  }
-
-  mapFocusAddress(input) {
-    const { address, city_code: cityCode, ...query } = input;
-    if (typeof address !== 'string' || !address.trim()) {
-      throw new TypeError('map focus address input requires address.');
-    }
-    return this.request('GET', appendQuery('/api/v1/map-focus/address', {
-      address: address.trim(),
-      city_code: cityCode,
-      ...query,
-    }));
-  }
-
-  mapFocusPublicLocation(input) {
-    const { lon, lat, ...query } = input;
-    if (lon === undefined || lat === undefined) {
-      throw new TypeError('map focus public-location input requires lon and lat.');
-    }
-    return this.request('GET', appendQuery('/api/v1/map-focus/public-location', { lon, lat, ...query }));
-  }
-
-  mapFocusFeature(input) {
-    const layerKey = input.layer_key ?? input.layerKey ?? input.layer;
-    const featureKey = input.feature_key ?? input.featureKey;
-    return this.request('GET', appendQuery('/api/v1/map-focus/feature', {
-      layer_key: normalizeCsvList(layerKey, 'layer-key'),
-      feature_key: normalizeCsvList(featureKey, 'feature-key'),
-    }));
-  }
-
-  scoreAddress(input) {
-    return this.request('POST', '/api/v1/score/address', { body: input });
-  }
-
-  scoreCompare(input) {
-    return this.request('POST', '/api/v1/score/compare', { body: input });
-  }
-
-  scoreGrid(input) {
-    return this.request('GET', appendQuery('/api/v1/score/grid', input));
-  }
-
-  scoreAddressSuggest(input) {
-    const { q, ...query } = input;
-    if (typeof q !== 'string' || !q.trim()) {
-      throw new TypeError('score address suggest input requires q.');
-    }
-    return this.request('GET', appendQuery('/api/v1/score/address-suggest', {
-      q: q.trim(),
-      ...query,
-    }));
   }
 }
 
@@ -613,7 +197,7 @@ Options:
       --details-url <url>              Follow the exact details_url returned by address unlock.
       --idempotency-key <key>          Stable key for this exact unlock or details intention.
       --max-attempts <number>          Attempts for 202/429/503 using the same key. Default: 1.
-      --max-retry-delay-ms <number>    Optional cap for Retry-After waits.
+      --max-retry-delay-ms <number>    Stop if Retry-After exceeds this wait budget.
       --record-key <key>               Parcel focus record key.
       --record-keys <csv>              Parcel focus record keys.
       --path <path>                    Public preview path.
@@ -835,8 +419,10 @@ function createClient(flags) {
     baseUrl: flags['base-url'] ?? process.env.ONEDEX_BASE_URL,
     apiKey: flags['api-key'] ?? process.env.ONEDEX_API_KEY,
     timeoutMs: readOptionalNumber(flags['timeout-ms'], 'timeout-ms') ?? 30_000,
-    maxAttempts: readOptionalNumber(flags['max-attempts'], 'max-attempts') ?? 1,
-    maxRetryDelayMs: readOptionalNumber(flags['max-retry-delay-ms'], 'max-retry-delay-ms') ?? Number.POSITIVE_INFINITY,
+    retry: {
+      maxAttempts: readOptionalNumber(flags['max-attempts'], 'max-attempts') ?? 1,
+      maxDelayMs: readOptionalNumber(flags['max-retry-delay-ms'], 'max-retry-delay-ms') ?? Number.POSITIVE_INFINITY,
+    },
   });
 }
 
@@ -1697,9 +1283,15 @@ function printSummary(response) {
         `version=${response.version}`,
         `plan=${usage.plan_key ?? ''}`,
         `available=${usage.available ?? demoWindow?.reads_available ?? ''}`,
-        `day_used=${usage.day?.used ?? demoWindow?.reads_used ?? ''}`,
-        `day_limit=${usage.day?.limit ?? demoWindow?.reads_limit ?? ''}`,
-        `lots=${usage.lots?.length ?? 0}`,
+        ...(demoWindow ? [
+          `reads_used=${demoWindow.reads_used ?? ''}`,
+          `reads_limit=${demoWindow.reads_limit ?? ''}`,
+          `window_seconds=${demoWindow.window_seconds ?? ''}`,
+        ] : [
+          `day_used=${usage.day?.used ?? ''}`,
+          `day_limit=${usage.day?.limit ?? ''}`,
+          `lots=${usage.lots?.length ?? 0}`,
+        ]),
       ].join('\n'));
       return;
     }

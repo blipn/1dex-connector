@@ -11,7 +11,7 @@ Les clients JS, Python et CLI ajoutent `Authorization: Bearer <api-key>` lorsque
 
 ## Comptes professionnels abonnes
 
-Une clé Free de démonstration est limitée à l'adresse épinglée par 1dex. Une clé live suit les droits et activations du compte. Cette décision appartient au runtime: les connecteurs ne déduisent jamais le mode depuis le préfixe de la clé. Le runtime accepte aussi `X-1dex-api-key`, mais les connecteurs envoient par défaut `Authorization: Bearer <clé>`.
+Une clé de démonstration, disponible pour un compte professionnel Free lorsque la démo est publiée, est limitée à l'adresse épinglée par 1dex. Une clé live suit les droits et activations du compte. Cette décision appartient au runtime: les connecteurs ne déduisent jamais le mode depuis le préfixe de la clé. Le runtime accepte aussi `X-1dex-api-key`, mais les connecteurs envoient par défaut `Authorization: Bearer <clé>`.
 
 Les lectures détaillées et déblocages ajoutent aussi une `Idempotency-Key` générée par l'appelant. Elle n'est ni une clé API ni un secret: elle doit rester stable pour les tentatives d'une même intention et changer pour toute nouvelle intention.
 

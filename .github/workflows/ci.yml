@@ -36,6 +36,9 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
+      - name: Install exact workspace dependencies
+        run: npm ci --ignore-scripts
+
       - name: Run CI checks
         run: npm run ci
 

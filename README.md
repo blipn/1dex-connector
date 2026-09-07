@@ -15,13 +15,13 @@ Documentation publique canonique de l'API: <https://1dex.fr/developpeurs/api>
 
 ## Auth, démo et lecture détaillée
 
-Les lectures publiques (`overview`, `autocomplete`, `score`, `map.*`) fonctionnent sans clé API dans les quotas publics. Les lectures détaillées utilisent une clé API. Un compte Free peut recevoir une clé de démonstration limitée à l'adresse épinglée par 1dex; une clé live suit les droits et crédits du compte. Le connecteur ne déduit jamais ce mode depuis le préfixe de la clé.
+L’aperçu public permet une vérification manuelle ponctuelle sans clé, dans les quotas publics. Toute intégration ou automatisation exige un droit API actif. Certaines couches de carte nécessitent en plus une session Explorer autorisée : une clé API seule ne les débloque pas. Un compte professionnel Free peut créer une clé démo seulement lorsque la démonstration est publiée sur son environnement ; elle reste limitée à l’adresse épinglée. Le serveur décide des droits, sans déduction du client depuis le préfixe de clé.
 
-Le connecteur ne gère pas l'achat ni le checkout: l'abonnement, les packs et la création de compte se font sur `1dex.fr`. Créez la clé sur <https://1dex.fr/compte/api>, puis passez-la avec `apiKey`, `api_key`, `--api-key` ou `ONEDEX_API_KEY`. Les clients envoient `Authorization: Bearer <clé>`.
+Le connecteur ne gère ni l’achat ni le checkout. La disponibilité des offres et des clés se vérifie sur `1dex.fr`. Une clé live reste dans votre backend ou vos variables d’environnement, jamais dans un navigateur ou une URL. Créez la clé sur <https://1dex.fr/compte/api>, puis passez-la avec `apiKey`, `api_key`, `--api-key` ou `ONEDEX_API_KEY`. Les clients envoient `Authorization: Bearer <clé>`.
 
 Flux recommande pour une integration pro:
 
-1. Verifier l'acces et les credits avec `account.usage()` (`GET /api/v1/account/usage`).
+1. Vérifier les droits et l’usage avec `account.usage()` (`GET /api/v1/account/usage`).
 2. Générer une clé d'idempotence et tenter `address.details({ address, fields, idempotencyKey })` (`GET /api/v1/address-details`).
 3. Si l'API renvoie `402 address_unlock_required`, lire `unlock_locator_kind`.
 4. Appeler `address.unlock(...)` (`POST /api/v1/address-unlocks`) avec une nouvelle clé d'idempotence et `normalized_address_key` seul quand il est fourni, sinon avec l'objet `unlock_request`.
@@ -32,8 +32,8 @@ Une même intention doit conserver exactement la même clé lors d'un rejeu. Les
 Ce que couvrent les helpers pro:
 
 - `address.details`: familles completes d'une adresse debloquee (`summary`, `rail`, `mobile`, `tabs`, `map_layers`, `parcel_dvf`, `sources`, `source_outcomes` ou `all`).
-- `address.unlock`: consommation d'un credit adresse si necessaire, statut `already_active`, `unlocked` ou `insufficient_credits`, puis `details_url`.
-- `account.usage`: réponse `account-usage-v2` (`api_addresses` live ou demo) après promotion V2, tout en acceptant la forme V1 pendant la transition.
+- `address.unlock`: activation explicite selon les droits du compte, statut `already_active`, `unlocked` ou `insufficient_credits`, puis `details_url`.
+- `account.usage`: réponse courante `account-usage-v2` (`api_addresses` live ou démo). La fenêtre démo est glissante ; les champs de stock et de lots sont facultatifs selon le mode serveur. La forme V1 reste typée pour les anciennes installations.
 
 Erreurs d'acces a prevoir: `invalid_api_key`, `api_subscription_required`, `api_professional_required`, `address_unlock_required`, et `insufficient_credits` quand aucun credit adresse n'est disponible.
 
@@ -125,7 +125,12 @@ Le site GitHub Pages pointe volontairement vers ces documents runtime au lieu de
 ## Development
 
 ```bash
+npm ci --ignore-scripts
 npm run ci
 ```
 
 The supported runtime matrix is Node 22/24 and Python 3.10+. The JS package uses native `fetch` and Node's built-in test runner. The Python package uses `urllib.request` and `unittest`.
+
+## Version 0.2.0
+
+Les lectures détaillées et activations exigent maintenant une clé d’idempotence fournie par l’appelant. Python nécessite 3.10 ou plus. La CLI dépend du même SDK JavaScript pour garder un seul transport HTTP. `baseUrl` / `base_url` accepte `https://1dex.fr` ou la racine documentée `https://1dex.fr/api/v1`.

@@ -33,12 +33,12 @@ La surface pro abonnes n'est pas une API de checkout ou de gestion de compte: le
 | Helper | Route | Ce que le pro obtient |
 | --- | --- | --- |
 | `client.address.details(...)` | `GET /api/v1/address-details` | Donnees completes par familles (`summary`, `rail`, `mobile`, `tabs`, `map_layers`, `parcel_dvf`, `sources`, `source_outcomes`, ou `all`) pour une adresse deja debloquee. |
-| `client.address.unlock(...)` | `POST /api/v1/address-unlocks` | Deblocage d'une adresse avec consommation d'un credit si necessaire, statut `already_active`, `unlocked` ou `insufficient_credits`, puis `details_url`. |
+| `client.address.unlock(...)` | `POST /api/v1/address-unlocks` | Activation explicite d’une adresse selon les droits du compte, statut `already_active`, `unlocked` ou `insufficient_credits`, puis `details_url`. |
 | `client.account.usage()` | `GET /api/v1/account/usage` | Vue `account-usage-v2` des adresses API live ou demo; forme V1 encore acceptée par les clients pendant la transition. |
 
 Flux recommande:
 
-1. Appeler `account.usage()` pour connaitre quotas et credits.
+1. Appeler `account.usage()` pour connaître les droits et l’usage.
 2. Appeler `address.details({ ..., fields, idempotencyKey })` avec une clé propre à cette intention.
 3. Si l'API renvoie `address_unlock_required`, poster `normalized_address_key` seul quand `unlock_locator_kind=normalized_address_key`, sinon poster `unlock_request`, avec une nouvelle clé d'idempotence.
 4. Appeler le `details_url` renvoyé via `address.detailsUrl(...)` ou `address.details_url(...)`, avec une nouvelle clé d'idempotence.
